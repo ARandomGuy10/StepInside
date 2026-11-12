@@ -65,6 +65,10 @@ function start(original: Scene): void {
   let inTopView = false;
   const activeCamera = (): THREE.Camera => (inTopView ? topView.camera : camera);
 
+  // Adding ?fast to the address skips the post-processing below, for
+  // slow machines.
+  const fast = new URLSearchParams(window.location.search).has('fast');
+
   // Post-processing: the picture is drawn off screen, then improved in
   // passes before it is shown. The ambient occlusion pass darkens corners
   // and the floor under furniture, which is what makes things look grounded.
@@ -315,8 +319,12 @@ function start(original: Scene): void {
       lastRoom = roomId;
       refresh();
     }
-    renderPass.camera = occlusion.camera = activeCamera();
-    composer.render();
+    if (fast) {
+      renderer.render(world, activeCamera());
+    } else {
+      renderPass.camera = occlusion.camera = activeCamera();
+      composer.render();
+    }
   });
 
   // Handy in the browser console, and used by the automated screenshots.

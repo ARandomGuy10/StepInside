@@ -12,6 +12,10 @@ npm install
 npm run dev      # then open the URL it prints (http://localhost:5173)
 ```
 
+If walking feels sluggish, open the app with `?fast` on the end of the
+address (`http://localhost:5173/?fast`). That turns off the corner
+shading effect, which is the most expensive part of the picture.
+
 Other commands:
 
 ```bash
