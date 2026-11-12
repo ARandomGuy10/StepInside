@@ -24,6 +24,21 @@ npm run build    # type-check and build a static site into dist/
 npm run preview  # serve the built site
 ```
 
+## Homes
+
+The start screen lists the homes; pick one to walk through it. **Change
+home** at the top of the panel goes back to the list. The address holds
+the choice (`?home=villa-ground`), so a home can be bookmarked.
+
+| Home | Scene file | Notes |
+| --- | --- | --- |
+| Apartment | `scenes/home.json` | `scenes/home.md` |
+| New house, ground floor | `scenes/villa-ground.json` | `scenes/villa.md` |
+| New house, first floor | `scenes/villa-first.json` | `scenes/villa.md` |
+
+To add a home, put its scene file in `scenes/` and list it in
+`src/homes.ts`.
+
 ## Controls
 
 Walking:
@@ -140,7 +155,9 @@ src/render/   Everything that draws: meshes, lights, camera controls.
               models.ts    furniture built from simple shapes in code
               textures.ts  planks, tiles, fabric and paintings drawn in code
 src/ui/       The HTML panels.
+src/homes.ts  The list of homes on the start screen.
 src/main.ts   Wires it all together: state, mouse and keyboard.
+scripts/      make-villa.py writes the new house's scene files from feet.
 public/models glTF furniture models. See the README in that folder.
 tests/        Vitest unit tests for src/core.
 ```

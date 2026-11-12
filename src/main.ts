@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import homeJson from '../scenes/home.json';
 import { CATALOGUE } from './core/catalogue';
 import {
   addFurniture, colorOf, emptyRoom, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resizeFurniture,
   resetLayout, resetPaint, roomAt, rotateFurniture, takeOut, type PaintTarget,
 } from './core/edits';
 import { History } from './core/history';
+import { HOMES, type HomeEntry } from './homes';
 import { loadLayout, saveLayout } from './core/layout';
 import { parseScene, SceneError, toVec, type Scene } from './core/scene';
 import { buildWalls } from './core/walls';
@@ -24,7 +24,8 @@ import { DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePan
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 const PANEL_WIDTH = 288;
 
-function start(original: Scene): void {
+function start(original: Scene, home: HomeEntry): void {
+  document.getElementById('home-name')!.textContent = home.title;
   // The renderer draws the 3D scene into the canvas using WebGL (the GPU).
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -161,7 +162,7 @@ function start(original: Scene): void {
     const link = document.createElement('a');
     // A Blob is a file held in memory; the link "downloads" it.
     link.href = URL.createObjectURL(new Blob([saveLayout(history.current)], { type: 'application/json' }));
-    link.download = `layout-${stamp}.json`;
+    link.download = `layout-${home.id}-${stamp}.json`;
     link.click();
     URL.revokeObjectURL(link.href);
     panel.toast(`Saved as ${link.download} in your downloads folder.`);
@@ -570,12 +571,41 @@ function start(original: Scene): void {
   Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, topCamera: topView.camera } });
 }
 
-try {
-  start(parseScene(homeJson));
-} catch (error) {
-  const panel = document.querySelector<HTMLElement>('#error')!;
-  panel.hidden = false;
-  panel.textContent =
-    error instanceof SceneError ? error.message : `Could not start: ${String(error)}`;
-  if (!(error instanceof SceneError)) throw error;
+// The address picks the home: ?home=apartment. Without it, the start
+// screen lists the homes to choose from.
+const params = new URLSearchParams(window.location.search);
+const chosen = HOMES.find((h) => h.id === params.get('home'));
+
+if (!chosen) {
+  document.getElementById('panel')!.hidden = true;
+  document.getElementById('hint')!.hidden = true;
+  document.getElementById('chooser')!.hidden = false;
+  document.getElementById('chooser-list')!.replaceChildren(
+    ...HOMES.map((h) => {
+      const link = document.createElement('a');
+      const query = new URLSearchParams(params);
+      query.set('home', h.id);
+      link.href = `?${query}`;
+      const title = document.createElement('strong');
+      title.textContent = h.title;
+      const about = document.createElement('span');
+      about.textContent = h.about;
+      link.append(title, about);
+      return link;
+    }),
+  );
+} else {
+  // "Change home" keeps other switches such as ?fast.
+  const back = new URLSearchParams(params);
+  back.delete('home');
+  document.querySelector<HTMLAnchorElement>('#home-change')!.href = back.size ? `?${back}` : './';
+  try {
+    start(parseScene(chosen.json), chosen);
+  } catch (error) {
+    const panel = document.querySelector<HTMLElement>('#error')!;
+    panel.hidden = false;
+    panel.textContent =
+      error instanceof SceneError ? error.message : `Could not start: ${String(error)}`;
+    if (!(error instanceof SceneError)) throw error;
+  }
 }

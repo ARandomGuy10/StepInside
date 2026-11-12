@@ -613,7 +613,105 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+// Pieces for a whole house: bathroom fittings, stairs, a pool.
+
+const diningTable: Builder = (k, [w, h, d], color) => {
+  const wood = mat(color, { roughness: 0.45, map: 'wood', repeat: 2 });
+  k.box(w, 0.045, d, 0, h - 0.0225, 0, wood, 0.01);
+  k.box(w - 0.2, 0.08, d - 0.2, 0, h - 0.085, 0, wood);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.box(0.07, h - 0.045, 0.07, sx * (w / 2 - 0.1), (h - 0.045) / 2, sz * (d / 2 - 0.1), wood, 0.01);
+  k.cyl(0.13, 0.09, 0.07, 0, h + 0.035, 0, mat('#e8dcc0', { roughness: 0.35 }));
+};
+
+const kitchenIsland: Builder = (k, [w, h, d], color) => {
+  k.box(w - 0.06, h - 0.04, d - 0.06, 0, (h - 0.04) / 2, 0, mat(color, { roughness: 0.45 }), 0.006);
+  k.box(w, 0.04, d, 0, h - 0.02, 0, mat('#f2f0ec', { roughness: 0.2 }), 0.008);
+  k.box(0.5, 0.012, 0.4, w * 0.2, h + 0.004, 0, BLACK());
+  k.box(0.45, 0.012, 0.36, -w * 0.2, h + 0.002, 0, mat('#b9bcc0', { roughness: 0.3, metalness: 0.8 }));
+};
+
+const toilet: Builder = (k, [w, h, d], color) => {
+  const china = mat(color, { roughness: 0.15 });
+  k.box(w, h, d * 0.28, 0, h / 2, d / 2 - d * 0.14, china, 0.03); // the cistern, at the back
+  k.box(w * 0.9, 0.4, d * 0.72, 0, 0.2, -d * 0.14, china, 0.12);
+  k.box(w * 0.92, 0.03, d * 0.7, 0, 0.415, -d * 0.14, china, 0.012);
+  k.box(0.06, 0.015, 0.04, 0, h + 0.008, d / 2 - d * 0.14, STEEL());
+};
+
+const basin: Builder = (k, [w, h, d], color) => {
+  k.box(w, h - 0.25, d - 0.04, 0, 0.2 + (h - 0.25) / 2, 0.02, mat(color, { roughness: 0.5, map: 'wood', repeat: 1 }), 0.008);
+  k.box(w + 0.02, 0.03, d, 0, h - 0.015, 0, mat('#f2f0ec', { roughness: 0.2 }), 0.008);
+  k.cyl(0.17, 0.12, 0.1, 0, h + 0.05, -0.02, mat('#fbfaf8', { roughness: 0.12 }), 28);
+  k.cyl(0.012, 0.012, 0.22, 0, h + 0.11, d / 2 - 0.07, STEEL(), 10);
+  k.box(0.02, 0.02, 0.14, 0, h + 0.22, d / 2 - 0.13, STEEL(), 0.008);
+  // A mirror on the wall behind.
+  k.box(w * 0.85, 0.7, 0.02, 0, h + 0.75, d / 2 - 0.01, mat('#c3ced4', { roughness: 0.08, metalness: 0.35 }));
+};
+
+const shower: Builder = (k, [w, h, d], color) => {
+  k.box(w, 0.05, d, 0, 0.025, 0, mat('#eef0f0', { roughness: 0.3 }), 0.01);
+  const glass = mat(color, { roughness: 0.05, opacity: 0.28 });
+  k.box(w, h - 0.05, 0.012, 0, 0.05 + (h - 0.05) / 2, -d / 2 + 0.006, glass);
+  k.box(0.012, h - 0.05, d, -w / 2 + 0.006, 0.05 + (h - 0.05) / 2, 0, glass);
+  k.cyl(0.012, 0.012, h - 0.1, w / 2 - 0.08, h / 2, d / 2 - 0.06, STEEL(), 10);
+  k.cyl(0.11, 0.11, 0.015, w / 2 - 0.25, h - 0.06, d / 2 - 0.22, STEEL(), 24);
+  k.box(0.2, 0.014, 0.014, w / 2 - 0.17, h - 0.05, d / 2 - 0.14, STEEL());
+};
+
+const pool: Builder = (k, [w, h, d], color) => {
+  k.box(w, h, d, 0, h / 2, 0, mat('#d9d6cf', { roughness: 0.7 })); // the stone edge
+  k.box(w - 0.5, h, d - 0.5, 0, h / 2 + 0.004, 0, mat(color, { roughness: 0.05, metalness: 0.1, emissive: '#0d3a52' }));
+  k.box(w - 1.4, h, d - 1.4, 0, h / 2 + 0.008, 0, mat(darker(color, 0.12), { roughness: 0.05, metalness: 0.1, emissive: '#0d3a52', opacity: 0.6 }));
+  for (const sx of [-1, 1]) k.cyl(0.02, 0.02, 0.9, w / 2 - 0.6 + sx * 0.25, 0.45, -d / 2 + 0.2, STEEL(), 10);
+};
+
+const lounger: Builder = (k, [w, h, d], color) => {
+  const frame = mat('#8a6243', { roughness: 0.6, map: 'wood', repeat: 2 });
+  const pad = mat(color, { roughness: 0.95, map: 'fabric', repeat: 2 });
+  k.box(w, 0.05, d, 0, h - 0.12, 0, frame, 0.01);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.box(0.05, h - 0.12, 0.05, sx * (w / 2 - 0.05), (h - 0.12) / 2, sz * (d / 2 - 0.15), frame);
+  k.box(w - 0.06, 0.08, d * 0.62, 0, h - 0.05, -d * 0.17, pad, 0.035);
+  const back = k.box(w - 0.06, 0.08, d * 0.4, 0, h + 0.1, d * 0.3, pad, 0.035);
+  back.rotation.x = 0.6;
+};
+
+/** A straight flight: the first step is at the back (+z), the top at the front. */
+const stairs: Builder = (k, [w, h, d], color) => {
+  const stone = mat(color, { roughness: 0.7 });
+  const steps = Math.max(3, Math.round(h / 0.18));
+  const rise = h / steps;
+  const going = d / steps;
+  for (let i = 0; i < steps; i++) {
+    k.box(w, rise * (i + 1), going, 0, (rise * (i + 1)) / 2, d / 2 - going * (i + 0.5), stone);
+  }
+  // A handrail on the open side, parallel to the slope.
+  const rail = k.box(0.04, 0.04, Math.hypot(d, h), w / 2 - 0.03, h / 2 + 0.95, 0, mat('#3a2a22', { roughness: 0.5 }));
+  rail.rotation.x = Math.atan2(h, d);
+  for (let i = 0; i < steps; i += 3) k.box(0.02, 0.95, 0.02, w / 2 - 0.03, rise * (i + 1) + 0.475, d / 2 - going * (i + 0.5), BLACK());
+};
+
+/** The top of a flight going down, seen on the floor above: treads and a guard rail. */
+const stairsDown: Builder = (k, [w, h, d], color) => {
+  const steps = Math.round(d / 0.26);
+  for (let i = 0; i < steps; i++) {
+    const shade = darker(color, 0.1 + (0.6 * i) / steps);
+    k.box(w - 0.1, 0.012, d / steps - 0.02, 0, 0.006, -d / 2 + (d / steps) * (i + 0.5), mat(shade, { roughness: 0.8 }));
+  }
+  const glass = mat('#cfe0e2', { roughness: 0.05, opacity: 0.25 });
+  k.box(0.012, h, d, w / 2 - 0.006, h / 2, 0, glass);
+  k.box(0.04, 0.04, d, w / 2 - 0.006, h, 0, STEEL());
+};
+
 const builders: Record<string, Builder> = {
+  'dining-table': diningTable,
+  'kitchen-island': kitchenIsland,
+  toilet,
+  basin,
+  shower,
+  pool,
+  lounger,
+  stairs,
+  'stairs-down': stairsDown,
   sofa,
   'sofa-l': sofaL,
   armchair: sofa,

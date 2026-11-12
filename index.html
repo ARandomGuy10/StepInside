@@ -9,7 +9,17 @@
   <body>
     <canvas id="view"></canvas>
 
+    <main id="chooser" hidden>
+      <h1>Interior Walkthrough</h1>
+      <p>Choose a home to walk through.</p>
+      <div id="chooser-list"></div>
+    </main>
+
     <aside id="panel">
+      <div id="home-bar">
+        <strong id="home-name"></strong>
+        <a id="home-change" href="./" title="Back to the list of homes">Change home</a>
+      </div>
       <header>
         <div id="tabs">
           <button id="tab-furniture" class="active">Furniture</button>

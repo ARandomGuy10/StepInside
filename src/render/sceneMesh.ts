@@ -72,17 +72,22 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
     group.add(mesh);
   }
 
-  // A roof slab over the whole home and a ground slab under it. Neither is
+  // Roof slabs over the rooms and a ground slab under the home. Neither is
   // seen from inside; they stop sunlight leaking in from above and below.
   const t = scene.defaults.exteriorWallThickness;
   const size = bounds.getSize(new THREE.Vector2());
   const center = bounds.getCenter(new THREE.Vector2());
+  // Each room gets its own roof slab, so courtyards and balconies stay
+  // open to the sky and the sun can reach them.
+  for (const room of scene.rooms) {
+    if (room.kind === 'balcony') continue;
+    const roof = new THREE.Mesh(prism(room.polygon.map(toVec), 0.2), matte('#d9d6d0', 1));
+    roof.name = 'roof';
+    roof.position.y = roomHeight(scene, room) + 0.01;
+    roof.castShadow = true;
+    group.add(roof);
+  }
   const slabGeometry = new THREE.BoxGeometry(size.x + 2 * t, 0.2, size.y + 2 * t);
-  const roof = new THREE.Mesh(slabGeometry, matte('#d9d6d0', 1));
-  roof.name = 'roof';
-  roof.position.set(center.x, maxHeight + 0.11, center.y);
-  roof.castShadow = true;
-  group.add(roof);
   const ground = new THREE.Mesh(slabGeometry, matte('#55524d', 1));
   ground.name = 'ground';
   ground.position.set(center.x, -0.11, center.y);

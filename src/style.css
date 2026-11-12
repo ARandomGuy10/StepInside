@@ -346,3 +346,78 @@ body.dragging #view {
 #selected-size input {
   width: 40px;
 }
+
+#chooser {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  box-sizing: border-box;
+  background: #f4f1eb;
+  color: #22201d;
+  overflow-y: auto;
+}
+
+#chooser h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+#chooser p {
+  margin: 0 0 14px;
+  color: #6d675f;
+}
+
+#chooser-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  max-width: 920px;
+}
+
+#chooser-list a {
+  width: 260px;
+  padding: 18px;
+  box-sizing: border-box;
+  border: 1px solid #d6cfc3;
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+#chooser-list a:hover {
+  border-color: #22201d;
+}
+
+#chooser-list strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 16px;
+}
+
+#chooser-list span {
+  color: #6d675f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#home-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#home-bar a {
+  color: #6d675f;
+  font-size: 12px;
+  white-space: nowrap;
+}

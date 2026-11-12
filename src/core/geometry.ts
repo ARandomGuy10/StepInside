@@ -72,15 +72,20 @@ export function polygonsOverlap(a: readonly Vec2[], b: readonly Vec2[]): boolean
       if (segmentsCross(a[i], a[(i + 1) % a.length], b[j], b[(j + 1) % b.length])) return true;
     }
   }
-  const probes = (poly: readonly Vec2[]): Vec2[] =>
-    poly.flatMap((p, i) => {
+  const probes = (poly: readonly Vec2[]): Vec2[] => {
+    const points = poly.flatMap((p, i) => {
       const q = poly[(i + 1) % poly.length];
       return [p, { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }];
+    });
     // The middle too, which catches two outlines that coincide exactly.
-    }).concat({
+    // In an L or U shape the middle can fall outside the shape, so check.
+    const middle = {
       x: poly.reduce((sum, p) => sum + p.x, 0) / poly.length,
       y: poly.reduce((sum, p) => sum + p.y, 0) / poly.length,
-    });
+    };
+    if (pointStrictlyInside(middle, poly)) points.push(middle);
+    return points;
+  };
   return (
     probes(a).some((p) => pointStrictlyInside(p, b)) ||
     probes(b).some((p) => pointStrictlyInside(p, a))
