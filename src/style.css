@@ -57,3 +57,16 @@ body.walking #hint {
 body.walking #crosshair {
   opacity: 1;
 }
+
+#error {
+  position: fixed;
+  inset: 24px;
+  margin: 0;
+  padding: 20px;
+  overflow: auto;
+  border-radius: 10px;
+  background: #2a1414;
+  color: #ffd9d9;
+  font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+}

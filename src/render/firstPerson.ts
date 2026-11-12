@@ -54,6 +54,14 @@ export class FirstPersonControls {
     this.walls = walls;
   }
 
+  /** Puts the walker at a plan position, facing `yawDeg` (0 looks up the page). */
+  teleport(x: number, y: number, yawDeg: number, pitchDeg = 0): void {
+    this.camera.position.set(x, EYE_HEIGHT, y);
+    this.yaw = THREE.MathUtils.degToRad(yawDeg);
+    this.pitch = THREE.MathUtils.degToRad(pitchDeg);
+    this.applyRotation();
+  }
+
   /** Call once per frame with the time since the last frame, in seconds. */
   update(dt: number): void {
     const forward = Number(this.down('KeyW', 'ArrowUp')) - Number(this.down('KeyS', 'ArrowDown'));

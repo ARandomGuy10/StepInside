@@ -5,7 +5,6 @@ import {
   pushOutOfWalls,
   type Segment,
 } from '../src/core/collision';
-import { collisionSegments, createDemoRoom } from '../src/core/demoRoom';
 
 const RADIUS = 0.25;
 
@@ -77,22 +76,19 @@ describe('moveWithCollision', () => {
     expect(p.y).toBeCloseTo(1.5);
   });
 
-  it('keeps the walker inside the demo room from any direction', () => {
-    const demo = createDemoRoom();
-    const walls = collisionSegments(demo);
-    const start = { x: demo.width / 2, y: demo.depth / 2 };
+  it('keeps the walker inside the room from any direction', () => {
     for (let deg = 0; deg < 360; deg += 15) {
       const rad = (deg * Math.PI) / 180;
       const p = moveWithCollision(
-        start,
+        { x: 2, y: 1.5 },
         { x: Math.cos(rad) * 50, y: Math.sin(rad) * 50 },
         RADIUS,
-        walls,
+        room,
       );
       expect(p.x).toBeGreaterThanOrEqual(RADIUS - 1e-6);
-      expect(p.x).toBeLessThanOrEqual(demo.width - RADIUS + 1e-6);
+      expect(p.x).toBeLessThanOrEqual(4 - RADIUS + 1e-6);
       expect(p.y).toBeGreaterThanOrEqual(RADIUS - 1e-6);
-      expect(p.y).toBeLessThanOrEqual(demo.depth - RADIUS + 1e-6);
+      expect(p.y).toBeLessThanOrEqual(3 - RADIUS + 1e-6);
     }
   });
 });

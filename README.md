@@ -30,15 +30,42 @@ npm run preview  # serve the built site
 | Step | What | State |
 | --- | --- | --- |
 | 1 | Scaffold and one hard-coded room you can walk in | done |
-| 2 | Scene JSON schema, loader and the real floor plan | next |
-| 3 | Furniture panel | |
+| 2 | Scene JSON schema, loader and the real floor plan | done |
+| 3 | Furniture panel | next |
 | 4 | Paint panel | |
 | 5 | Top-down view, save and load | |
+
+## The scene file
+
+The whole home is described by `scenes/home.json`. The app builds every
+wall, floor and window from it. `scenes/home.md` lists where each number
+came from and every assumption. The plan it was read from is
+`docs/floorplan.png`.
+
+- Lengths are metres. Positions are `[x, y]` as on the floor plan, with x
+  to the right and y down the page. Heights are separate fields.
+- A **room** is the inside outline of its floor (`polygon`). Edge `i` of
+  a room runs from point `i` to point `i + 1`, and each edge is one wall.
+- Walls are not listed. A wall is the gap between two rooms, or the
+  default outside thickness where no room is on the other side.
+- An **opening** (door or window) sits on one room's edge, `offset`
+  metres from the edge's first point. It is cut through to the room
+  behind automatically, so each door is listed once.
+- A **solid** is building mass that is not a room, such as a closet.
+- A room with `"kind": "balcony"` gets railings and no ceiling.
+
+If the file is invalid, the app shows a list of problems, each with the
+path of the offending field, for example
+`scene.openings[3]: does not fit on its wall`.
 
 ## Layout
 
 ```
+scenes/       The home as JSON, plus notes on where the numbers came from.
 src/core/     Scene logic with no Three.js imports. Unit tested.
+              scene.ts     file format and validation
+              walls.ts     rooms to wall slabs, doorways and collision lines
+              collision.ts walking into walls
 src/render/   Everything that draws: meshes, lights, camera controls.
 src/main.ts   Wires the two together.
 tests/        Vitest unit tests for src/core.
