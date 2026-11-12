@@ -228,3 +228,74 @@ body.top-view #view {
 body.dragging #view {
   cursor: grabbing;
 }
+
+#tabs {
+  display: flex;
+  gap: 4px;
+}
+
+#tabs button {
+  font-weight: 600;
+}
+
+#panel .pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+#panel footer {
+  margin: 0;
+}
+
+#catalogue {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+#catalogue button {
+  padding: 5px 6px;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#paint-color {
+  width: 44px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #cfc9bf;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#paint-controls label {
+  align-items: center;
+  font: 12px ui-monospace, Menlo, Consolas, monospace;
+}
+
+#palette {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+#panel #palette button {
+  padding: 0;
+  aspect-ratio: 1;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+#panel #palette button.current {
+  outline: 2px solid #22201d;
+  outline-offset: 1px;
+}

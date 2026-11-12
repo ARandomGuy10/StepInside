@@ -39,7 +39,8 @@ export class FurnitureView {
         this.group.add(item.object);
       }
       item.data = f;
-      item.object.position.set(f.position[0], 0, f.position[1]);
+      // Wall-hung pieces sit at their height above the floor.
+      item.object.position.set(f.position[0], f.elevation ?? 0, f.position[1]);
       // Three.js turns anticlockwise seen from above; the scene file turns clockwise.
       item.object.rotation.y = -THREE.MathUtils.degToRad(f.rotationDeg);
     }

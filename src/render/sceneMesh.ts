@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { roomHeight, toVec, type Room, type Scene } from '../core/scene';
+import { roomHeight, toVec, wallColor, type Room, type Scene } from '../core/scene';
 import type { Vec2 } from '../core/collision';
 import type { Hole, WallModel, WallSlab } from '../core/walls';
 import { floorTexture } from './textures';
@@ -50,6 +50,7 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
     const room = scene.rooms.find((r) => r.id === threshold.roomId);
     const strip = new THREE.Mesh(flatPolygon(threshold.polygon, 0, true), floorMaterial(scene, room));
     strip.name = `threshold:${threshold.openingId}`;
+    strip.userData.roomId = threshold.roomId;
     strip.receiveShadow = true;
     group.add(strip);
   }
@@ -88,6 +89,32 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
   group.add(ground);
 
   return group;
+}
+
+/**
+ * Brings the colours of the shell in line with the scene, after painting.
+ * Only colours change, so the meshes are kept and just recoloured.
+ */
+export function applyShellColors(shell: THREE.Object3D, scene: Scene): void {
+  const rooms = new Map(scene.rooms.map((r) => [r.id, r]));
+  for (const child of shell.children) {
+    if (!(child instanceof THREE.Mesh)) continue;
+    const [kind, ...rest] = child.name.split(':');
+    let color: string | undefined;
+    if (kind === 'floor' || kind === 'threshold') {
+      const room = rooms.get(kind === 'floor' ? rest.join(':') : child.userData.roomId);
+      color = room?.floor?.color ?? scene.defaults.floorColor;
+    } else if (kind === 'ceiling') {
+      color = rooms.get(rest.join(':'))?.ceiling?.color ?? scene.defaults.ceilingColor;
+    } else if (kind === 'wall') {
+      const room = rooms.get(rest.slice(0, -1).join(':'));
+      if (room) color = wallColor(scene, room, Number(rest[rest.length - 1]));
+    } else if (kind === 'solid') {
+      const solid = scene.solids?.find((x) => x.id === rest.join(':'));
+      color = solid?.color ?? scene.defaults.wallColor;
+    }
+    if (color) (child.material as THREE.MeshStandardMaterial).color.set(color);
+  }
 }
 
 /** A floor's colour, with the pattern for its material (planks, tiles) on top. */

@@ -11,39 +11,75 @@
 
     <aside id="panel">
       <header>
-        <h1>Furniture</h1>
+        <div id="tabs">
+          <button id="tab-furniture" class="active">Furniture</button>
+          <button id="tab-paint">Paint</button>
+        </div>
         <button id="btn-top" title="Toggle the top-down view (T)">Top view</button>
       </header>
 
-      <section>
-        <h2>Selected</h2>
-        <p id="selected-name" class="muted">Click a piece to select it, then drag it along the floor.</p>
-        <div id="selected-actions" class="row" hidden>
-          <button id="btn-turn-left" title="Turn 15° anticlockwise (Shift+R)">⟲ Turn</button>
-          <button id="btn-turn-right" title="Turn 15° clockwise (R)">Turn ⟳</button>
-          <button id="btn-turn-90" title="Turn a quarter turn">90°</button>
-          <button id="btn-take-out" title="Take this piece out of the home (Delete)">Take out</button>
-        </div>
-      </section>
+      <div id="pane-furniture" class="pane">
+        <section>
+          <h2>Selected</h2>
+          <p id="selected-name" class="muted">Click a piece to select it, then drag it along the floor.</p>
+          <div id="selected-actions" class="row" hidden>
+            <button id="btn-turn-left" title="Turn 15° anticlockwise (Shift+R)">⟲ Turn</button>
+            <button id="btn-turn-right" title="Turn 15° clockwise (R)">Turn ⟳</button>
+            <button id="btn-turn-90" title="Turn a quarter turn">90°</button>
+            <button id="btn-raise" title="Hang it 5 cm higher">▲ Higher</button>
+            <button id="btn-lower" title="Hang it 5 cm lower">▼ Lower</button>
+            <button id="btn-take-out" title="Take this piece out of the home (Delete)">Take out</button>
+          </div>
+        </section>
 
-      <section>
-        <h2>Room: <span id="room-name">none</span></h2>
-        <div class="row">
-          <button id="btn-empty">Empty the room</button>
-          <button id="btn-reset">Reset layout</button>
-        </div>
-        <div class="row">
-          <button id="btn-undo" title="Undo (Ctrl/Cmd+Z)">Undo</button>
-          <button id="btn-redo" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
-        </div>
-      </section>
+        <section>
+          <h2>Room: <span id="room-name">none</span></h2>
+          <div class="row">
+            <button id="btn-empty">Empty the room</button>
+            <button id="btn-reset">Reset layout</button>
+          </div>
+        </section>
 
-      <section class="grow">
-        <h2>Taken out</h2>
-        <p id="removed-empty" class="muted">Nothing is taken out. Pieces you take out are listed here.</p>
-        <ul id="removed"></ul>
-        <p id="removed-help" class="muted" hidden>Drag a piece onto the floor to put it back, or use its button.</p>
-      </section>
+        <section>
+          <h2>Add a piece</h2>
+          <div id="catalogue"></div>
+          <p class="muted">New pieces appear in front of you. Paintings, mirrors and shelves hang on the nearest wall.</p>
+        </section>
+
+        <section class="grow">
+          <h2>Taken out</h2>
+          <p id="removed-empty" class="muted">Nothing is taken out. Pieces you take out are listed here.</p>
+          <ul id="removed"></ul>
+          <p id="removed-help" class="muted" hidden>Drag a piece onto the floor to put it back, or use its button.</p>
+        </section>
+      </div>
+
+      <div id="pane-paint" class="pane" hidden>
+        <section>
+          <h2>Painting</h2>
+          <p id="paint-name" class="muted">Click a wall, floor, ceiling or piece of furniture to pick it.</p>
+          <div id="paint-controls" hidden>
+            <label class="row" for="paint-color">
+              <input type="color" id="paint-color" value="#ffffff" />
+              <span id="paint-hex">#ffffff</span>
+            </label>
+            <div id="palette"></div>
+            <div class="row">
+              <button id="btn-paint-room" hidden>Use on all walls of this room</button>
+            </div>
+          </div>
+        </section>
+        <section class="grow">
+          <div class="row">
+            <button id="btn-reset-paint">Reset all colours</button>
+          </div>
+        </section>
+      </div>
+
+      <footer class="row">
+        <button id="btn-undo" title="Undo (Ctrl/Cmd+Z)">Undo</button>
+        <button id="btn-redo" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
+      </footer>
     </aside>
 
     <div id="hint">

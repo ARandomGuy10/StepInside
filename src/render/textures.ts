@@ -168,3 +168,104 @@ export function skyTexture(): THREE.Texture {
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
+/**
+ * A picture for a painting, drawn in code. `style` picks one of four
+ * looks; the canvas has the painting's proportions so nothing stretches.
+ */
+export function artTexture(style: number, aspect: number): THREE.Texture {
+  return cached(`art:${style}:${aspect.toFixed(2)}`, () => {
+    const canvas = document.createElement('canvas');
+    const h = 512;
+    const w = Math.max(64, Math.round(h * aspect));
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d')!;
+    const random = seeded(100 + style);
+    if (style === 1) {
+      // A soft landscape: sky, a low sun and layered hills.
+      const sky = ctx.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, '#e9c9a8');
+      sky.addColorStop(0.6, '#f3e3cf');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#d9773f';
+      ctx.beginPath();
+      ctx.arc(w * 0.68, h * 0.4, h * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      const hills = ['#b9a48a', '#8c9a84', '#5f7566', '#39503f'];
+      hills.forEach((color, i) => {
+        const base = h * (0.52 + i * 0.11);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        ctx.lineTo(0, base);
+        for (let x = 0; x <= w; x += w / 6) {
+          ctx.quadraticCurveTo(x + w / 12, base - (random() - 0.3) * h * 0.16, x + w / 6, base + (random() - 0.5) * h * 0.05);
+        }
+        ctx.lineTo(w, h);
+        ctx.fill();
+      });
+    } else if (style === 2) {
+      // Botanical: a branch with leaves on a warm paper background.
+      ctx.fillStyle = '#efe6d4';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#4c5b3c';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.5, h * 0.95);
+      ctx.bezierCurveTo(w * 0.42, h * 0.6, w * 0.6, h * 0.4, w * 0.5, h * 0.08);
+      ctx.stroke();
+      for (let i = 0; i < 9; i++) {
+        const t = 0.14 + i * 0.085;
+        const side = i % 2 === 0 ? 1 : -1;
+        ctx.save();
+        ctx.translate(w * (0.5 + Math.sin(t * 6) * 0.03), h * (0.95 - t * 0.9));
+        ctx.rotate(side * (0.9 + random() * 0.3));
+        ctx.fillStyle = i % 3 === 0 ? '#7f9467' : '#566b45';
+        ctx.beginPath();
+        ctx.ellipse(0, -h * 0.07, h * 0.03, h * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    } else if (style === 3) {
+      // Geometric: a few flat blocks and an arc.
+      ctx.fillStyle = '#f1ece2';
+      ctx.fillRect(0, 0, w, h);
+      const blocks: [string, number, number, number, number][] = [
+        ['#c8553d', 0.08, 0.1, 0.42, 0.5],
+        ['#28536b', 0.42, 0.34, 0.5, 0.56],
+        ['#e3b23c', 0.14, 0.66, 0.3, 0.24],
+      ];
+      for (const [color, x, y, bw, bh] of blocks) {
+        ctx.fillStyle = color;
+        ctx.fillRect(w * x, h * y, w * bw, h * bh);
+      }
+      ctx.fillStyle = '#22201d';
+      ctx.beginPath();
+      ctx.arc(w * 0.72, h * 0.3, h * 0.16, Math.PI, 0);
+      ctx.fill();
+    } else {
+      // A line drawing with a wide white border, like a framed print.
+      ctx.fillStyle = '#fbfaf7';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#1f1f1f';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(w * 0.3, h * 0.72);
+      ctx.bezierCurveTo(w * 0.1, h * 0.4, w * 0.5, h * 0.2, w * 0.55, h * 0.42);
+      ctx.bezierCurveTo(w * 0.6, h * 0.62, w * 0.35, h * 0.55, w * 0.5, h * 0.36);
+      ctx.bezierCurveTo(w * 0.62, h * 0.2, w * 0.8, h * 0.4, w * 0.7, h * 0.74);
+      ctx.stroke();
+      ctx.fillStyle = '#d98c5f';
+      ctx.beginPath();
+      ctx.arc(w * 0.66, h * 0.3, h * 0.045, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+    return texture;
+  });
+}

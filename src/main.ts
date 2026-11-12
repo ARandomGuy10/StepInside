@@ -1,20 +1,24 @@
 import * as THREE from 'three';
 import homeJson from '../scenes/home.json';
-import { emptyRoom, moveFurniture, putBack, resetLayout, roomAt, rotateFurniture, takeOut } from './core/edits';
+import { CATALOGUE } from './core/catalogue';
+import {
+  addFurniture, colorOf, emptyRoom, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture,
+  resetLayout, resetPaint, roomAt, rotateFurniture, takeOut, type PaintTarget,
+} from './core/edits';
 import { History } from './core/history';
 import { parseScene, SceneError, toVec, type Scene } from './core/scene';
 import { buildWalls } from './core/walls';
 import { FirstPersonControls } from './render/firstPerson';
 import { FurnitureView } from './render/furnitureView';
 import { addLighting } from './render/lighting';
-import { buildShell } from './render/sceneMesh';
+import { applyShellColors, buildShell } from './render/sceneMesh';
 import { skyTexture } from './render/textures';
 import { TopView } from './render/topView';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { DRAG_TYPE, FurniturePanel, labelOf } from './ui/furniturePanel';
+import { DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePanel';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 const PANEL_WIDTH = 288;
@@ -32,8 +36,9 @@ function start(original: Scene): void {
   const world = new THREE.Scene();
   world.background = skyTexture(); // seen through the windows
 
-  // The shell (walls, floors, windows) never changes in this step, so it is
-  // built once. Furniture is rebuilt from the scene whenever the scene changes.
+  // The shell (walls, floors, windows) keeps its shape, so it is built once
+  // and only recoloured when something is painted. Furniture is rebuilt
+  // from the scene whenever the scene changes.
   const walls = buildWalls(original);
   const shell = buildShell(original, walls);
   world.add(shell);
@@ -87,8 +92,17 @@ function start(original: Scene): void {
 
   const history = new History<Scene>(original);
   let selectedId: string | null = null;
+  // The panel has two tabs. In paint mode a click picks a surface instead
+  // of a piece of furniture to move.
+  let mode: Mode = 'furniture';
+  let paintTarget: PaintTarget | null = null;
+  let pickingColor = false;
+  let painted: Pick<Scene, 'rooms' | 'solids'> = original;
   const selection = new THREE.BoxHelper(new THREE.Object3D(), 0xff9f1c);
   selection.visible = false;
+  // Draw the outline on top of everything, so a picked floor shows too.
+  (selection.material as THREE.Material).depthTest = false;
+  selection.renderOrder = 10;
   world.add(selection);
 
   const selectedPiece = () =>
@@ -111,7 +125,90 @@ function start(original: Scene): void {
     return true;
   };
 
+  /** The 3D object and label for what the paint tab has picked. */
+  const paintInfo = () => {
+    const scene = history.current;
+    const t = paintTarget;
+    if (!t) return undefined;
+    if (t.kind === 'furniture') {
+      const piece = scene.furniture.find((f) => f.id === t.id && !f.removed);
+      if (!piece) return undefined;
+      return { label: labelOf(piece), color: piece.color ?? '#8a8f98', isWall: false, object: furniture.objectFor(t.id) };
+    }
+    const color = colorOf(scene, t);
+    if (!color) return undefined;
+    if (t.kind === 'solid') {
+      return { label: `Built-in block (${t.id})`, color, isWall: false, object: shell.getObjectByName(`solid:${t.id}`) };
+    }
+    const room = scene.rooms.find((r) => r.id === t.room);
+    const name = t.kind === 'wall' ? `wall:${t.room}:${t.edge}` : `${t.kind}:${t.room}`;
+    return { label: `${room?.name ?? t.room}: ${t.kind}`, color, isWall: t.kind === 'wall', object: shell.getObjectByName(name) };
+  };
+
+  const setPaintTarget = (target: PaintTarget | null): void => {
+    if (pickingColor) {
+      history.endGesture();
+      pickingColor = false;
+    }
+    paintTarget = target;
+    refresh();
+  };
+
   const panel = new FurniturePanel({
+    setMode: (next) => {
+      if (next === mode) return;
+      mode = next;
+      // Carry a selected piece over, so "select, then switch tab" works.
+      if (mode === 'paint') paintTarget = selectedId ? { kind: 'furniture', id: selectedId } : paintTarget;
+      else if (paintTarget?.kind === 'furniture') selectedId = paintTarget.id;
+      updateHint();
+      refresh();
+    },
+    raise: (delta) => {
+      if (selectedId) apply(raiseFurniture(history.current, selectedId, delta), 'It cannot go any further.');
+    },
+    add: (key) => {
+      const item = CATALOGUE.find((c) => c.key === key);
+      if (!item) return;
+      // Look for what is straight ahead of the walker: a wall-hung piece
+      // goes on that wall, a floor piece stands a step in front.
+      const pose = controls.pose;
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const hit = raycaster.intersectObject(shell, true).find((h) => !h.object.name.startsWith('glass:'));
+      let near: [number, number];
+      if (item.mount === 'wall') {
+        const p = hit ? hit.point.clone().addScaledVector(raycaster.ray.direction, -0.05) : null;
+        near = p ? [mm(p.x), mm(p.z)] : [mm(pose.x), mm(pose.y)];
+      } else {
+        const reach = Math.max(0.3, Math.min(1.5, (hit?.distance ?? 9) - 0.6));
+        near = [mm(pose.x - Math.sin(pose.yaw) * reach), mm(pose.y - Math.cos(pose.yaw) * reach)];
+      }
+      // Turn a floor piece to face the walker, to the nearest quarter turn.
+      const facing = (((Math.round((180 - THREE.MathUtils.radToDeg(pose.yaw)) / 90) * 90) % 360) + 360) % 360;
+      const result = addFurniture(history.current, item, near, facing);
+      if (apply(result.scene, 'There is no space for it here. Try from a spot with more room.') && result.id) {
+        selectedId = result.id;
+        refresh();
+        panel.toast(item.mount === 'wall' ? `Hung: ${item.name}. Drag it along the wall.` : `Added: ${item.name}. Drag it into place.`);
+      }
+    },
+    paint: (color, done) => {
+      if (!paintTarget) return;
+      // Dragging in the colour picker previews live and undoes as one step.
+      if (!pickingColor) {
+        history.beginGesture();
+        pickingColor = true;
+      }
+      history.preview(paint(history.current, paintTarget, color));
+      if (done) {
+        history.endGesture();
+        pickingColor = false;
+      }
+    },
+    paintRoomWalls: (color) => {
+      if (paintTarget?.kind === 'wall') apply(paintRoomWalls(history.current, paintTarget.room, color), 'Those walls already have this colour.');
+    },
+    resetPaint: () => apply(resetPaint(history.current, original), 'The colours are already as they started.'),
     turn: (deltaDeg) => {
       if (selectedId) apply(rotateFurniture(history.current, selectedId, deltaDeg), 'No space to turn it here.');
     },
@@ -137,12 +234,19 @@ function start(original: Scene): void {
   function refresh(): void {
     const scene = history.current;
     furniture.sync(scene.furniture);
+    if (scene.rooms !== painted.rooms || scene.solids !== painted.solids) {
+      applyShellColors(shell, scene);
+      painted = scene;
+    }
     if (selectedId && !selectedPiece()) selectedId = null;
-    const object = selectedId ? furniture.objectFor(selectedId) : undefined;
+    const picked = paintInfo();
+    const object = mode === 'paint' ? picked?.object : selectedId ? furniture.objectFor(selectedId) : undefined;
     selection.visible = !!object;
     if (object) selection.setFromObject(object);
     panel.render({
       scene,
+      mode,
+      paint: picked,
       selected: selectedPiece(),
       room: currentRoom(),
       canUndo: history.canUndo,
@@ -158,13 +262,24 @@ function start(original: Scene): void {
     controls.enabled = !on;
     topView.setActive(on);
     document.body.classList.toggle('top-view', on);
-    document.getElementById('hint-title')!.textContent = on
-      ? 'Top view'
-      : 'Click the room to look around';
-    document.getElementById('hint-text')!.textContent = on
-      ? 'Click a piece to select it · drag to move · R to turn · T to walk again'
-      : 'W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view';
+    updateHint();
     refresh();
+  }
+
+  function updateHint(): void {
+    const painting = mode === 'paint';
+    document.getElementById('hint-title')!.textContent = inTopView
+      ? 'Top view'
+      : painting
+        ? 'Click a surface to paint it'
+        : 'Click the room to look around';
+    document.getElementById('hint-text')!.textContent = inTopView
+      ? painting
+        ? 'Click a floor, wall or piece, then choose a colour · T to walk again'
+        : 'Click a piece to select it · drag to move · R to turn · T to walk again'
+      : painting
+        ? 'W A S D to walk · right-drag or double-click to look around · while looking, click picks what the dot is on'
+        : 'W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view';
   }
 
   // ---- Picking: finding what is under the mouse ----
@@ -172,6 +287,7 @@ function start(original: Scene): void {
   // A raycaster shoots a line from the camera through a point on screen and
   // reports what it hits, nearest first.
   const raycaster = new THREE.Raycaster();
+  const mm = (v: number): number => Math.round(v * 1000) / 1000;
   const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
   const aim = (e: { clientX: number; clientY: number }): void => {
@@ -197,6 +313,53 @@ function start(original: Scene): void {
     return hit ? FurnitureView.idOf(hit.object) : undefined;
   };
 
+  /** What a mesh of the shell stands for in the scene file, going by its name. */
+  const targetOf = (object: THREE.Object3D): PaintTarget | undefined => {
+    const [kind, ...rest] = object.name.split(':');
+    if (kind === 'wall') return { kind, room: rest.slice(0, -1).join(':'), edge: Number(rest[rest.length - 1]) };
+    if (kind === 'floor' || kind === 'ceiling') return { kind, room: rest.join(':') };
+    if (kind === 'threshold') return { kind: 'floor', room: object.userData.roomId };
+    if (kind === 'solid') return { kind, id: rest.join(':') };
+    return undefined;
+  };
+
+  /** The wall, floor, ceiling or piece under the mouse, for the paint tab. */
+  const pickSurface = (e: { clientX: number; clientY: number }): PaintTarget | undefined => {
+    aim(e);
+    const hit = raycaster
+      .intersectObjects([shell, furniture.group], true)
+      .find((h) => isShown(h.object) && !h.object.name.startsWith('glass:'));
+    if (!hit) return undefined;
+    const id = FurnitureView.idOf(hit.object);
+    if (id) return { kind: 'furniture', id };
+    // Skirting boards and window frames belong to their wall.
+    for (let o: THREE.Object3D | null = hit.object; o && o !== shell; o = o.parent) {
+      const target = targetOf(o);
+      if (target) return target;
+    }
+    return undefined;
+  };
+
+  /** Where the mouse points on a wall, for hanging things: 3D position. */
+  const wallPoint = (e: { clientX: number; clientY: number }): THREE.Vector3 | undefined => {
+    aim(e);
+    for (const hit of raycaster.intersectObject(shell, true)) {
+      if (!isShown(hit.object) || hit.object.name.startsWith('glass:')) continue;
+      for (let o: THREE.Object3D | null = hit.object; o && o !== shell; o = o.parent) {
+        const kind = o.name.split(':')[0];
+        if (kind === 'wall' || kind === 'solid') return hit.point;
+      }
+      return undefined; // a floor or ceiling is in front
+    }
+    return undefined;
+  };
+
+  const pickForPaint = (e: { clientX: number; clientY: number }): void => {
+    const target = pickSurface(e);
+    if (!target) panel.toast('That cannot be painted.');
+    setPaintTarget(target ?? null);
+  };
+
   /** Where the mouse points on the floor, in plan coordinates. */
   const floorPoint = (e: { clientX: number; clientY: number }): [number, number] | undefined => {
     aim(e);
@@ -206,20 +369,33 @@ function start(original: Scene): void {
 
   // ---- Mouse: select, drag along the floor, or click to walk ----
 
-  let drag: { id: string; offset: [number, number] } | null = null;
+  // `lift` is set while dragging a wall-hung piece along its wall: the
+  // height of the piece's bottom edge above the point that was grabbed.
+  let drag: { id: string; offset: [number, number]; lift?: number } | null = null;
   let press: { x: number; y: number } | null = null;
-  const mm = (v: number): number => Math.round(v * 1000) / 1000;
 
   canvas.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || controls.locked) return;
+    if (e.button !== 0) return;
+    if (controls.locked) {
+      // While looking around, a click in paint mode picks what the dot is on.
+      if (mode === 'paint') {
+        const rect = canvas.getBoundingClientRect();
+        pickForPaint({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
+      }
+      return;
+    }
     press = { x: e.clientX, y: e.clientY };
+    if (mode === 'paint') return;
     const id = pickFurniture(e);
     if (!id) return;
     selectedId = id;
     const piece = selectedPiece();
-    const grab = floorPoint(e);
+    const onWall = piece?.mount === 'wall' && !inTopView ? wallPoint(e) : undefined;
+    const grab = onWall ? ([onWall.x, onWall.z] as [number, number]) : floorPoint(e);
     if (piece && grab) {
-      drag = { id, offset: [piece.position[0] - grab[0], piece.position[1] - grab[1]] };
+      drag = onWall
+        ? { id, offset: [0, 0], lift: (piece.elevation ?? 0) - onWall.y }
+        : { id, offset: [piece.position[0] - grab[0], piece.position[1] - grab[1]] };
       history.beginGesture();
       canvas.setPointerCapture(e.pointerId);
       document.body.classList.add('dragging');
@@ -229,6 +405,15 @@ function start(original: Scene): void {
 
   canvas.addEventListener('pointermove', (e) => {
     if (!drag) return;
+    if (drag.lift !== undefined) {
+      const hit = wallPoint(e);
+      if (!hit) return;
+      let next = moveFurniture(history.current, drag.id, [mm(hit.x), mm(hit.z)]);
+      const height = next.furniture.find((f) => f.id === drag!.id)?.elevation ?? 0;
+      next = raiseFurniture(next, drag.id, mm(hit.y + drag.lift - height));
+      history.preview(next);
+      return;
+    }
     const p = floorPoint(e);
     if (!p) return;
     const target: [number, number] = [mm(p[0] + drag.offset[0]), mm(p[1] + drag.offset[1])];
@@ -246,10 +431,18 @@ function start(original: Scene): void {
       return;
     }
     if (!wasClick || controls.locked) return;
+    if (mode === 'paint') {
+      pickForPaint(e);
+      return;
+    }
     // A click on nothing: clear the selection, and in the walk view start looking around.
     selectedId = null;
     refresh();
     if (!inTopView) controls.lock();
+  });
+
+  canvas.addEventListener('dblclick', () => {
+    if (mode === 'paint' && !inTopView) controls.lock();
   });
 
   // Dragging a taken-out piece from the panel onto the floor.
@@ -279,14 +472,16 @@ function start(original: Scene): void {
       return;
     } else if (e.code === 'KeyT') {
       setTopView(!inTopView);
+    } else if (e.code === 'Escape') {
+      selectedId = null;
+      setPaintTarget(null);
+    } else if (mode !== 'furniture') {
+      return;
     } else if (e.code === 'KeyR' && selectedId) {
       apply(rotateFurniture(history.current, selectedId, e.shiftKey ? -15 : 15), 'No space to turn it here.');
     } else if ((e.code === 'Delete' || e.code === 'Backspace') && selectedId) {
       const piece = selectedPiece();
       if (piece && apply(takeOut(history.current, selectedId), '')) panel.toast(`Took out: ${labelOf(piece)}`);
-    } else if (e.code === 'Escape') {
-      selectedId = null;
-      refresh();
     }
   });
 

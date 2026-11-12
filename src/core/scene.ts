@@ -84,6 +84,10 @@ export interface Furniture {
   size: [number, number, number];
   color?: string | null;
   removed?: boolean;
+  /** "wall" pieces, such as paintings, hang on a wall instead of standing on the floor. */
+  mount?: 'floor' | 'wall';
+  /** Height of the bottom of the piece above the floor. Defaults to 0. */
+  elevation?: number;
 }
 
 /** A lamp: a point of light, drawn with a simple fitting. */
@@ -451,7 +455,7 @@ export function parseScene(input: unknown): Scene {
   (c.array(root.furniture, 'scene.furniture') ?? []).forEach((value, i) => {
     const path = `scene.furniture[${i}]`;
     const f = c.object(value, path, [
-      'id', 'name', 'model', 'room', 'position', 'rotationDeg', 'size', 'color', 'removed',
+      'id', 'name', 'model', 'room', 'position', 'rotationDeg', 'size', 'color', 'removed', 'mount', 'elevation',
     ]);
     if (!f) return;
     c.uniqueId(f.id, `${path}.id`, ids);
@@ -468,6 +472,8 @@ export function parseScene(input: unknown): Scene {
       f.size.forEach((v, k) => c.positive(v, `${path}.size[${k}]`));
     }
     if (f.color !== undefined && f.color !== null) c.color(f.color, `${path}.color`);
+    if (f.mount !== undefined) c.oneOf(f.mount, `${path}.mount`, ['floor', 'wall'] as const);
+    if (f.elevation !== undefined) c.number(f.elevation, `${path}.elevation`, 0, 10);
     if (f.removed !== undefined && typeof f.removed !== 'boolean') {
       c.fail(`${path}.removed`, 'must be true or false');
     }

@@ -5,8 +5,8 @@
  * callers can tell with `result === scene`.
  */
 import type { Vec2 } from './collision';
-import { pointInsideOrOn, segmentsCross } from './geometry';
-import { toVec, type Furniture, type Point, type Room, type Scene } from './scene';
+import { pointInsideOrOn, polygonsOverlap, segmentsCross, signedArea } from './geometry';
+import { roomHeight, toVec, type Furniture, type Point, type Room, type Scene } from './scene';
 
 /** The four floor corners of a piece. rotationDeg turns clockwise on the plan. */
 export function footprint(f: Pick<Furniture, 'position' | 'rotationDeg' | 'size'>): Vec2[] {
@@ -65,12 +65,62 @@ function update(scene: Scene, id: string, change: (f: Furniture) => Furniture | 
   return { ...scene, furniture };
 }
 
+const mm = (v: number): number => Math.round(v * 1000) / 1000;
+
+/**
+ * Where a wall-hung piece ends up when dropped at `target`: flat against
+ * the nearest wall of the room it is in, facing into the room.
+ */
+export function snapToWall(
+  scene: Scene,
+  f: Pick<Furniture, 'size'>,
+  target: Point,
+): { position: Point; rotationDeg: number; room: string } | undefined {
+  const p = toVec(target);
+  let best: { position: Point; rotationDeg: number; room: string; distance: number } | undefined;
+  for (const room of scene.rooms) {
+    if (room.kind === 'balcony') continue;
+    const outline = room.polygon.map(toVec);
+    const sign = signedArea(outline) > 0 ? 1 : -1;
+    for (let i = 0; i < outline.length; i++) {
+      const a = outline[i];
+      const b = outline[(i + 1) % outline.length];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const half = f.size[0] / 2;
+      if (len < f.size[0] + 0.02) continue;
+      const dir = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+      const inward = { x: -dir.y * sign, y: dir.x * sign };
+      const along = Math.max(half + 0.01, Math.min(len - half - 0.01, (p.x - a.x) * dir.x + (p.y - a.y) * dir.y));
+      const onWall = { x: a.x + dir.x * along, y: a.y + dir.y * along };
+      const distance = Math.hypot(p.x - onWall.x, p.y - onWall.y);
+      if (best && distance >= best.distance) continue;
+      const gap = f.size[2] / 2 + 0.004;
+      best = {
+        position: [mm(onWall.x + inward.x * gap), mm(onWall.y + inward.y * gap)],
+        // The front of a piece faces up the page at rotation 0.
+        rotationDeg: mm((((Math.atan2(inward.x, -inward.y) * 180) / Math.PI) + 360) % 360),
+        room: room.id,
+        distance,
+      };
+    }
+  }
+  if (!best) return undefined;
+  return { position: best.position, rotationDeg: best.rotationDeg, room: best.room };
+}
+
 /**
  * Moves a piece towards `target`. If the full move is blocked it tries
  * moving along x only, then y only, so a dragged piece slides along a wall.
+ * A wall-hung piece jumps to the nearest wall instead.
  */
 export function moveFurniture(scene: Scene, id: string, target: Point): Scene {
   return update(scene, id, (f) => {
+    if (f.mount === 'wall') {
+      const snap = snapToWall(scene, f, target);
+      if (!snap) return null;
+      if (snap.position[0] === f.position[0] && snap.position[1] === f.position[1]) return null;
+      return { ...f, position: snap.position, rotationDeg: snap.rotationDeg, room: snap.room };
+    }
     const attempts: Point[] = [target, [target[0], f.position[1]], [f.position[0], target[1]]];
     for (const position of attempts) {
       if (position[0] === f.position[0] && position[1] === f.position[1]) continue;
@@ -82,12 +132,37 @@ export function moveFurniture(scene: Scene, id: string, target: Point): Scene {
 }
 
 /**
+ * The nearest spot to `near`, within 3 m, where a floor piece fits. Spots
+ * clear of the other furniture are preferred; if there is none, standing
+ * over another piece is accepted (rugs never count as in the way).
+ */
+function findSpot(scene: Scene, f: Pick<Furniture, 'rotationDeg' | 'size'>, near: Point): { position: Point; room: string } | undefined {
+  const others = scene.furniture
+    .filter((o) => !o.removed && o.mount !== 'wall' && o.size[1] > 0.1)
+    .map((o) => footprint(o));
+  let crowded: { position: Point; room: string } | undefined;
+  for (let step = 0; step <= 30; step++) {
+    for (let k = 0; k < (step === 0 ? 1 : 12); k++) {
+      const angle = (k * Math.PI) / 6;
+      const position: Point = [mm(near[0] + Math.cos(angle) * step * 0.1), mm(near[1] + Math.sin(angle) * step * 0.1)];
+      const room = roomThatFits(scene, { ...f, position });
+      if (!room) continue;
+      const corners = footprint({ ...f, position });
+      if (f.size[1] <= 0.1 || !others.some((o) => polygonsOverlap(corners, o))) return { position, room: room.id };
+      crowded ??= { position, room: room.id };
+    }
+  }
+  return crowded;
+}
+
+/**
  * Turns a piece by `deltaDeg` (clockwise on the plan). If the turned piece
  * would stick into a wall, it is nudged to the nearest spot within a metre
  * where it fits, so a sofa standing against a wall can still be turned.
  */
 export function rotateFurniture(scene: Scene, id: string, deltaDeg: number): Scene {
   return update(scene, id, (f) => {
+    if (f.mount === 'wall') return null;
     const rotationDeg = (((f.rotationDeg + deltaDeg) % 360) + 360) % 360;
     const turned = { ...f, rotationDeg };
     if (roomThatFits(scene, turned)) return turned;
@@ -115,10 +190,65 @@ export function takeOut(scene: Scene, id: string): Scene {
 export function putBack(scene: Scene, id: string, position?: Point): Scene {
   return update(scene, id, (f) => {
     if (!f.removed) return null;
+    if (f.mount === 'wall') {
+      const snap = snapToWall(scene, f, position ?? f.position);
+      return snap ? { ...f, ...snap, removed: false } : null;
+    }
     const placed = { ...f, position: position ?? f.position };
     const room = roomThatFits(scene, placed);
     return room ? { ...placed, room: room.id, removed: false } : null;
   });
+}
+
+/** Raises or lowers a wall-hung piece, keeping it between floor and ceiling. */
+export function raiseFurniture(scene: Scene, id: string, delta: number): Scene {
+  return update(scene, id, (f) => {
+    const room = scene.rooms.find((r) => r.id === f.room);
+    const top = (room ? roomHeight(scene, room) : scene.defaults.ceilingHeight) - f.size[1];
+    const elevation = mm(Math.max(0, Math.min(top, (f.elevation ?? 0) + delta)));
+    return elevation === (f.elevation ?? 0) ? null : { ...f, elevation };
+  });
+}
+
+/** A piece that can be added from the panel. */
+export interface CatalogueItem {
+  key: string;
+  name: string;
+  model: string;
+  size: [number, number, number];
+  color: string;
+  mount?: 'wall';
+  elevation?: number;
+}
+
+/**
+ * Adds a new piece from the catalogue as close to `near` as it fits.
+ * Returns the new scene and the id of the piece, or the same scene if
+ * there is no room for it nearby.
+ */
+export function addFurniture(scene: Scene, item: CatalogueItem, near: Point, rotationDeg = 0): { scene: Scene; id?: string } {
+  const taken = new Set([
+    ...scene.furniture.map((f) => f.id),
+    ...scene.rooms.map((r) => r.id),
+    ...scene.openings.map((o) => o.id),
+    ...(scene.solids ?? []).map((x) => x.id),
+    ...(scene.lights ?? []).map((l) => l.id),
+  ]);
+  let n = 1;
+  while (taken.has(`${item.key}-${n}`)) n++;
+  const id = `${item.key}-${n}`;
+  const base = { id, name: item.name, model: item.model, size: item.size, color: item.color };
+  let piece: Furniture;
+  if (item.mount === 'wall') {
+    const snap = snapToWall(scene, item, near);
+    if (!snap) return { scene };
+    piece = { ...base, ...snap, mount: 'wall', elevation: item.elevation ?? 1.2 };
+  } else {
+    const spot = findSpot(scene, { rotationDeg, size: item.size }, near);
+    if (!spot) return { scene };
+    piece = { ...base, room: spot.room, position: spot.position, rotationDeg };
+  }
+  return { scene: { ...scene, furniture: [...scene.furniture, piece] }, id };
 }
 
 /** Takes out every piece in one room. */
@@ -130,8 +260,84 @@ export function emptyRoom(scene: Scene, roomId: string): Scene {
   };
 }
 
-/** Puts all furniture back the way it is in `original`. */
+/** Puts all furniture back the way it is in `original`. Paint is kept. */
 export function resetLayout(scene: Scene, original: Scene): Scene {
   if (scene.furniture === original.furniture) return scene;
   return { ...scene, furniture: original.furniture };
+}
+
+/** Puts every colour back the way it is in `original`. The layout is kept. */
+export function resetPaint(scene: Scene, original: Scene): Scene {
+  const colors = new Map(original.furniture.map((f) => [f.id, f.color]));
+  const furniture = scene.furniture.map((f) =>
+    colors.has(f.id) && colors.get(f.id) !== f.color ? { ...f, color: colors.get(f.id) } : f,
+  );
+  const changed = furniture.some((f, i) => f !== scene.furniture[i]);
+  if (!changed && scene.rooms === original.rooms && scene.solids === original.solids) return scene;
+  return { ...scene, rooms: original.rooms, solids: original.solids, furniture: changed ? furniture : scene.furniture };
+}
+
+// ---------------------------------------------------------------------------
+// Paint
+// ---------------------------------------------------------------------------
+
+/** Something that can be given a colour. */
+export type PaintTarget =
+  | { kind: 'wall'; room: string; edge: number }
+  | { kind: 'floor'; room: string }
+  | { kind: 'ceiling'; room: string }
+  | { kind: 'solid'; id: string }
+  | { kind: 'furniture'; id: string };
+
+/** The current colour of a paint target, if it exists. */
+export function colorOf(scene: Scene, target: PaintTarget): string | undefined {
+  if (target.kind === 'furniture') {
+    return scene.furniture.find((f) => f.id === target.id)?.color ?? undefined;
+  }
+  if (target.kind === 'solid') {
+    const solid = scene.solids?.find((x) => x.id === target.id);
+    return solid ? (solid.color ?? scene.defaults.wallColor) : undefined;
+  }
+  const room = scene.rooms.find((r) => r.id === target.room);
+  if (!room) return undefined;
+  if (target.kind === 'floor') return room.floor?.color ?? scene.defaults.floorColor;
+  if (target.kind === 'ceiling') return room.ceiling?.color ?? scene.defaults.ceilingColor;
+  return room.walls?.find((w) => w.edge === target.edge)?.color ?? scene.defaults.wallColor;
+}
+
+/** Paints every wall of one room in one go. */
+export function paintRoomWalls(scene: Scene, roomId: string, color: string): Scene {
+  const room = scene.rooms.find((r) => r.id === roomId);
+  if (!room) return scene;
+  return room.polygon.reduce((s, _, edge) => paint(s, { kind: 'wall', room: roomId, edge }, color), scene);
+}
+
+/** Sets the colour of a wall, floor, ceiling, built-in block or furniture piece. */
+export function paint(scene: Scene, target: PaintTarget, color: string): Scene {
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) return scene;
+  if (colorOf(scene, target)?.toLowerCase() === color.toLowerCase()) return scene;
+  if (target.kind === 'furniture') return update(scene, target.id, (f) => ({ ...f, color }));
+  if (target.kind === 'solid') {
+    if (!scene.solids?.some((x) => x.id === target.id)) return scene;
+    return { ...scene, solids: scene.solids.map((x) => (x.id === target.id ? { ...x, color } : x)) };
+  }
+  const index = scene.rooms.findIndex((r) => r.id === target.room);
+  if (index < 0) return scene;
+  const room = scene.rooms[index];
+  let next: Room;
+  if (target.kind === 'floor') {
+    next = { ...room, floor: { ...room.floor, color } };
+  } else if (target.kind === 'ceiling') {
+    next = { ...room, ceiling: { color } };
+  } else {
+    if (target.edge < 0 || target.edge >= room.polygon.length) return scene;
+    const walls = [...(room.walls ?? [])];
+    const at = walls.findIndex((w) => w.edge === target.edge);
+    if (at >= 0) walls[at] = { ...walls[at], color };
+    else walls.push({ edge: target.edge, color });
+    next = { ...room, walls };
+  }
+  const rooms = [...scene.rooms];
+  rooms[index] = next;
+  return { ...scene, rooms };
 }

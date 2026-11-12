@@ -76,6 +76,10 @@ export function polygonsOverlap(a: readonly Vec2[], b: readonly Vec2[]): boolean
     poly.flatMap((p, i) => {
       const q = poly[(i + 1) % poly.length];
       return [p, { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }];
+    // The middle too, which catches two outlines that coincide exactly.
+    }).concat({
+      x: poly.reduce((sum, p) => sum + p.x, 0) / poly.length,
+      y: poly.reduce((sum, p) => sum + p.y, 0) / poly.length,
     });
   return (
     probes(a).some((p) => pointStrictlyInside(p, b)) ||

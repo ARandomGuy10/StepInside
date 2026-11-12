@@ -76,7 +76,9 @@ Every position and size is an estimate by eye, good to perhaps 20 cm, and
 each piece is a simple model built in code to resemble the real one (see
 `src/render/models.ts`). Notes:
 
-- The L-shaped sofa is two boxes: the sofa and its chaise.
+- The L-shaped sofa is one piece (`sofa-l`), with the chaise at the window
+  end. Its size is the box around the whole L, so the corner inside the L
+  counts as taken up when the app checks whether it fits against a wall.
 - The curtains, sheer curtain and radiator at the living room window are
   furniture pieces too, so they can be moved or taken out.
 - The kitchen units are four pieces: a counter and a tall cabinet on each
