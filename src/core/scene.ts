@@ -86,6 +86,18 @@ export interface Furniture {
   removed?: boolean;
 }
 
+/** A lamp: a point of light, drawn with a simple fitting. */
+export interface Light {
+  id: string;
+  position: Point;
+  /** Height of the light above the floor. */
+  height: number;
+  color: string;
+  intensity: number;
+  /** The fitting drawn for it. Defaults to "spot". */
+  style?: 'pendant' | 'spot' | 'cloud';
+}
+
 export interface Scene {
   schemaVersion: 1;
   name: string;
@@ -98,6 +110,7 @@ export interface Scene {
   rooms: Room[];
   openings: Opening[];
   solids?: Solid[];
+  lights?: Light[];
   furniture: Furniture[];
 }
 
@@ -246,7 +259,7 @@ export function parseScene(input: unknown): Scene {
   const c = new Checker();
   const root = c.object(input, 'scene', [
     'schemaVersion', 'name', 'units', 'northDeg', 'sun', 'defaults', 'start',
-    'rooms', 'openings', 'solids', 'furniture',
+    'rooms', 'openings', 'solids', 'lights', 'furniture',
   ]);
   if (!root) throw new SceneError(c.issues);
 
@@ -416,6 +429,23 @@ export function parseScene(input: unknown): Scene {
     others.push({ id: String(o.id), from, to });
     spans.set(key, others);
   });
+
+  // Lights
+  if (root.lights !== undefined) {
+    (c.array(root.lights, 'scene.lights') ?? []).forEach((value, i) => {
+      const path = `scene.lights[${i}]`;
+      const light = c.object(value, path, ['id', 'position', 'height', 'color', 'intensity', 'style']);
+      if (!light) return;
+      c.uniqueId(light.id, `${path}.id`, ids);
+      c.point(light.position, `${path}.position`);
+      c.positive(light.height, `${path}.height`);
+      c.color(light.color, `${path}.color`);
+      c.number(light.intensity, `${path}.intensity`, 0, 1000);
+      if (light.style !== undefined) {
+        c.oneOf(light.style, `${path}.style`, ['pendant', 'spot', 'cloud'] as const);
+      }
+    });
+  }
 
   // Furniture
   (c.array(root.furniture, 'scene.furniture') ?? []).forEach((value, i) => {

@@ -73,6 +73,11 @@ came from and every assumption. The plan it was read from is
   metres from the edge's first point. It is cut through to the room
   behind automatically, so each door is listed once.
 - A **solid** is building mass that is not a room, such as a closet.
+- A **light** is a lamp: a position, a height and a brightness.
+- **Furniture** has a `model` name. The app uses `/models/<name>.glb` if
+  that file exists, else a model built in code (`src/render/models.ts`),
+  else a plain box of the piece's `size`. At rotation 0 the front of a
+  piece faces up the page.
 - A room with `"kind": "balcony"` gets railings and no ceiling.
 
 If the file is invalid, the app shows a list of problems, each with the
@@ -90,6 +95,8 @@ src/core/     Scene logic with no Three.js imports. Unit tested.
               edits.ts     furniture edits: move, turn, take out, reset
               history.ts   undo and redo
 src/render/   Everything that draws: meshes, lights, camera controls.
+              models.ts    furniture built from simple shapes in code
+              textures.ts  planks, tiles and fabric drawn in code
 src/ui/       The HTML panels.
 src/main.ts   Wires it all together: state, mouse and keyboard.
 public/models glTF furniture models. See the README in that folder.
@@ -110,5 +117,8 @@ Three.js, so the logic can be tested without a browser.
 - The **camera** is the viewpoint. The **renderer** draws what the camera
   sees, once per screen refresh, in the render loop.
 - Three.js treats Y as up. The floor plan's (x, y) becomes 3D (x, height, z).
+- A **texture** is an image wrapped onto a surface, such as floor planks.
+- **Ambient occlusion** darkens corners and the floor under furniture.
+  It is a post-processing pass: an effect applied to the finished picture.
 - A **shadow map** is how real-time shadows work: the scene is drawn once
   from the sun's point of view, and anything the sun cannot see is in shadow.

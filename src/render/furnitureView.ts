@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Furniture } from '../core/scene';
+import { buildModel } from './models';
 
 const DEFAULT_COLOR = '#8a8f98';
 
@@ -66,30 +67,34 @@ export class FurnitureView {
     root.name = `furniture:${f.id}`;
     root.userData.furnitureId = f.id;
 
+    // In order of preference: a glTF file, a model built in code, a plain box.
     const [w, h, d] = f.size;
-    const box = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({ color: f.color ?? DEFAULT_COLOR, roughness: 0.85 }),
-    );
-    box.position.y = h / 2;
-    box.castShadow = true;
-    box.receiveShadow = true;
-    root.add(box);
+    let stand: THREE.Object3D | null = buildModel(f.model, f.size, f.color ?? DEFAULT_COLOR);
+    if (!stand) {
+      const box = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        new THREE.MeshStandardMaterial({ color: f.color ?? DEFAULT_COLOR, roughness: 0.85 }),
+      );
+      box.position.y = h / 2;
+      stand = box;
+    }
+    castShadows(stand);
+    root.add(stand);
+    const placeholder = stand;
 
     void this.loadModel(f.model).then((model) => {
       if (!model || this.items.get(f.id)?.object !== root) return;
       const copy = model.clone(true);
       fitToSize(copy, f.size);
+      castShadows(copy);
       copy.traverse((child) => {
         if (!(child instanceof THREE.Mesh)) return;
-        child.castShadow = true;
-        child.receiveShadow = true;
         if (f.color) {
           child.material = (child.material as THREE.MeshStandardMaterial).clone();
           (child.material as THREE.MeshStandardMaterial).color.set(f.color);
         }
       });
-      root.remove(box);
+      root.remove(placeholder);
       root.add(copy);
     });
     return root;
@@ -116,6 +121,16 @@ export class FurnitureView {
     }
     return pending;
   }
+}
+
+function castShadows(object: THREE.Object3D): void {
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const material = child.material as THREE.Material;
+    // See-through parts such as glass and sheer curtains let the light past.
+    child.castShadow = !material.transparent;
+    child.receiveShadow = true;
+  });
 }
 
 function needsRebuild(a: Furniture, b: Furniture): boolean {

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { roomHeight, toVec, type Scene } from '../core/scene';
+import { roomHeight, toVec, type Room, type Scene } from '../core/scene';
 import type { Vec2 } from '../core/collision';
 import type { Hole, WallModel, WallSlab } from '../core/walls';
+import { floorTexture } from './textures';
 
 const FRAME_COLOR = 0xfafafa;
 const FRONT_DOOR_COLOR = 0x3f5f85;
@@ -23,10 +24,7 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
     const points = room.polygon.map(toVec);
     const balcony = room.kind === 'balcony';
 
-    const floor = new THREE.Mesh(
-      flatPolygon(points, 0, true),
-      matte(room.floor?.color ?? scene.defaults.floorColor, 0.75),
-    );
+    const floor = new THREE.Mesh(flatPolygon(points, 0, true), floorMaterial(scene, room));
     floor.name = `floor:${room.id}`;
     floor.receiveShadow = true;
     group.add(floor);
@@ -50,10 +48,7 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
   // the door was declared on.
   for (const threshold of walls.thresholds) {
     const room = scene.rooms.find((r) => r.id === threshold.roomId);
-    const strip = new THREE.Mesh(
-      flatPolygon(threshold.polygon, 0, true),
-      matte(room?.floor?.color ?? scene.defaults.floorColor, 0.75),
-    );
+    const strip = new THREE.Mesh(flatPolygon(threshold.polygon, 0, true), floorMaterial(scene, room));
     strip.name = `threshold:${threshold.openingId}`;
     strip.receiveShadow = true;
     group.add(strip);
@@ -95,6 +90,13 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
   return group;
 }
 
+/** A floor's colour, with the pattern for its material (planks, tiles) on top. */
+function floorMaterial(scene: Scene, room: Room | undefined): THREE.MeshStandardMaterial {
+  const material = matte(room?.floor?.color ?? scene.defaults.floorColor, 0.6);
+  material.map = floorTexture(room?.floor?.material);
+  return material;
+}
+
 function matte(color: string, roughness: number): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, roughness });
 }
@@ -105,6 +107,9 @@ function flatPolygon(points: readonly Vec2[], height: number, faceUp: boolean): 
   // Triangulation splits the polygon into triangles, which is all a GPU draws.
   const triangles = THREE.ShapeUtils.triangulateShape(contour, []);
   const positions = points.flatMap((p) => [p.x, height, p.y]);
+  // UVs say which part of a texture lands on each corner. Here they are
+  // simply the plan position in metres, with planks running down the page.
+  const uvs = points.flatMap((p) => [p.y, p.x]);
   const index: number[] = [];
   for (const [i, j, k] of triangles) {
     const a = points[i];
@@ -117,6 +122,7 @@ function flatPolygon(points: readonly Vec2[], height: number, faceUp: boolean): 
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(index);
   geometry.computeVertexNormals();
   return geometry;
@@ -180,12 +186,40 @@ function buildSlab(slab: WallSlab): THREE.Mesh {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
+  if (slab.kind === 'wall') addTrim(mesh, slab, length);
+
   for (const hole of slab.holes) {
     if (!hole.primary) continue;
     if (hole.type === 'window') mesh.add(buildWindow(hole, slab.thickness));
     else if (!hole.passable) mesh.add(buildClosedDoor(hole, slab.thickness));
   }
   return mesh;
+}
+
+/** Skirting boards along the foot of a wall and a frame around each doorway. */
+function addTrim(mesh: THREE.Mesh, slab: WallSlab, length: number): void {
+  const paint = new THREE.MeshStandardMaterial({ color: FRAME_COLOR, roughness: 0.55 });
+  const depth = 0.014;
+  const part = (w: number, h: number, x: number, y: number): void => {
+    if (w <= 0.01) return;
+    const piece = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), paint);
+    piece.name = 'trim';
+    piece.position.set(x, y, depth / 2);
+    piece.receiveShadow = true;
+    mesh.add(piece);
+  };
+  const doors = slab.holes.filter((h) => h.sill <= 0.001);
+  let cursor = 0;
+  for (const door of doors) {
+    const from = door.offset - FRAME_BAR;
+    const to = door.offset + door.width + FRAME_BAR;
+    part(from - cursor, 0.07, (cursor + from) / 2, 0.035);
+    part(FRAME_BAR, door.height, door.offset - FRAME_BAR / 2, door.height / 2);
+    part(FRAME_BAR, door.height, door.offset + door.width + FRAME_BAR / 2, door.height / 2);
+    part(to - from, FRAME_BAR, (from + to) / 2, door.height + FRAME_BAR / 2);
+    cursor = to;
+  }
+  part(length - cursor, 0.07, (cursor + length) / 2, 0.035);
 }
 
 /** A frame with upright bars and a sheet of glass, in the wall's local space. */

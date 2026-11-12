@@ -8,7 +8,12 @@ import { FirstPersonControls } from './render/firstPerson';
 import { FurnitureView } from './render/furnitureView';
 import { addLighting } from './render/lighting';
 import { buildShell } from './render/sceneMesh';
+import { skyTexture } from './render/textures';
 import { TopView } from './render/topView';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { DRAG_TYPE, FurniturePanel, labelOf } from './ui/furniturePanel';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
@@ -21,11 +26,11 @@ function start(original: Scene): void {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 0.95;
 
   // The Three.js scene is a tree of objects, like a DOM for 3D.
   const world = new THREE.Scene();
-  world.background = new THREE.Color(0xbfd9f2); // sky seen through the windows
+  world.background = skyTexture(); // seen through the windows
 
   // The shell (walls, floors, windows) never changes in this step, so it is
   // built once. Furniture is rebuilt from the scene whenever the scene changes.
@@ -42,7 +47,7 @@ function start(original: Scene): void {
   }
   const mid = bounds.getCenter(new THREE.Vector2());
   const radius = bounds.getSize(new THREE.Vector2()).length() / 2 + 1;
-  addLighting(world, original.sun, original.northDeg, new THREE.Vector3(mid.x, 0, mid.y), radius);
+  addLighting(renderer, world, original, new THREE.Vector3(mid.x, 0, mid.y), radius);
 
   const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 200);
   const spawn = original.start ?? { position: [mid.x, mid.y] as [number, number], yawDeg: 0 };
@@ -59,6 +64,20 @@ function start(original: Scene): void {
   world.add(topView.marker);
   let inTopView = false;
   const activeCamera = (): THREE.Camera => (inTopView ? topView.camera : camera);
+
+  // Post-processing: the picture is drawn off screen, then improved in
+  // passes before it is shown. The ambient occlusion pass darkens corners
+  // and the floor under furniture, which is what makes things look grounded.
+  const target = new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType });
+  const composer = new EffectComposer(renderer, target);
+  const renderPass = new RenderPass(world, camera);
+  const occlusion = new GTAOPass(world, camera, 1, 1);
+  occlusion.updateGtaoMaterial({ radius: 0.3, distanceExponent: 1.6, thickness: 1, scale: 1.1, samples: 16 });
+  occlusion.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+  occlusion.blendIntensity = 0.75;
+  composer.addPass(renderPass);
+  composer.addPass(occlusion);
+  composer.addPass(new OutputPass());
 
   // ---- State: the scene with undo history, and the current selection ----
 
@@ -272,6 +291,7 @@ function start(original: Scene): void {
   function resize(): void {
     const { innerWidth: w, innerHeight: h } = window;
     renderer.setSize(w, h, false);
+    composer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     topView.resize(w, h, PANEL_WIDTH);
@@ -295,7 +315,8 @@ function start(original: Scene): void {
       lastRoom = roomId;
       refresh();
     }
-    renderer.render(world, activeCamera());
+    renderPass.camera = occlusion.camera = activeCamera();
+    composer.render();
   });
 
   // Handy in the browser console, and used by the automated screenshots.

@@ -73,11 +73,18 @@ Each of these is a guess or an estimate. Correct the number in
 
 The living room and kitchen pieces were placed from photos of the home.
 Every position and size is an estimate by eye, good to perhaps 20 cm, and
-every piece is a plain box until a model file exists for it (see
-`public/models/README.md`). Notes:
+each piece is a simple model built in code to resemble the real one (see
+`src/render/models.ts`). Notes:
 
 - The L-shaped sofa is two boxes: the sofa and its chaise.
-- The round dining table is drawn as a square box.
+- The curtains, sheer curtain and radiator at the living room window are
+  furniture pieces too, so they can be moved or taken out.
 - The kitchen units are four pieces: a counter and a tall cabinet on each
   side. Wall-hung cabinets are left out.
 - The other rooms have no furniture yet.
+
+## Lights
+
+The lamp positions and brightnesses are guesses. The living room has the
+paper cloud lamp from the photos. The other rooms have a plain ceiling
+light or pendant each so they are not dark.
