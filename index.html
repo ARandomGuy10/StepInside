@@ -22,6 +22,12 @@
         <section>
           <h2>Selected</h2>
           <p id="selected-name" class="muted">Click a piece to select it, then drag it along the floor.</p>
+          <div id="selected-size" class="row" hidden>
+            <label title="Side to side, in centimetres">W <input type="number" id="size-w" min="1" max="1000" step="1" /></label>
+            <label title="Front to back, in centimetres">D <input type="number" id="size-d" min="1" max="1000" step="1" /></label>
+            <label title="Floor to top, in centimetres">H <input type="number" id="size-h" min="1" max="1000" step="1" /></label>
+            <span class="muted">cm</span>
+          </div>
           <div id="selected-actions" class="row" hidden>
             <button id="btn-turn-left" title="Turn 15° anticlockwise (Shift+R)">⟲ Turn</button>
             <button id="btn-turn-right" title="Turn 15° clockwise (R)">Turn ⟳</button>

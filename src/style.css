@@ -307,3 +307,42 @@ body.dragging #view {
 #panel footer button {
   padding: 6px 8px;
 }
+
+#selected-size {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+#selected-size label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #6d675f;
+  font-size: 12px;
+}
+
+#selected-size input {
+  width: 48px;
+  padding: 5px 4px;
+  border: 1px solid #cfc9bf;
+  border-radius: 6px;
+  font: inherit;
+  color: #22201d;
+}
+
+/* The tab's content scrolls; the tabs and the footer stay put. */
+#panel {
+  overflow: hidden;
+}
+
+#panel .pane {
+  overflow-y: auto;
+}
+
+#panel .pane > section {
+  flex: none;
+}
+
+#selected-size input {
+  width: 40px;
+}

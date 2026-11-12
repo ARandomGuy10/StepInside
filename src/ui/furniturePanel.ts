@@ -7,6 +7,8 @@ export interface PanelActions {
   setMode(mode: Mode): void;
   turn(deltaDeg: number): void;
   raise(delta: number): void;
+  /** New width, height and depth in metres, typed into the size boxes. */
+  resize(size: [number, number, number]): void;
   takeOut(): void;
   putBack(id: string): void;
   add(key: string): void;
@@ -91,6 +93,18 @@ export class FurniturePanel {
       if (chosen) void chosen.text().then((text) => actions.load(text));
     });
 
+    // The size boxes show centimetres; the scene file stores metres.
+    const sizeBoxes = ['size-w', 'size-h', 'size-d'].map((id) => byId<HTMLInputElement>(id));
+    for (const box of sizeBoxes) {
+      box.addEventListener('change', () => {
+        const [w, h, d] = sizeBoxes.map((b) => Number(b.value) / 100);
+        actions.resize([w, h, d]);
+      });
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') box.blur(); // leaving the box applies the change
+      });
+    }
+
     const picker = byId<HTMLInputElement>('paint-color');
     // "input" fires while the picker is dragged, "change" when it closes.
     picker.addEventListener('input', () => actions.paint(picker.value, false));
@@ -140,6 +154,14 @@ export class FurniturePanel {
       : 'Click a piece to select it, then drag it along the floor.';
     name.classList.toggle('muted', !selected);
     byId('selected-actions').hidden = !selected;
+    byId('selected-size').hidden = !selected;
+    if (selected) {
+      // Scene order is width, height, depth. Leave a box alone while it is typed in.
+      ['size-w', 'size-h', 'size-d'].forEach((id, i) => {
+        const box = byId<HTMLInputElement>(id);
+        if (document.activeElement !== box) box.value = String(Math.round(selected.size[i] * 1000) / 10);
+      });
+    }
     const onWall = selected?.mount === 'wall';
     for (const id of ['btn-turn-left', 'btn-turn-right', 'btn-turn-90']) byId(id).hidden = onWall;
     for (const id of ['btn-raise', 'btn-lower']) byId(id).hidden = !onWall;

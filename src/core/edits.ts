@@ -181,6 +181,39 @@ export function rotateFurniture(scene: Scene, id: string, deltaDeg: number): Sce
   });
 }
 
+/**
+ * Gives a piece a new size: [width, height, depth] in metres. A floor
+ * piece that no longer fits where it stands is nudged up to a metre to
+ * where it does; a wall-hung piece stays flat against its wall.
+ */
+export function resizeFurniture(scene: Scene, id: string, size: readonly [number, number, number]): Scene {
+  if (!size.every((v) => Number.isFinite(v) && v >= 0.01 && v <= 10)) return scene;
+  return update(scene, id, (f) => {
+    const next: [number, number, number] = [mm(size[0]), mm(size[1]), mm(size[2])];
+    if (next.every((v, i) => v === f.size[i])) return null;
+    const sized = { ...f, size: next };
+    if (f.mount === 'wall') {
+      const snap = snapToWall(scene, sized, f.position);
+      if (!snap) return null;
+      const room = scene.rooms.find((r) => r.id === snap.room);
+      const top = (room ? roomHeight(scene, room) : scene.defaults.ceilingHeight) - next[1];
+      if (top < 0) return null;
+      return { ...sized, ...snap, elevation: mm(Math.min(f.elevation ?? 0, top)) };
+    }
+    const room = scene.rooms.find((r) => r.id === f.room);
+    if (next[1] > (room ? roomHeight(scene, room) : scene.defaults.ceilingHeight)) return null;
+    for (let step = 0; step <= 20; step++) {
+      for (let k = 0; k < (step === 0 ? 1 : 8); k++) {
+        const angle = (k * Math.PI) / 4;
+        const position: Point = [mm(f.position[0] + Math.cos(angle) * step * 0.05), mm(f.position[1] + Math.sin(angle) * step * 0.05)];
+        const fits = roomThatFits(scene, { ...sized, position });
+        if (fits) return { ...sized, position, room: fits.id };
+      }
+    }
+    return null;
+  });
+}
+
 /** Takes a piece out of the home. It keeps its last position for putting back. */
 export function takeOut(scene: Scene, id: string): Scene {
   return update(scene, id, (f) => (f.removed ? null : { ...f, removed: true }));

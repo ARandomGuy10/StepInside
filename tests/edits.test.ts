@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   emptyRoom, footprint, moveFurniture, putBack, resetLayout, roomAt, roomThatFits,
-  rotateFurniture, takeOut,
+  addFurniture, resizeFurniture, rotateFurniture, takeOut,
 } from '../src/core/edits';
+import { CATALOGUE } from '../src/core/catalogue';
 import { History } from '../src/core/history';
 import { parseScene, type Scene } from '../src/core/scene';
 import home from '../scenes/home.json';
@@ -187,5 +188,44 @@ describe('History', () => {
     h.beginGesture();
     h.endGesture();
     expect(h.canUndo).toBe(false);
+  });
+});
+
+describe('resizing', () => {
+  const home2 = parseScene(home);
+
+  it('changes the size and keeps the piece in place when it still fits', () => {
+    const next = resizeFurniture(home2, 'coffee-table', [1.0, 0.4, 0.5]);
+    const table = next.furniture.find((f) => f.id === 'coffee-table')!;
+    expect(table.size).toEqual([1.0, 0.4, 0.5]);
+    expect(table.position).toEqual(home2.furniture.find((f) => f.id === 'coffee-table')!.position);
+    expect(() => parseScene(next)).not.toThrow();
+  });
+
+  it('nudges a piece that grows into a wall, and refuses one that cannot fit', () => {
+    const before = home2.furniture.find((f) => f.id === 'tv-unit')!;
+    const next = resizeFurniture(home2, 'tv-unit', [before.size[0], before.size[1], 0.6]);
+    const after = next.furniture.find((f) => f.id === 'tv-unit')!;
+    expect(after.size[2]).toBe(0.6);
+    expect(after.position).not.toEqual(before.position);
+    expect(roomThatFits(next, after)).toBeDefined();
+    expect(resizeFurniture(home2, 'tv-unit', [9, 0.5, 9])).toBe(home2);
+    expect(resizeFurniture(home2, 'tv-unit', [1, 3.5, 0.4])).toBe(home2);
+  });
+
+  it('ignores sizes that are not sensible and no-op changes', () => {
+    const size = home2.furniture.find((f) => f.id === 'rug')!.size;
+    expect(resizeFurniture(home2, 'rug', size)).toBe(home2);
+    expect(resizeFurniture(home2, 'rug', [0, 1, 1])).toBe(home2);
+    expect(resizeFurniture(home2, 'rug', [NaN, 1, 1])).toBe(home2);
+  });
+
+  it('keeps a wall-hung piece against its wall', () => {
+    const item = CATALOGUE.find((c) => c.key === 'wall-shelf')!;
+    const added = addFurniture(home2, item, [0.1, 5]);
+    const next = resizeFurniture(added.scene, added.id!, [1.2, 0.25, 0.3]);
+    const shelf = next.furniture.find((f) => f.id === added.id)!;
+    expect(shelf.position[0]).toBeCloseTo(0.154, 3);
+    expect(shelf.mount).toBe('wall');
   });
 });

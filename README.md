@@ -37,6 +37,9 @@ Furniture (with the mouse released, in either view):
 
 - Click a piece to select it. Drag it to move it along the floor. It
   stops at walls and slides along them.
+- The **W**, **D** and **H** boxes show the selected piece's width,
+  depth and height in centimetres. Type a measured value and press Enter
+  to resize it. A piece that grows into a wall is nudged clear of it.
 - R turns the selected piece 15 degrees, Shift+R turns it back. The panel
   also has a quarter-turn button.
 - Delete, or **Take out** in the panel, removes the piece from the home

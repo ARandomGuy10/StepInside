@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import homeJson from '../scenes/home.json';
 import { CATALOGUE } from './core/catalogue';
 import {
-  addFurniture, colorOf, emptyRoom, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture,
+  addFurniture, colorOf, emptyRoom, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resizeFurniture,
   resetLayout, resetPaint, roomAt, rotateFurniture, takeOut, type PaintTarget,
 } from './core/edits';
 import { History } from './core/history';
@@ -191,6 +191,11 @@ function start(original: Scene): void {
       else if (paintTarget?.kind === 'furniture') selectedId = paintTarget.id;
       updateHint();
       refresh();
+    },
+    resize: (size) => {
+      if (!selectedId) return;
+      // A blocked resize leaves the scene alone, so put the old numbers back.
+      if (!apply(resizeFurniture(history.current, selectedId, size), 'That size does not fit here, or is not a size.')) refresh();
     },
     raise: (delta) => {
       if (selectedId) apply(raiseFurniture(history.current, selectedId, delta), 'It cannot go any further.');
