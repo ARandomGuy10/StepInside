@@ -16,6 +16,9 @@ export interface PanelActions {
   paint(color: string, done: boolean): void;
   paintRoomWalls(color: string): void;
   resetPaint(): void;
+  save(): void;
+  /** Called with the text of a file the user chose to load. */
+  load(text: string): void;
   undo(): void;
   redo(): void;
   toggleTopView(): void;
@@ -78,6 +81,15 @@ export class FurniturePanel {
     on('btn-undo', () => actions.undo());
     on('btn-redo', () => actions.redo());
     on('btn-reset-paint', () => actions.resetPaint());
+    on('btn-save', () => actions.save());
+    // The Load button opens the browser's file chooser through a hidden input.
+    const file = byId<HTMLInputElement>('file-load');
+    on('btn-load', () => file.click());
+    file.addEventListener('change', () => {
+      const chosen = file.files?.[0];
+      file.value = ''; // so choosing the same file again fires "change"
+      if (chosen) void chosen.text().then((text) => actions.load(text));
+    });
 
     const picker = byId<HTMLInputElement>('paint-color');
     // "input" fires while the picker is dragged, "change" when it closes.

@@ -6,6 +6,7 @@ import {
   resetLayout, resetPaint, roomAt, rotateFurniture, takeOut, type PaintTarget,
 } from './core/edits';
 import { History } from './core/history';
+import { loadLayout, saveLayout } from './core/layout';
 import { parseScene, SceneError, toVec, type Scene } from './core/scene';
 import { buildWalls } from './core/walls';
 import { FirstPersonControls } from './render/firstPerson';
@@ -154,7 +155,34 @@ function start(original: Scene): void {
     refresh();
   };
 
+  /** Offers the current layout as a file download. */
+  const save = (): void => {
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+    const link = document.createElement('a');
+    // A Blob is a file held in memory; the link "downloads" it.
+    link.href = URL.createObjectURL(new Blob([saveLayout(history.current)], { type: 'application/json' }));
+    link.download = `layout-${stamp}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    panel.toast(`Saved as ${link.download} in your downloads folder.`);
+  };
+
+  /** Replaces furniture and colours with those of a saved file. Undoable. */
+  const load = (text: string): void => {
+    const result = loadLayout(text, history.current);
+    if ('error' in result) {
+      panel.toast(result.error.split('\n').slice(0, 3).join(' '));
+      return;
+    }
+    selectedId = null;
+    paintTarget = null;
+    history.set(result.scene);
+    panel.toast('Layout loaded. Undo brings the previous one back.');
+  };
+
   const panel = new FurniturePanel({
+    save,
+    load,
     setMode: (next) => {
       if (next === mode) return;
       mode = next;
@@ -447,9 +475,17 @@ function start(original: Scene): void {
 
   // Dragging a taken-out piece from the panel onto the floor.
   canvas.addEventListener('dragover', (e) => {
-    if (e.dataTransfer?.types.includes(DRAG_TYPE)) e.preventDefault();
+    const types = e.dataTransfer?.types ?? [];
+    if (types.includes(DRAG_TYPE) || types.includes('Files')) e.preventDefault();
   });
   canvas.addEventListener('drop', (e) => {
+    // A layout file dropped onto the view is loaded.
+    const file = e.dataTransfer?.files[0];
+    if (file) {
+      e.preventDefault();
+      void file.text().then(load);
+      return;
+    }
     const id = e.dataTransfer?.getData(DRAG_TYPE);
     if (!id) return;
     e.preventDefault();
@@ -468,6 +504,9 @@ function start(original: Scene): void {
       e.preventDefault();
       if (e.shiftKey) history.redo();
       else history.undo();
+    } else if (command && e.code === 'KeyS') {
+      e.preventDefault();
+      save();
     } else if (command) {
       return;
     } else if (e.code === 'KeyT') {

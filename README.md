@@ -68,8 +68,16 @@ Paint (the **Paint** tab):
 - **Reset all colours** returns to the colours in the scene file. Paint
   and layout undo with the same Ctrl/Cmd+Z.
 
-Nothing is saved yet: reloading the page returns to the scene file.
-Saving and loading layouts is step 5.
+Save and load (bottom of the panel):
+
+- **Save** (or Ctrl/Cmd+S) downloads the current furniture and colours as
+  `layout-<date>.json`. Keep as many as you like.
+- **Load** opens such a file. Dropping the file onto the view also works.
+  Loading is one undo step, so Ctrl/Cmd+Z brings the previous layout back.
+- A saved file is a complete scene file. To make a layout the one the
+  app starts with, copy it over `scenes/home.json` and commit it.
+- A file only loads if its rooms, doors and windows match the home that
+  is open. Reloading the page returns to `scenes/home.json`.
 
 ## Status
 
@@ -79,7 +87,7 @@ Saving and loading layouts is step 5.
 | 2 | Scene JSON schema, loader and the real floor plan | done |
 | 3 | Furniture panel, plus the top view toggle | done |
 | 4 | Paint panel, plus adding pieces and wall-hung decoration | done |
-| 5 | Save and load | next |
+| 5 | Save and load | done |
 
 ## The scene file
 
@@ -123,6 +131,7 @@ src/core/     Scene logic with no Three.js imports. Unit tested.
               collision.ts walking into walls
               edits.ts     edits: move, turn, take out, add, paint, reset
               catalogue.ts the pieces that can be added from the panel
+              layout.ts    saving and loading layouts
               history.ts   undo and redo
 src/render/   Everything that draws: meshes, lights, camera controls.
               models.ts    furniture built from simple shapes in code

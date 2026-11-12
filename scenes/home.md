@@ -81,8 +81,13 @@ each piece is a simple model built in code to resemble the real one (see
   counts as taken up when the app checks whether it fits against a wall.
 - The curtains, sheer curtain and radiator at the living room window are
   furniture pieces too, so they can be moved or taken out.
-- The kitchen units are four pieces: a counter and a tall cabinet on each
-  side. Wall-hung cabinets are left out.
+- The kitchen units are three pieces: the hob counter on the entrance
+  side, and a tall cabinet and the sink counter on the other side.
+  Wall-hung cabinets are left out.
+- The bureau with the glass cabinet stands at the mouth of the kitchen,
+  its back against the closet block and in line with the hob counter.
+  The way in from the entrance is clear: the first thing ahead is the
+  dining table with its three chairs.
 - The other rooms have no furniture yet.
 
 ## Lights

@@ -299,3 +299,11 @@ body.dragging #view {
   outline: 2px solid #22201d;
   outline-offset: 1px;
 }
+
+#panel footer .spacer {
+  flex: 1;
+}
+
+#panel footer button {
+  padding: 6px 8px;
+}
