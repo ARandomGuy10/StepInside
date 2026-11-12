@@ -4,23 +4,13 @@
   "units": "m",
   "northDeg": 90,
   "sun": { "azimuthDeg": 250, "elevationDeg": 24, "intensity": 4, "color": "#fff1dc" },
-  "defaults": {
-    "ceilingHeight": 2.62,
-    "exteriorWallThickness": 0.3,
-    "railingHeight": 1.0,
-    "wallColor": "#f4f2ee",
-    "floorColor": "#c9a57c",
-    "ceilingColor": "#ffffff"
-  },
+  "defaults": { "ceilingHeight": 2.62, "exteriorWallThickness": 0.3, "railingHeight": 1.0, "wallColor": "#f4f2ee", "floorColor": "#c9a57c", "ceilingColor": "#ffffff" },
   "start": { "position": [1.75, 5.6], "yawDeg": 0 },
   "rooms": [
     {
       "id": "living",
       "name": "Woonkamer + Keuken",
-      "polygon": [
-        [0, 0], [3.49, 0], [3.49, 9.77], [1.49, 9.77], [1.49, 6.51], [0.93, 6.51],
-        [0.93, 7.44], [0, 7.44], [0, 2.1], [0.34, 2.1], [0.34, 0.78], [0, 0.78]
-      ],
+      "polygon": [[0, 0], [3.49, 0], [3.49, 9.77], [1.49, 9.77], [1.49, 6.51], [0.93, 6.51], [0.93, 7.44], [0, 7.44], [0, 2.1], [0.34, 2.1], [0.34, 0.78], [0, 0.78]],
       "floor": { "material": "laminate", "color": "#c9a57c" }
     },
     {
@@ -86,10 +76,43 @@
     { "id": "win-bathroom", "type": "window", "room": "bathroom", "edge": 2, "offset": 1.06, "width": 0.65, "height": 0.7, "sill": 1.4 }
   ],
   "solids": [
-    { "id": "closets-entree", "polygon": [[0.93, 6.51], [1.49, 6.51], [1.49, 9.77], [0.93, 9.77]] },
-    { "id": "closets-hal", "polygon": [[6.54, 4.65], [8.37, 4.65], [8.37, 5.72], [6.54, 5.72]] },
-    { "id": "closet-bathroom", "polygon": [[3.69, 5.72], [4.86, 5.72], [4.86, 6.79], [3.69, 6.79]] },
-    { "id": "pier-facade", "polygon": [[3.49, -0.3], [3.84, -0.3], [3.84, 0.5], [3.49, 0.5]] }
+    {
+      "id": "closets-entree",
+      "polygon": [[0.93, 6.51], [1.49, 6.51], [1.49, 9.77], [0.93, 9.77]]
+    },
+    {
+      "id": "closets-hal",
+      "polygon": [[6.54, 4.65], [8.37, 4.65], [8.37, 5.72], [6.54, 5.72]]
+    },
+    {
+      "id": "closet-bathroom",
+      "polygon": [[3.69, 5.72], [4.86, 5.72], [4.86, 6.79], [3.69, 6.79]]
+    },
+    {
+      "id": "pier-facade",
+      "polygon": [[3.49, -0.3], [3.84, -0.3], [3.84, 0.5], [3.49, 0.5]]
+    }
   ],
-  "furniture": []
+  "furniture": [
+    { "id": "sofa", "name": "Sofa", "model": "sofa", "room": "living", "position": [0.83, 1.9], "rotationDeg": 90, "size": [2.4, 0.75, 0.95], "color": "#e8e2d6" },
+    { "id": "sofa-chaise", "name": "Sofa chaise", "model": "sofa-chaise", "room": "living", "position": [1.95, 0.62], "rotationDeg": 0, "size": [1.3, 0.45, 1.0], "color": "#d9d2c6" },
+    { "id": "rug", "name": "Rug", "model": "rug", "room": "living", "position": [2.0, 2.4], "rotationDeg": 0, "size": [1.9, 0.02, 2.6], "color": "#b8a98c" },
+    { "id": "coffee-table", "name": "Coffee table", "model": "coffee-table", "room": "living", "position": [2.0, 2.3], "rotationDeg": 90, "size": [1.2, 0.45, 0.6], "color": "#3a2a22" },
+    { "id": "tv-unit", "name": "TV unit", "model": "tv-unit", "room": "living", "position": [3.27, 2.4], "rotationDeg": 90, "size": [1.6, 0.55, 0.42], "color": "#5a3d2b" },
+    { "id": "plant-shelf", "name": "Plant shelf", "model": "plant-shelf", "room": "living", "position": [3.3, 1.05], "rotationDeg": 90, "size": [0.6, 1.6, 0.35], "color": "#2b2b2b" },
+    { "id": "bar-trolley", "name": "Bar trolley", "model": "bar-trolley", "room": "living", "position": [3.27, 4.25], "rotationDeg": 90, "size": [0.7, 0.8, 0.42], "color": "#6b5a48" },
+    { "id": "sideboard", "name": "Carved sideboard", "model": "sideboard", "room": "living", "position": [3.23, 6.05], "rotationDeg": 90, "size": [1.2, 1.0, 0.5], "color": "#4a2f22" },
+    { "id": "wicker-drawers", "name": "Wicker drawers", "model": "wicker-drawers", "room": "living", "position": [3.28, 6.87], "rotationDeg": 90, "size": [0.45, 0.9, 0.4], "color": "#5b4636" },
+    { "id": "mirror", "name": "Standing mirror", "model": "mirror", "room": "living", "position": [0.2, 3.45], "rotationDeg": 90, "size": [0.45, 1.5, 0.35], "color": "#c8ad84" },
+    { "id": "chest", "name": "Carved chest", "model": "chest", "room": "living", "position": [0.25, 4.35], "rotationDeg": 90, "size": [1.0, 0.5, 0.45], "color": "#4a2f22" },
+    { "id": "dining-table", "name": "Round dining table", "model": "dining-table", "room": "living", "position": [1.05, 5.0], "rotationDeg": 0, "size": [1.1, 0.75, 1.1], "color": "#5a3324" },
+    { "id": "chair-1", "name": "Dining chair 1", "model": "dining-chair", "room": "living", "position": [1.05, 5.85], "rotationDeg": 0, "size": [0.5, 0.9, 0.5], "color": "#7a4a35" },
+    { "id": "chair-2", "name": "Dining chair 2", "model": "dining-chair", "room": "living", "position": [1.85, 5.0], "rotationDeg": 90, "size": [0.5, 0.9, 0.5], "color": "#7a4a35" },
+    { "id": "chair-3", "name": "Dining chair 3", "model": "dining-chair", "room": "living", "position": [0.3, 5.75], "rotationDeg": 0, "size": [0.5, 0.9, 0.5], "color": "#7a4a35" },
+    { "id": "bureau", "name": "Bureau with glass cabinet", "model": "bureau", "room": "living", "position": [1.21, 6.26], "rotationDeg": 0, "size": [0.9, 1.9, 0.45], "color": "#3d2a20" },
+    { "id": "kitchen-tall-left", "name": "Kitchen oven cabinet", "model": "kitchen-tall-left", "room": "living", "position": [1.8, 6.86], "rotationDeg": 90, "size": [0.6, 2.1, 0.6], "color": "#6f6f6b" },
+    { "id": "kitchen-counter-left", "name": "Kitchen counter with hob", "model": "kitchen-counter-left", "room": "living", "position": [1.8, 8.46], "rotationDeg": 90, "size": [2.6, 0.9, 0.6], "color": "#ecebe6" },
+    { "id": "kitchen-tall-right", "name": "Kitchen tall cabinet", "model": "kitchen-tall-right", "room": "living", "position": [3.18, 7.42], "rotationDeg": 90, "size": [0.6, 2.2, 0.6], "color": "#ecebe6" },
+    { "id": "kitchen-counter-right", "name": "Kitchen counter with sink", "model": "kitchen-counter-right", "room": "living", "position": [3.18, 8.74], "rotationDeg": 90, "size": [2.0, 0.9, 0.6], "color": "#ecebe6" }
+  ]
 }

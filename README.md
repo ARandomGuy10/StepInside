@@ -22,8 +22,29 @@ npm run preview  # serve the built site
 
 ## Controls
 
-- Click the view to look around with the mouse. Esc releases the mouse.
+Walking:
+
+- Click an empty part of the room to look around with the mouse. Esc
+  releases the mouse. Holding the right mouse button also looks around.
 - W A S D (or the arrow keys) to walk. Hold Shift to walk faster.
+- T switches between the walk view and the top view.
+
+Furniture (with the mouse released, in either view):
+
+- Click a piece to select it. Drag it to move it along the floor. It
+  stops at walls and slides along them.
+- R turns the selected piece 15 degrees, Shift+R turns it back. The panel
+  also has a quarter-turn button.
+- Delete, or **Take out** in the panel, removes the piece from the home
+  and lists it under **Taken out**. Drag it from that list onto the floor
+  to put it back, or press **Put back** to return it to where it stood.
+- **Empty the room** takes out everything in the room named in the panel:
+  the selected piece's room, or the room you are standing in.
+- **Reset layout** puts everything back as it is in the scene file.
+- Ctrl/Cmd+Z undoes and Ctrl/Cmd+Shift+Z redoes. A whole drag is one step.
+
+Nothing is saved yet: reloading the page returns to the scene file.
+Saving and loading layouts is step 5.
 
 ## Status
 
@@ -31,9 +52,9 @@ npm run preview  # serve the built site
 | --- | --- | --- |
 | 1 | Scaffold and one hard-coded room you can walk in | done |
 | 2 | Scene JSON schema, loader and the real floor plan | done |
-| 3 | Furniture panel | next |
-| 4 | Paint panel | |
-| 5 | Top-down view, save and load | |
+| 3 | Furniture panel, plus the top view toggle | done |
+| 4 | Paint panel | next |
+| 5 | Save and load | |
 
 ## The scene file
 
@@ -66,8 +87,12 @@ src/core/     Scene logic with no Three.js imports. Unit tested.
               scene.ts     file format and validation
               walls.ts     rooms to wall slabs, doorways and collision lines
               collision.ts walking into walls
+              edits.ts     furniture edits: move, turn, take out, reset
+              history.ts   undo and redo
 src/render/   Everything that draws: meshes, lights, camera controls.
-src/main.ts   Wires the two together.
+src/ui/       The HTML panels.
+src/main.ts   Wires it all together: state, mouse and keyboard.
+public/models glTF furniture models. See the README in that folder.
 tests/        Vitest unit tests for src/core.
 ```
 

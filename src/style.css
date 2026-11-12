@@ -7,6 +7,10 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 #view {
   display: block;
   width: 100vw;
@@ -69,4 +73,158 @@ body.walking #crosshair {
   color: #ffd9d9;
   font: 13px/1.5 ui-monospace, Menlo, Consolas, monospace;
   white-space: pre-wrap;
+}
+
+#panel {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  bottom: 12px;
+  width: 264px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: rgba(250, 249, 247, 0.94);
+  color: #22201d;
+  font-size: 13px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+  overflow-y: auto;
+  transition: opacity 0.2s;
+}
+
+body.walking #panel {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+#panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#panel h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+#panel h2 {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6d675f;
+}
+
+#panel h2 span {
+  color: #22201d;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+}
+
+#panel p {
+  margin: 0 0 6px;
+}
+
+#panel .muted {
+  color: #7a746c;
+  line-height: 1.4;
+}
+
+#panel .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#panel button {
+  padding: 6px 10px;
+  border: 1px solid #cfc9bf;
+  border-radius: 7px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+#panel button:hover:not(:disabled) {
+  background: #f0ede7;
+}
+
+#panel button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+#panel button.active {
+  background: #22201d;
+  border-color: #22201d;
+  color: #fff;
+}
+
+#removed {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#removed li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px dashed #bfb8ac;
+  border-radius: 7px;
+  background: #fff;
+  cursor: grab;
+}
+
+#removed li .swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  flex: none;
+}
+
+#removed li .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#removed li button {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+#toast {
+  position: fixed;
+  left: 50%;
+  top: 20px;
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  border-radius: 8px;
+  background: rgba(40, 24, 20, 0.9);
+  color: #fff;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+body.top-view #view {
+  cursor: default;
+}
+
+body.dragging #view {
+  cursor: grabbing;
 }

@@ -68,3 +68,16 @@ Each of these is a guess or an estimate. Correct the number in
     walls are left out.
 14. **Sun** comes from the west-south-west at 24 degrees above the
     horizon, a late afternoon.
+
+## Furniture
+
+The living room and kitchen pieces were placed from photos of the home.
+Every position and size is an estimate by eye, good to perhaps 20 cm, and
+every piece is a plain box until a model file exists for it (see
+`public/models/README.md`). Notes:
+
+- The L-shaped sofa is two boxes: the sofa and its chaise.
+- The round dining table is drawn as a square box.
+- The kitchen units are four pieces: a counter and a tall cabinet on each
+  side. Wall-hung cabinets are left out.
+- The other rooms have no furniture yet.

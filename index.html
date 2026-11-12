@@ -8,10 +8,49 @@
   </head>
   <body>
     <canvas id="view"></canvas>
+
+    <aside id="panel">
+      <header>
+        <h1>Furniture</h1>
+        <button id="btn-top" title="Toggle the top-down view (T)">Top view</button>
+      </header>
+
+      <section>
+        <h2>Selected</h2>
+        <p id="selected-name" class="muted">Click a piece to select it, then drag it along the floor.</p>
+        <div id="selected-actions" class="row" hidden>
+          <button id="btn-turn-left" title="Turn 15° anticlockwise (Shift+R)">⟲ Turn</button>
+          <button id="btn-turn-right" title="Turn 15° clockwise (R)">Turn ⟳</button>
+          <button id="btn-turn-90" title="Turn a quarter turn">90°</button>
+          <button id="btn-take-out" title="Take this piece out of the home (Delete)">Take out</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Room: <span id="room-name">none</span></h2>
+        <div class="row">
+          <button id="btn-empty">Empty the room</button>
+          <button id="btn-reset">Reset layout</button>
+        </div>
+        <div class="row">
+          <button id="btn-undo" title="Undo (Ctrl/Cmd+Z)">Undo</button>
+          <button id="btn-redo" title="Redo (Ctrl/Cmd+Shift+Z)">Redo</button>
+        </div>
+      </section>
+
+      <section class="grow">
+        <h2>Taken out</h2>
+        <p id="removed-empty" class="muted">Nothing is taken out. Pieces you take out are listed here.</p>
+        <ul id="removed"></ul>
+        <p id="removed-help" class="muted" hidden>Drag a piece onto the floor to put it back, or use its button.</p>
+      </section>
+    </aside>
+
     <div id="hint">
-      <strong>Click to look around</strong>
-      <span>W A S D to walk · Shift to walk faster · Esc to release the mouse</span>
+      <strong id="hint-title">Click the room to look around</strong>
+      <span id="hint-text">W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view</span>
     </div>
+    <div id="toast" hidden></div>
     <div id="crosshair"></div>
     <pre id="error" hidden></pre>
     <script type="module" src="/src/main.ts"></script>

@@ -82,3 +82,11 @@ export function polygonsOverlap(a: readonly Vec2[], b: readonly Vec2[]): boolean
     probes(b).some((p) => pointStrictlyInside(p, a))
   );
 }
+
+/** True when `p` is inside the polygon or on its boundary. */
+export function pointInsideOrOn(p: Vec2, poly: readonly Vec2[]): boolean {
+  for (let i = 0; i < poly.length; i++) {
+    if (distanceToSegment(p, poly[i], poly[(i + 1) % poly.length]) < 2e-3) return true;
+  }
+  return pointStrictlyInside(p, poly);
+}

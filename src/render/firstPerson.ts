@@ -13,8 +13,11 @@ const MAX_PITCH = THREE.MathUtils.degToRad(85);
  * which hides the cursor and reports raw mouse movement until Esc.
  */
 export class FirstPersonControls {
+  /** Set to false to freeze walking and looking, as in the top view. */
+  enabled = true;
   private yaw = 0;
   private pitch = 0;
+  private rightDrag = false;
   private readonly keys = new Set<string>();
 
   constructor(
@@ -28,26 +31,43 @@ export class FirstPersonControls {
     this.yaw = THREE.MathUtils.degToRad(start.yawDeg ?? 0);
     this.applyRotation();
 
-    canvas.addEventListener('click', () => {
-      if (!this.locked) void canvas.requestPointerLock();
+    // Holding the right mouse button also looks around, without locking the mouse.
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 2) this.rightDrag = true;
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 2) this.rightDrag = false;
     });
     document.addEventListener('pointerlockchange', () => {
       document.body.classList.toggle('walking', this.locked);
     });
     document.addEventListener('mousemove', (e) => {
-      if (!this.locked) return;
+      if (!this.enabled || (!this.locked && !this.rightDrag)) return;
       this.yaw -= e.movementX * LOOK_SENSITIVITY;
       this.pitch -= e.movementY * LOOK_SENSITIVITY;
       this.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, this.pitch));
       this.applyRotation();
     });
-    window.addEventListener('keydown', (e) => this.keys.add(e.code));
+    window.addEventListener('keydown', (e) => {
+      if (!e.metaKey && !e.ctrlKey) this.keys.add(e.code);
+    });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
   }
 
   get locked(): boolean {
     return document.pointerLockElement === this.canvas;
+  }
+
+  /** Hides the cursor and starts mouse look. Must be called from a click. */
+  lock(): void {
+    if (!this.locked) void this.canvas.requestPointerLock();
+  }
+
+  /** Where the walker stands on the plan, and the way they face in radians. */
+  get pose(): { x: number; y: number; yaw: number } {
+    return { x: this.camera.position.x, y: this.camera.position.z, yaw: this.yaw };
   }
 
   setWalls(walls: Segment[]): void {
@@ -64,6 +84,7 @@ export class FirstPersonControls {
 
   /** Call once per frame with the time since the last frame, in seconds. */
   update(dt: number): void {
+    if (!this.enabled) return;
     const forward = Number(this.down('KeyW', 'ArrowUp')) - Number(this.down('KeyS', 'ArrowDown'));
     const strafe = Number(this.down('KeyD', 'ArrowRight')) - Number(this.down('KeyA', 'ArrowLeft'));
     if (forward === 0 && strafe === 0) return;

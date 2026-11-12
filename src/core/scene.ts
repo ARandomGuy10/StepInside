@@ -72,9 +72,13 @@ export interface Solid {
 
 export interface Furniture {
   id: string;
+  /** Shown in the furniture panel. Falls back to the id. */
+  name?: string;
+  /** Looks for /public/models/<model>.glb. A box is drawn if there is none. */
   model: string;
   room: string;
   position: Point;
+  /** Turn about the vertical axis, clockwise as seen on the plan. */
   rotationDeg: number;
   /** Width, height, depth. Used for the placeholder box and for scaling. */
   size: [number, number, number];
@@ -417,10 +421,11 @@ export function parseScene(input: unknown): Scene {
   (c.array(root.furniture, 'scene.furniture') ?? []).forEach((value, i) => {
     const path = `scene.furniture[${i}]`;
     const f = c.object(value, path, [
-      'id', 'model', 'room', 'position', 'rotationDeg', 'size', 'color', 'removed',
+      'id', 'name', 'model', 'room', 'position', 'rotationDeg', 'size', 'color', 'removed',
     ]);
     if (!f) return;
     c.uniqueId(f.id, `${path}.id`, ids);
+    if (f.name !== undefined) c.string(f.name, `${path}.name`);
     c.string(f.model, `${path}.model`);
     if (c.string(f.room, `${path}.room`) && !roomInfo.has(f.room)) {
       c.fail(`${path}.room`, `no room with id "${f.room}"`);
