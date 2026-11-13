@@ -604,3 +604,24 @@ body.orbit-view #btn-dimensions {
 body.blocked #view {
   cursor: not-allowed;
 }
+
+#design {
+  width: 100%;
+  margin-top: 8px;
+  padding: 7px 8px;
+  border: 1px solid #d9d4cb;
+  border-radius: 8px;
+  background: #fff;
+  color: #22201d;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#design[hidden] {
+  display: none;
+}
+
+body.orbit-view #panel > #design:not([hidden]) {
+  display: block;
+}

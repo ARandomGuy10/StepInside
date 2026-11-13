@@ -80,3 +80,34 @@ chairs 0.5 m wide, toilets 0.4 x 0.68 m, loungers 0.7 x 1.9 m. Doors are
 2.1 m high and 2.5 to 3.25 ft wide. The one figure on the tight side is
 the staircase: 17 steps of 18 cm rise and 23 cm going. A more comfortable
 25 cm going needs a flight about 14 ft long instead of 12.75 ft.
+
+## Design B: courtyard house
+
+A second design for the same 35 x 55 ft plot, in `villa-b-ground.json` and
+`villa-b-first.json`. It is my own proposal, not taken from the plans, with
+the same list of rooms. Pick it from the dropdown at the top of the panel.
+
+The thinking:
+
+- **A private pool court.** The pool (10 x 14.5 ft) moves to the rear left,
+  walled on two sides, so it cannot be seen from the street. The living
+  space and the master bedroom both open straight onto it.
+- **One open living space.** Kitchen, dining and living are a single room
+  33.5 ft wide and 20.5 ft deep, with daylight from two sides: the pool
+  court behind and the garden in front.
+- **Edges for services.** Stairs, baths, wardrobe and powder room sit
+  along the walls, so the middle of the house stays open.
+- **Guest room at the front** (12.5 x 12 ft), with its own door from the
+  garden and a second door to the living space. The powder room is next to it.
+- **Master suite at the rear** (16.5 x 14 ft), entered through its
+  wardrobe, with its own bath and a door to the pool.
+- **Upstairs:** a family lounge (about 16 x 20 ft) overlooking the pool,
+  Bedroom 1 as a suite over the master, Bedrooms 2 and 3 off a small hall
+  with a shared bath, and a 12 x 12 ft terrace over the entrance that also
+  shelters the front door.
+- **Stairs** are 14 ft long here, which gives a comfortable 25 cm going.
+
+Things to check with an architect before relying on it: structure
+(the first floor spans the 33.5 ft living space, so it needs beams or
+columns), setbacks and side windows allowed on your plot, plumbing stacks,
+and which way the plot faces.

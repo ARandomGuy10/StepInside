@@ -8,14 +8,14 @@
   "start": {"position": [4.724, 11.887], "yawDeg": 0},
   "site": {"margin": 30, "color": "#a4b48e"},
   "rooms": [
-    {"id": "kitchen", "name": "Kitchen", "polygon": [[0.229, 0.229], [3.886, 0.229], [3.886, 4.801], [0.229, 4.801]], "floor": {"material": "tile", "color": "#e6e2da"}, "walls": [{"edge": 0, "color": "#5f7464"}, {"edge": 3, "color": "#5f7464"}]},
+    {"id": "kitchen", "name": "Kitchen", "polygon": [[0.229, 0.229], [3.886, 0.229], [3.886, 4.801], [0.229, 4.801]], "floor": {"material": "large-tile", "color": "#e6e2da"}, "walls": [{"edge": 0, "color": "#5f7464"}, {"edge": 3, "color": "#5f7464"}]},
     {"id": "master", "name": "Master bedroom", "polygon": [[4.039, 0.229], [8.001, 0.229], [8.001, 4.801], [4.039, 4.801]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "color": "#44616b"}]},
-    {"id": "bath", "name": "Bath", "polygon": [[8.153, 0.229], [10.439, 0.229], [10.439, 2.972], [8.153, 2.972]], "floor": {"material": "tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "color": "#dfe7e6"}, {"edge": 1, "color": "#dfe7e6"}]},
+    {"id": "bath", "name": "Bath", "polygon": [[8.153, 0.229], [10.439, 0.229], [10.439, 2.972], [8.153, 2.972]], "floor": {"material": "large-tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "color": "#dfe7e6"}, {"edge": 1, "color": "#dfe7e6"}]},
     {"id": "wardrobe", "name": "Wardrobe", "polygon": [[8.153, 3.124], [10.439, 3.124], [10.439, 4.801], [8.153, 4.801]]},
-    {"id": "living", "name": "Dining + Living", "polygon": [[0.229, 4.953], [5.715, 4.953], [5.715, 12.573], [0.229, 12.573]], "floor": {"material": "tile", "color": "#e6e2da"}, "walls": [{"edge": 3, "color": "#c9a58a"}]},
+    {"id": "living", "name": "Dining + Living", "polygon": [[0.229, 4.953], [5.715, 4.953], [5.715, 12.573], [0.229, 12.573]], "floor": {"material": "large-tile", "color": "#e6e2da"}, "walls": [{"edge": 3, "color": "#c9a58a"}]},
     {"id": "pool-court", "name": "Pool court", "polygon": [[5.867, 4.953], [10.439, 4.953], [10.439, 10.592], [5.867, 10.592]], "kind": "balcony", "floor": {"material": "decking", "color": "#9a7352"}, "walls": [{"edge": 1, "height": 3.0, "color": "#cfc4b0"}]},
-    {"id": "toilet", "name": "Toilet", "polygon": [[5.867, 10.744], [8.458, 10.744], [8.458, 12.573], [5.867, 12.573]], "floor": {"material": "tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "color": "#dfe7e6"}]},
-    {"id": "pool-shower", "name": "Pool shower", "polygon": [[8.611, 10.744], [10.439, 10.744], [10.439, 12.573], [8.611, 12.573]], "floor": {"material": "tile", "color": "#cfd8dc"}},
+    {"id": "toilet", "name": "Toilet", "polygon": [[5.867, 10.744], [8.458, 10.744], [8.458, 12.573], [5.867, 12.573]], "floor": {"material": "large-tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "color": "#dfe7e6"}]},
+    {"id": "pool-shower", "name": "Pool shower", "polygon": [[8.611, 10.744], [10.439, 10.744], [10.439, 12.573], [8.611, 12.573]], "floor": {"material": "large-tile", "color": "#cfd8dc"}},
     {"id": "guest", "name": "Guest room", "polygon": [[0.229, 12.725], [3.886, 12.725], [3.886, 16.535], [0.229, 16.535]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 3, "color": "#b98d7a"}]},
     {"id": "garden", "name": "Garden", "polygon": [[4.039, 12.725], [10.135, 12.725], [10.135, 16.535], [4.039, 16.535]], "kind": "balcony", "floor": {"color": "#6f9a4e"}, "walls": [{"edge": 1, "height": 1.8, "color": "#cfc4b0"}, {"edge": 2, "height": 1.8, "color": "#cfc4b0"}]}
   ],
@@ -102,8 +102,11 @@
     {"id": "table-lamp-master-2", "name": "Table lamp", "model": "table-lamp", "room": "master", "position": [7.285, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
     {"id": "table-lamp-guest", "name": "Table lamp", "model": "table-lamp", "room": "guest", "position": [0.549, 13.198], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
     {"id": "rug-master", "name": "Rug", "model": "rug", "room": "master", "position": [6.02, 2.896], "rotationDeg": 0, "size": [2.4, 0.02, 1.4], "color": "#c9bfae"},
-    {"id": "tree-1", "name": "Garden tree", "model": "tree", "room": "garden", "position": [6.706, 13.868], "rotationDeg": 0, "size": [1.6, 3.4, 1.6], "color": "#6a5038"},
-    {"id": "tree-2", "name": "Garden tree", "model": "tree", "room": "garden", "position": [7.468, 15.545], "rotationDeg": 0, "size": [1.6, 3.4, 1.6], "color": "#6a5038"},
-    {"id": "tree-3", "name": "Garden tree", "model": "tree", "room": "garden", "position": [9.144, 14.448], "rotationDeg": 0, "size": [1.6, 3.4, 1.6], "color": "#6a5038"}
+    {"id": "garden-path", "name": "Stone path", "model": "paving", "room": "garden", "position": [4.938, 14.63], "rotationDeg": 0, "size": [1.1, 0.03, 3.719], "color": "#d9d2c4"},
+    {"id": "garden-border-side", "name": "Planted border", "model": "planting-bed", "room": "garden", "position": [9.86, 14.63], "rotationDeg": 0, "size": [0.5, 0.75, 3.536], "color": "#8b8478"},
+    {"id": "garden-border-front", "name": "Planted border", "model": "planting-bed", "room": "garden", "position": [7.62, 16.276], "rotationDeg": 0, "size": [3.505, 0.6, 0.45], "color": "#8b8478"},
+    {"id": "tree-1", "name": "Garden tree", "model": "tree", "room": "garden", "position": [8.23, 14.508], "rotationDeg": 0, "size": [1.6, 3.4, 1.6], "color": "#6a5038"},
+    {"id": "garden-bench", "name": "Garden bench", "model": "bench", "room": "garden", "position": [7.163, 13.03], "rotationDeg": 180, "size": [1.5, 0.85, 0.55], "color": "#8a6243"},
+    {"id": "pool-planter", "name": "Planter", "model": "planter", "room": "pool-court", "position": [8.534, 5.197], "rotationDeg": 0, "size": [1.8, 1.1, 0.4], "color": "#4a4844"}
   ]
 }

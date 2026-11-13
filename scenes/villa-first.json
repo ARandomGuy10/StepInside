@@ -9,13 +9,13 @@
   "rooms": [
     {"id": "bedroom2", "name": "Bedroom 2", "polygon": [[0.229, 0.229], [4.343, 0.229], [4.343, 4.801], [0.229, 4.801]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "color": "#6d7f9a"}]},
     {"id": "bedroom1", "name": "Bedroom 1", "polygon": [[4.496, 0.229], [8.611, 0.229], [8.611, 4.801], [4.496, 4.801]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "color": "#8a9a83"}]},
-    {"id": "bath1", "name": "Bath", "polygon": [[8.763, 0.229], [10.439, 0.229], [10.439, 3.277], [8.763, 3.277]], "floor": {"material": "tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "color": "#dfe7e6"}, {"edge": 1, "color": "#dfe7e6"}]},
+    {"id": "bath1", "name": "Bath", "polygon": [[8.763, 0.229], [10.439, 0.229], [10.439, 3.277], [8.763, 3.277]], "floor": {"material": "large-tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "color": "#dfe7e6"}, {"edge": 1, "color": "#dfe7e6"}]},
     {"id": "dressing", "name": "Dressing", "polygon": [[8.763, 3.429], [10.439, 3.429], [10.439, 4.801], [8.763, 4.801]]},
-    {"id": "lounge", "name": "Sitting lounge", "polygon": [[0.229, 4.953], [5.715, 4.953], [5.715, 12.573], [4.648, 12.573], [4.648, 8.001], [0.229, 8.001]], "floor": {"material": "tile", "color": "#e6e2da"}},
+    {"id": "lounge", "name": "Sitting lounge", "polygon": [[0.229, 4.953], [5.715, 4.953], [5.715, 12.573], [4.648, 12.573], [4.648, 8.001], [0.229, 8.001]], "floor": {"material": "large-tile", "color": "#e6e2da"}},
     {"id": "void", "name": "Double-height void", "polygon": [[0.229, 8.051], [4.598, 8.051], [4.598, 12.573], [0.229, 12.573]], "kind": "void", "walls": [{"edge": 3, "color": "#c9a58a"}]},
-    {"id": "bath3", "name": "Bath", "polygon": [[0.229, 12.725], [1.905, 12.725], [1.905, 16.535], [0.229, 16.535]], "floor": {"material": "tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "height": 3.0}, {"edge": 3, "color": "#dfe7e6"}, {"edge": 2, "color": "#dfe7e6"}]},
+    {"id": "bath3", "name": "Bath", "polygon": [[0.229, 12.725], [1.905, 12.725], [1.905, 16.535], [0.229, 16.535]], "floor": {"material": "large-tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "height": 3.0}, {"edge": 3, "color": "#dfe7e6"}, {"edge": 2, "color": "#dfe7e6"}]},
     {"id": "bedroom3", "name": "Bedroom 3", "polygon": [[2.057, 12.725], [5.715, 12.725], [5.715, 16.535], [2.057, 16.535]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "height": 3.0}, {"edge": 2, "color": "#c2a15f"}]},
-    {"id": "balcony", "name": "Balcony", "polygon": [[5.867, 11.049], [10.439, 11.049], [10.439, 16.535], [5.867, 16.535]], "kind": "balcony", "floor": {"material": "tile", "color": "#e6e2da"}}
+    {"id": "balcony", "name": "Balcony", "polygon": [[5.867, 11.049], [10.439, 11.049], [10.439, 16.535], [5.867, 16.535]], "kind": "balcony", "floor": {"material": "decking", "color": "#9a7352"}}
   ],
   "openings": [
     {"id": "stair-head", "type": "door", "room": "lounge", "edge": 4, "offset": 3.353, "width": 1.006, "height": 2.1},
@@ -69,12 +69,19 @@
     {"id": "bath3-toilet", "name": "Toilet", "model": "toilet", "room": "bath3", "position": [0.64, 13.076], "rotationDeg": 180, "size": [0.4, 0.78, 0.68], "color": "#f4f2ee"},
     {"id": "bath3-basin", "name": "Basin", "model": "basin", "room": "bath3", "position": [0.503, 14.204], "rotationDeg": 90, "size": [0.6, 0.85, 0.48], "color": "#8a6243"},
     {"id": "bath3-shower", "name": "Shower", "model": "shower", "room": "bath3", "position": [1.067, 15.728], "rotationDeg": 0, "size": [1.2, 2.0, 1.2], "color": "#cfe0e2"},
-    {"id": "balcony-table", "name": "Round table", "model": "round-table", "room": "balcony", "position": [7.772, 14.173], "rotationDeg": 0, "size": [1.1, 0.75, 1.1], "color": "#5a3324"},
-    {"id": "balcony-chair-1", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [7.772, 13.411], "rotationDeg": 180, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
-    {"id": "balcony-chair-2", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [8.534, 14.173], "rotationDeg": 270, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
-    {"id": "balcony-chair-3", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [7.772, 14.935], "rotationDeg": 0, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
-    {"id": "balcony-chair-4", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [7.01, 14.173], "rotationDeg": 90, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
-    {"id": "balcony-lounger", "name": "Sun lounger", "model": "lounger", "room": "balcony", "position": [9.967, 13.716], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
+    {"id": "balcony-table", "name": "Round table", "model": "round-table", "room": "balcony", "position": [8.077, 12.344], "rotationDeg": 0, "size": [1.1, 0.75, 1.1], "color": "#5a3324"},
+    {"id": "balcony-chair-1", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [8.077, 11.643], "rotationDeg": 180, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
+    {"id": "balcony-chair-2", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [8.778, 12.344], "rotationDeg": 270, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
+    {"id": "balcony-chair-3", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [8.077, 13.045], "rotationDeg": 0, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
+    {"id": "balcony-chair-4", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [7.376, 12.344], "rotationDeg": 90, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
+    {"id": "balcony-pergola", "name": "Pergola", "model": "pergola", "room": "balcony", "position": [8.23, 15.088], "rotationDeg": 0, "size": [3.4, 2.4, 2.6], "color": "#8a6243"},
+    {"id": "balcony-rug", "name": "Outdoor rug", "model": "rug", "room": "balcony", "position": [8.23, 15.24], "rotationDeg": 0, "size": [3.0, 0.02, 2.2], "color": "#b9b4a8"},
+    {"id": "balcony-sofa", "name": "Outdoor sofa", "model": "sofa", "room": "balcony", "position": [8.23, 16.032], "rotationDeg": 0, "size": [2.2, 0.75, 0.9], "color": "#c9c2b4"},
+    {"id": "balcony-armchair-1", "name": "Outdoor armchair", "model": "armchair", "room": "balcony", "position": [6.98, 15.027], "rotationDeg": 90, "size": [0.8, 0.75, 0.8], "color": "#c9c2b4"},
+    {"id": "balcony-armchair-2", "name": "Outdoor armchair", "model": "armchair", "room": "balcony", "position": [9.479, 15.027], "rotationDeg": 270, "size": [0.8, 0.75, 0.8], "color": "#c9c2b4"},
+    {"id": "balcony-coffee", "name": "Coffee table", "model": "coffee-table", "room": "balcony", "position": [8.23, 15.027], "rotationDeg": 0, "size": [1.1, 0.4, 0.6], "color": "#3a2a22"},
+    {"id": "balcony-planter-1", "name": "Planter", "model": "planter", "room": "balcony", "position": [10.226, 12.497], "rotationDeg": 0, "size": [0.4, 1.1, 2.0], "color": "#4a4844"},
+    {"id": "balcony-planter-2", "name": "Planter", "model": "planter", "room": "balcony", "position": [6.081, 12.771], "rotationDeg": 0, "size": [0.4, 1.1, 0.75], "color": "#4a4844"},
     {"id": "art-bed2", "name": "Painting", "model": "painting-1", "room": "bedroom2", "position": [0.253, 1.524], "rotationDeg": 90, "size": [1.2, 0.8, 0.04], "color": "#2b2520", "mount": "wall", "elevation": 1.3},
     {"id": "art-bed1", "name": "Painting", "model": "painting-3", "room": "bedroom1", "position": [8.587, 1.829], "rotationDeg": 270, "size": [0.8, 0.8, 0.04], "color": "#f2f0ea", "mount": "wall", "elevation": 1.3},
     {"id": "art-bed3", "name": "Painting", "model": "painting-2", "room": "bedroom3", "position": [2.081, 15.728], "rotationDeg": 90, "size": [0.6, 0.9, 0.04], "color": "#d8c7a6", "mount": "wall", "elevation": 1.3},
@@ -84,7 +91,6 @@
     {"id": "table-lamp-bed2-2", "name": "Table lamp", "model": "table-lamp", "room": "bedroom2", "position": [3.536, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
     {"id": "table-lamp-bed1-1", "name": "Table lamp", "model": "table-lamp", "room": "bedroom1", "position": [5.304, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
     {"id": "table-lamp-bed1-2", "name": "Table lamp", "model": "table-lamp", "room": "bedroom1", "position": [7.803, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
-    {"id": "plant-lounge-table", "name": "Small plant", "model": "table-plant", "room": "lounge", "position": [1.707, 6.462], "rotationDeg": 0, "size": [0.22, 0.3, 0.22], "color": "#e9e3d8", "elevation": 0.42},
-    {"id": "plant-balcony", "name": "Rubber plant", "model": "floor-plant", "room": "balcony", "position": [6.309, 16.093], "rotationDeg": 0, "size": [0.7, 1.5, 0.7], "color": "#3d3a36"}
+    {"id": "plant-lounge-table", "name": "Small plant", "model": "table-plant", "room": "lounge", "position": [1.707, 6.462], "rotationDeg": 0, "size": [0.22, 0.3, 0.22], "color": "#e9e3d8", "elevation": 0.42}
   ]
 }

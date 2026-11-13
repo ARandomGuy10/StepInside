@@ -40,7 +40,8 @@ the choice (`?home=villa`), so a home can be bookmarked.
 | Home | Scene files | Notes |
 | --- | --- | --- |
 | Apartment | `scenes/home.json` | `scenes/home.md` |
-| New house | `scenes/villa-ground.json`, `scenes/villa-first.json` | `scenes/villa.md` |
+| New house, design A | `scenes/villa-ground.json`, `scenes/villa-first.json` | `scenes/villa.md` |
+| New house, design B | `scenes/villa-b-ground.json`, `scenes/villa-b-first.json` | `scenes/villa.md` |
 
 A home opens on a view of the whole building from outside. Drag to turn
 it, scroll to zoom, and use **Hide roof** to look inside. The bar at the
@@ -60,6 +61,10 @@ whatever is in its way. The exceptions: anything can stand on a rug, a
 chair can be pushed in under a table, and small things (table lamp, vase,
 small plant, books) stand on top of tables, desks, counters and TV units
 and move along with them.
+
+A home can have several designs to compare. Homes that share a
+`design.group` in `src/homes.ts` appear once on the start screen, and a
+dropdown at the top of the panel switches between them.
 
 A home can have several storeys. Each storey is a scene file of its own,
 and `src/homes.ts` stacks them: the height of each floor, where the

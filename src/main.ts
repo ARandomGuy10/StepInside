@@ -939,7 +939,8 @@ if (!chosen) {
   document.getElementById('view-bar')!.hidden = true;
   document.getElementById('chooser')!.hidden = false;
   document.getElementById('chooser-list')!.replaceChildren(
-    ...HOMES.map((h) => {
+    // A home with several designs is listed once; its designs are picked inside.
+    ...HOMES.filter((h, i) => !h.design || HOMES.findIndex((o) => o.design?.group === h.design?.group) === i).map((h) => {
       const link = document.createElement('a');
       const query = new URLSearchParams(params);
       query.set('home', h.id);
@@ -958,6 +959,24 @@ if (!chosen) {
   back.delete('home');
   document.querySelector<HTMLAnchorElement>('#home-change')!.href = back.size ? `?${back}` : './';
   try {
+    // The designs of this home, in a dropdown. Picking one loads it in the same view.
+    const designs = HOMES.filter((h) => chosen.design && h.design?.group === chosen.design.group);
+    const picker = document.querySelector<HTMLSelectElement>('#design')!;
+    picker.hidden = designs.length < 2;
+    picker.replaceChildren(
+      ...designs.map((h) => {
+        const option = document.createElement('option');
+        option.value = h.id;
+        option.textContent = h.design!.name;
+        option.selected = h === chosen;
+        return option;
+      }),
+    );
+    picker.addEventListener('change', () => {
+      const next = new URLSearchParams(params);
+      next.set('home', picker.value);
+      window.location.search = next.toString();
+    });
     start(chosen, chosen.levels.map((l) => parseScene(l.json)));
   } catch (error) {
     const panel = document.querySelector<HTMLElement>('#error')!;

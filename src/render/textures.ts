@@ -147,6 +147,9 @@ export function floorTexture(material: string | undefined): THREE.Texture | null
       return pattern('planks', 1 / 1.2);
     case 'tile':
       return pattern('tiles', 1 / 1.2);
+    case 'large-tile':
+      // Four tiles across the pattern, so each tile is 80 cm.
+      return pattern('tiles', 1 / 3.2);
     default:
       return null;
   }

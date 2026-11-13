@@ -820,19 +820,163 @@ const lounger: Builder = (k, [w, h, d], color) => {
   back.rotation.x = 0.6;
 };
 
-/** A straight flight: the first step is at the back (+z), the top at the front. */
+/**
+ * A straight flight: the first step is at the back (+z), the top at the
+ * front. Timber treads on a closed white base, with a glass balustrade
+ * and a timber handrail on the open side.
+ */
 const stairs: Builder = (k, [w, h, d], color) => {
-  const stone = mat(color, { roughness: 0.7 });
+  const base = mat(color, { roughness: 0.75 });
+  const tread = mat('#a9794e', { roughness: 0.45, map: 'wood', repeat: 1 });
   const steps = Math.max(3, Math.round(h / 0.18));
   const rise = h / steps;
   const going = d / steps;
   for (let i = 0; i < steps; i++) {
-    k.box(w, rise * (i + 1), going, 0, (rise * (i + 1)) / 2, d / 2 - going * (i + 0.5), stone);
+    const z = d / 2 - going * (i + 0.5);
+    // The riser block, then a tread that sticks out a little (the nosing).
+    k.box(w, rise * (i + 1) - 0.04, going, 0, (rise * (i + 1) - 0.04) / 2, z, base);
+    k.box(w, 0.04, going + 0.025, 0, rise * (i + 1) - 0.02, z + 0.0125, tread, 0.006);
   }
-  // A handrail on the open side, parallel to the slope.
-  const rail = k.box(0.04, 0.04, Math.hypot(d, h), w / 2 - 0.03, h / 2 + 0.95, 0, mat('#3a2a22', { roughness: 0.5 }));
-  rail.rotation.x = Math.atan2(h, d);
-  for (let i = 0; i < steps; i += 3) k.box(0.02, 0.95, 0.02, w / 2 - 0.03, rise * (i + 1) + 0.475, d / 2 - going * (i + 0.5), BLACK());
+  // The balustrade follows the slope: glass panes with a handrail on top.
+  const slope = Math.atan2(h, d);
+  const run = Math.hypot(d, h);
+  const side = w / 2 - 0.03;
+  const glass = mat('#d6e6ea', { roughness: 0.05, opacity: 0.22 });
+  const panes = 4;
+  for (let i = 0; i < panes; i++) {
+    const t = (i + 0.5) / panes;
+    const pane = k.box(0.012, 0.9, run / panes - 0.04, side, h * t + rise * 0.5 + 0.5, d / 2 - d * t, glass);
+    pane.rotation.x = slope;
+  }
+  const rail = k.box(0.05, 0.035, run, side, h / 2 + rise * 0.5 + 0.98, 0, tread, 0.012);
+  rail.rotation.x = slope;
+  for (let i = 0; i <= panes; i++) {
+    const t = i / panes;
+    k.box(0.03, 1.0, 0.03, side, Math.min(h, h * t + rise) + 0.48, d / 2 - d * t - (i === panes ? -0.03 : 0.03) * (i === 0 ? -1 : 1), STEEL());
+  }
+  // A strip of warm light under the wall-side edge of each third tread.
+  const light = mat('#fff1d6', { emissive: '#ffd9a0' });
+  for (let i = 1; i < steps; i += 3) k.box(0.02, 0.012, going * 0.7, -w / 2 + 0.012, rise * (i + 1) - 0.06, d / 2 - going * (i + 0.5), light);
+};
+
+// ---- Garden and terrace pieces ----
+
+/** Stepping stones: big flat slabs laid in a row along the longer side, with gaps. */
+const paving: Builder = (k, [w, h, d], color) => {
+  const stone = mat(color, { roughness: 0.9 });
+  const alongZ = d >= w;
+  const length = alongZ ? d : w;
+  const n = Math.max(1, Math.round(length / 0.75));
+  const pitch = length / n;
+  for (let i = 0; i < n; i++) {
+    const at = -length / 2 + pitch * (i + 0.5);
+    if (alongZ) k.box(w, h, pitch - 0.08, 0, h / 2, at, stone, 0.004);
+    else k.box(pitch - 0.08, h, d, at, h / 2, 0, stone, 0.004);
+  }
+};
+
+/** A planting bed: an edged strip of soil filled with shrubs, grasses and flowers. */
+const plantingBed: Builder = (k, [w, h, d], color) => {
+  k.box(w, 0.1, d, 0, 0.05, 0, mat(color, { roughness: 0.9 }), 0.01);
+  k.box(w - 0.08, 0.02, d - 0.08, 0, 0.105, 0, mat('#3a2c20', { roughness: 1 }));
+  const greens = ['#3d7a3a', '#4f8f45', '#2f6335', '#6aa155'].map((c) => mat(c, { roughness: 0.85 }));
+  const blooms = ['#e7b7c8', '#f2e3a0', '#ffffff', '#c9a6e0'].map((c) => mat(c, { roughness: 0.7 }));
+  const blade = leafMat('#5b8f4a');
+  const long = Math.max(w, d);
+  const n = Math.max(3, Math.round(long / 0.32));
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n - 0.5;
+    const off = (random(i + 3) - 0.5) * (Math.min(w, d) - 0.3);
+    const x = w >= d ? t * (w - 0.3) : off;
+    const z = w >= d ? off : t * (d - 0.3);
+    const kind = i % 3;
+    const top = Math.max(0.3, h - 0.1);
+    if (kind === 0) {
+      // a rounded shrub
+      const size = top * (0.3 + 0.15 * random(i));
+      const shrub = k.add(new THREE.Mesh(new THREE.IcosahedronGeometry(size, 2), greens[i % 4]), x, 0.1 + size * 0.8, z);
+      shrub.scale.y = 0.85;
+      shrub.castShadow = true;
+    } else if (kind === 1) {
+      // a tuft of ornamental grass
+      for (let j = 0; j < 12; j++) {
+        const length = top * (0.6 + 0.4 * random(i * 13 + j));
+        const leaf = new THREE.Mesh(leafGeometry(length, 0.035, 0.5), blade);
+        leaf.position.set(x, 0.1, z);
+        leaf.rotation.order = 'YXZ';
+        leaf.rotation.set(-(1.0 + 0.45 * random(j + i)), j * 2.4, 0);
+        k.group.add(leaf);
+      }
+    } else {
+      // a low mound with flowers on it
+      const size = top * 0.24;
+      k.add(new THREE.Mesh(new THREE.IcosahedronGeometry(size, 2), greens[(i + 1) % 4]), x, 0.1 + size * 0.6, z).scale.y = 0.7;
+      for (let j = 0; j < 9; j++) {
+        const a = j * 2.4;
+        const rr = size * (0.3 + 0.6 * random(j + i * 5));
+        k.ball(0.028, x + Math.cos(a) * rr, 0.1 + size * 1.05 + 0.02 * random(j), z + Math.sin(a) * rr, blooms[(i + j) % 4]);
+      }
+    }
+  }
+};
+
+/** A clipped hedge. */
+const hedge: Builder = (k, [w, h, d], color) => {
+  const leafy = mat(color, { roughness: 0.95 });
+  k.box(w, h, d, 0, h / 2, 0, leafy, Math.min(w, d) * 0.3);
+  const lumps = Math.round(Math.max(w, d) / 0.25);
+  for (let i = 0; i < lumps; i++) {
+    const t = (i + 0.5) / lumps - 0.5;
+    const lump = k.add(
+      new THREE.Mesh(new THREE.IcosahedronGeometry(Math.min(w, d) * (0.42 + 0.1 * random(i)), 1), leafy),
+      w >= d ? t * w * 0.94 : (random(i) - 0.5) * 0.05,
+      h * (0.55 + 0.4 * random(i + 9)),
+      w >= d ? (random(i) - 0.5) * 0.05 : t * d * 0.94,
+    );
+    lump.castShadow = true;
+  }
+};
+
+/** A tall planter box with a shrub or grasses in it, for a terrace. */
+const planter: Builder = (k, [w, h, d], color) => {
+  const boxH = Math.min(0.55, h * 0.45);
+  k.box(w, boxH, d, 0, boxH / 2, 0, mat(color, { roughness: 0.6 }), 0.01);
+  k.box(w - 0.06, 0.02, d - 0.06, 0, boxH - 0.005, 0, mat('#3a2c20', { roughness: 1 }));
+  const blade = leafMat('#4f8a48');
+  const n = Math.max(1, Math.round(Math.max(w, d) / 0.3));
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n - 0.5;
+    for (let j = 0; j < 14; j++) {
+      const length = (h - boxH) * (0.65 + 0.35 * random(i * 17 + j));
+      const leaf = new THREE.Mesh(leafGeometry(length, 0.045, 0.45), blade);
+      leaf.position.set(w >= d ? t * (w - 0.2) : 0, boxH, w >= d ? 0 : t * (d - 0.2));
+      leaf.rotation.order = 'YXZ';
+      leaf.rotation.set(-(1.05 + 0.4 * random(j + i * 3)), j * 2.4 + i, 0);
+      leaf.castShadow = true;
+      k.group.add(leaf);
+    }
+  }
+};
+
+/** A slatted timber garden bench with a back. */
+const bench: Builder = (k, [w, h, d], color) => {
+  const wood = mat(color, { roughness: 0.6, map: 'wood', repeat: 1 });
+  const seat = Math.min(0.45, h * 0.55);
+  for (let i = 0; i < 4; i++) k.box(w, 0.03, d * 0.2, 0, seat, -d / 2 + d * 0.14 + i * d * 0.22, wood, 0.006);
+  for (let i = 0; i < 3; i++) k.box(w, 0.09, 0.025, 0, seat + 0.14 + i * ((h - seat - 0.14) / 3), d / 2 - 0.02, wood, 0.006);
+  for (const sx of [-1, 1]) {
+    k.box(0.05, seat, 0.05, sx * (w / 2 - 0.06), seat / 2, -d / 2 + 0.05, BLACK());
+    k.box(0.05, h, 0.05, sx * (w / 2 - 0.06), h / 2, d / 2 - 0.04, BLACK());
+  }
+};
+
+/** A slatted timber pergola: four posts and a roof of beams. */
+const pergola: Builder = (k, [w, h, d], color) => {
+  const wood = mat(color, { roughness: 0.6, map: 'wood', repeat: 2 });
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.box(0.1, h, 0.1, sx * (w / 2 - 0.05), h / 2, sz * (d / 2 - 0.05), wood);
+  for (const sz of [-1, 1]) k.box(w, 0.14, 0.06, 0, h - 0.07, sz * (d / 2 - 0.05), wood);
+  const beams = Math.max(3, Math.round(w / 0.4));
+  for (let i = 0; i <= beams; i++) k.box(0.05, 0.1, d + 0.3, -w / 2 + (w * i) / beams, h + 0.05, 0, wood);
 };
 
 /** The top of a flight going down, seen on the floor above: treads and a guard rail. */
@@ -856,6 +1000,12 @@ const builders: Record<string, Builder> = {
   pool,
   lounger,
   stairs,
+  paving,
+  'planting-bed': plantingBed,
+  hedge,
+  planter,
+  bench,
+  pergola,
   'stairs-down': stairsDown,
   sofa,
   'sofa-l': sofaL,

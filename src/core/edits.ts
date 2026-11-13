@@ -70,9 +70,9 @@ const mm = (v: number): number => Math.round(v * 1000) / 1000;
 
 // ---- What may stand where ----
 
-/** Rugs and other flat things, and what hangs at a wall (curtains, radiators): they are in nobody's way. */
+/** Rugs and other flat things, what hangs at a wall (curtains, radiators) and what you walk under (a pergola): they are in nobody's way. */
 const isFlat = (f: Pick<Furniture, 'size'> & { model?: string }): boolean =>
-  f.size[1] <= 0.1 || /curtain|radiator/.test(f.model ?? '');
+  f.size[1] <= 0.1 || /curtain|radiator|pergola/.test(f.model ?? '');
 /** Small things that belong on a table top. */
 const SMALL = /^(table-lamp|vase|table-plant|books)$/;
 /** Furniture with a top that small things can stand on. */
