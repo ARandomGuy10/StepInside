@@ -34,6 +34,10 @@ export interface Defaults {
    * to the back, in metres (a single sloping roof). Without it the roof is flat.
    */
   roofRise?: number;
+  /** Colour of the bands at each floor and of the roof edge. White when not given. */
+  trimColor?: string;
+  /** Colour of stone cladding on walls marked `outside: "stone"`. Defaults to `exteriorColor`. */
+  stoneColor?: string;
   floorColor: string;
   ceilingColor: string;
 }
@@ -43,6 +47,12 @@ export interface WallOverride {
   edge: number;
   color?: string;
   height?: number;
+  /**
+   * The outside finish of this wall, when it differs from
+   * `defaults.exteriorMaterial`: stone cladding, render, or render behind
+   * a screen of vertical aluminium fins.
+   */
+  outside?: 'stone' | 'render' | 'fins';
 }
 
 export interface Room {
@@ -298,7 +308,7 @@ export function parseScene(input: unknown): Scene {
   }
 
   const defaults = c.object(root.defaults, 'scene.defaults', [
-    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial', 'roofRise',
+    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial', 'roofRise', 'trimColor', 'stoneColor',
   ]);
   if (defaults) {
     c.positive(defaults.ceilingHeight, 'scene.defaults.ceilingHeight');
@@ -308,6 +318,8 @@ export function parseScene(input: unknown): Scene {
     c.color(defaults.floorColor, 'scene.defaults.floorColor');
     c.color(defaults.ceilingColor, 'scene.defaults.ceilingColor');
     if (defaults.roofRise !== undefined) c.positive(defaults.roofRise, 'scene.defaults.roofRise');
+    if (defaults.trimColor !== undefined) c.color(defaults.trimColor, 'scene.defaults.trimColor');
+    if (defaults.stoneColor !== undefined) c.color(defaults.stoneColor, 'scene.defaults.stoneColor');
     if (defaults.exteriorColor !== undefined) c.color(defaults.exteriorColor, 'scene.defaults.exteriorColor');
     if (defaults.exteriorMaterial !== undefined && defaults.exteriorMaterial !== 'stone' && defaults.exteriorMaterial !== 'render') {
       c.fail('scene.defaults.exteriorMaterial', 'must be "stone" or "render"');
@@ -379,7 +391,7 @@ export function parseScene(input: unknown): Scene {
       const seenEdges = new Set<number>();
       (c.array(room.walls, `${path}.walls`) ?? []).forEach((w, k) => {
         const wp = `${path}.walls[${k}]`;
-        const wall = c.object(w, wp, ['edge', 'color', 'height']);
+        const wall = c.object(w, wp, ['edge', 'color', 'height', 'outside']);
         if (!wall) return;
         if (!Number.isInteger(wall.edge) || (wall.edge as number) < 0 || (wall.edge as number) >= polygon.length) {
           c.fail(`${wp}.edge`, `must be an edge index from 0 to ${polygon.length - 1}`);
@@ -390,6 +402,9 @@ export function parseScene(input: unknown): Scene {
         }
         if (wall.color !== undefined) c.color(wall.color, `${wp}.color`);
         if (wall.height !== undefined) c.positive(wall.height, `${wp}.height`);
+        if (wall.outside !== undefined && !['stone', 'render', 'fins'].includes(wall.outside as string)) {
+          c.fail(`${wp}.outside`, 'must be "stone", "render" or "fins"');
+        }
       });
     }
   });

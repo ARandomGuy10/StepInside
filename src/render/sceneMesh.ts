@@ -115,15 +115,15 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     if (!covered && rise > 0) {
       const points = room.polygon.map(toVec);
       const height = roomHeight(scene, room);
-      // White walls carry on up to the slope, over the walls' thickness...
+      // The walls carry on up to the slope, over the walls' thickness...
       const upstand = new THREE.Mesh(
         slopedPrism(spread(points, t), () => height, (p) => roofTop(p) - 0.2),
-        sided(matte('#f4f1ea', 0.9)),
+        sided(matte(scene.defaults.trimColor ? (scene.defaults.exteriorColor ?? '#f4f1ea') : '#f4f1ea', 0.9)),
       );
       // ...then a white roof slab that overhangs them, with a dark metal sheet on top.
       const slab = new THREE.Mesh(
         slopedPrism(spread(points, t + 0.5), (p) => roofTop(p) - 0.2, roofTop),
-        sided(matte('#f1efea', 0.9)),
+        sided(matte(scene.defaults.trimColor ?? '#f1efea', 0.9)),
       );
       const sheet = new THREE.Mesh(
         slopedPrism(spread(points, t + 0.44), roofTop, (p) => roofTop(p) + 0.025),
@@ -373,8 +373,9 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
 
   if (slab.kind === 'wall' && slab.outside && exteriorColor) {
     // The outside of an outside wall is a thin skin: stone cladding or render.
-    const finish = matte(exteriorColor, 0.95);
-    if (scene.defaults.exteriorMaterial === 'stone') finish.map = pattern('stone', 1 / 2.4);
+    const kind = slab.finish ?? scene.defaults.exteriorMaterial ?? 'render';
+    const finish = matte(kind === 'stone' ? (scene.defaults.stoneColor ?? exteriorColor) : exteriorColor, 0.95);
+    if (kind === 'stone') finish.map = pattern('stone', 1 / 2.4);
     const skin = new THREE.Mesh(
       new THREE.ExtrudeGeometry(pieces.map((x) => x.shape), { depth: 0.015, bevelEnabled: false }).translate(0, 0, -slab.thickness - 0.015),
       finish,
@@ -384,7 +385,8 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     skin.receiveShadow = true;
     mesh.add(skin);
     // A white band where the floor above (or the roof) meets the wall, standing proud of it.
-    const band = new THREE.Mesh(new THREE.BoxGeometry(full + 0.4, 0.32, 0.2), matte('#f6f4ef', 0.85));
+    if (kind === 'fins') addFins(mesh, slab, full);
+    const band = new THREE.Mesh(new THREE.BoxGeometry(full + 0.4, 0.32, 0.2), matte(scene.defaults.trimColor ?? '#f6f4ef', 0.85));
     band.name = 'band';
     band.position.set(full / 2, top + 0.04, -slab.thickness - 0.1);
     band.castShadow = true;
@@ -399,6 +401,31 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     else if (!hole.passable && slab.kind === 'wall') mesh.add(buildClosedDoor(hole, slab.thickness));
   }
   return mesh;
+}
+
+/**
+ * A screen of slim vertical aluminium fins standing off the outside of a
+ * wall, over its full height, windows included, with a warm light strip
+ * along the top that glows after dark.
+ */
+function addFins(mesh: THREE.Mesh, slab: WallSlab, length: number): void {
+  const metal = new THREE.MeshStandardMaterial({ color: 0x2a2b2d, roughness: 0.45, metalness: 0.6 });
+  const fin = new THREE.BoxGeometry(0.05, slab.height - 0.1, 0.14);
+  const pitch = 0.22;
+  const count = Math.floor((length - 0.1) / pitch);
+  const start = (length - count * pitch) / 2;
+  for (let i = 0; i <= count; i++) {
+    const piece = new THREE.Mesh(fin, metal);
+    piece.name = 'trim';
+    piece.position.set(start + i * pitch, (slab.height - 0.1) / 2, -slab.thickness - 0.13);
+    piece.castShadow = true;
+    mesh.add(piece);
+  }
+  const glow = new THREE.MeshStandardMaterial({ color: 0xfff1d6, emissive: 0xffc27a, emissiveIntensity: 0.8 });
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(length, 0.02, 0.04), glow);
+  strip.name = 'trim';
+  strip.position.set(length / 2, slab.height - 0.14, -slab.thickness - 0.05);
+  mesh.add(strip);
 }
 
 /** The stretches of a wall between its doorways, as [from, to] along the wall. */

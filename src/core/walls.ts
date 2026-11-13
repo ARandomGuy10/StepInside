@@ -62,6 +62,8 @@ export interface WallSlab {
   /** Extra length past b, to fill the corner with the next wall. */
   extendEnd: number;
   color: string;
+  /** The outside finish of an outside wall, when the room asks for its own. */
+  finish?: 'stone' | 'render' | 'fins';
   holes: Hole[];
 }
 
@@ -230,6 +232,7 @@ export function buildWalls(scene: Scene): WallModel {
           color: e.railing
             ? (e.room.walls?.find((w) => w.edge === e.index)?.color ?? RAILING_COLOR)
             : wallColor(scene, e.room, e.index),
+          finish: e.room.walls?.find((w) => w.edge === e.index)?.outside,
           holes: [...e.holes].sort((p, q) => p.offset - q.offset),
         });
       }

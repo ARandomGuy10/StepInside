@@ -13,9 +13,9 @@ import type { Segment } from './core/collision';
 import { buildWalls } from './core/walls';
 import { FirstPersonControls } from './render/firstPerson';
 import { FurnitureView } from './render/furnitureView';
-import { addLighting, buildLamps } from './render/lighting';
+import { addLighting, buildLamps, type Daylight } from './render/lighting';
+import { clockText, sunPosition, sunTimes, type Place } from './core/sun';
 import { applyShellColors, buildShell } from './render/sceneMesh';
-import { skyTexture } from './render/textures';
 import { OrbitView } from './render/orbitView';
 import { buildStreet } from './render/site';
 import { TopView } from './render/topView';
@@ -40,7 +40,6 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   // The Three.js scene is a tree of objects, like a DOM for 3D.
   const world = new THREE.Scene();
-  world.background = skyTexture(); // seen through the windows
 
   // A home is a stack of storeys. Each storey is a scene of its own, built
   // at the height of its floor. The shell (walls, floors, windows) keeps
@@ -87,7 +86,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }
   const mid = bounds.getCenter(new THREE.Vector2());
   const radius = bounds.getSize(new THREE.Vector2()).length() / 2 + 1;
-  addLighting(renderer, world, scenes[0], new THREE.Vector3(mid.x, 0, mid.y), radius);
+  const daylight = addLighting(renderer, world, scenes[0], new THREE.Vector3(mid.x, 0, mid.y), radius);
+  if (home.place) setUpSunControls(home.place, daylight);
 
   const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 200);
   const spawn = home.start ?? scenes[0].start ?? { position: [mid.x, mid.y] as [number, number], yawDeg: 0 };
@@ -986,4 +986,59 @@ if (!chosen) {
       error instanceof SceneError ? error.message : `Could not start: ${String(error)}`;
     if (!(error instanceof SceneError)) throw error;
   }
+}
+
+/**
+ * The sun panel: pick a date and drag the time of day, and the sun moves
+ * along its real path for the home's town, with sunrise and sunset colours.
+ */
+function setUpSunControls(place: Place & { name: string }, daylight: Daylight): void {
+  const bar = document.createElement('div');
+  bar.id = 'sun-bar';
+  bar.innerHTML = `
+    <div class="sun-head"><strong>Sun</strong><span>${place.name}</span><button type="button" id="sun-now">Now</button></div>
+    <input type="date" id="sun-date" aria-label="Date" />
+    <input type="range" id="sun-time" min="0" max="24" step="0.25" aria-label="Time of day" />
+    <div class="sun-read"><span id="sun-clock"></span><span id="sun-span"></span></div>`;
+  document.body.append(bar);
+  const dateInput = bar.querySelector<HTMLInputElement>('#sun-date')!;
+  const timeInput = bar.querySelector<HTMLInputElement>('#sun-time')!;
+  const clock = bar.querySelector<HTMLElement>('#sun-clock')!;
+  const span = bar.querySelector<HTMLElement>('#sun-span')!;
+
+  /** The date and clock time it is now in the home's town. */
+  const now = (): { date: string; hours: number } => {
+    const local = new Date(Date.now() + place.utcOffset * 3600_000);
+    return {
+      date: local.toISOString().slice(0, 10),
+      hours: local.getUTCHours() + local.getUTCMinutes() / 60,
+    };
+  };
+
+  const update = (): void => {
+    const [y, m, d] = dateInput.value.split('-').map(Number);
+    if (!y) return;
+    const hours = Number(timeInput.value);
+    const sun = sunPosition(place, y, m, d, hours);
+    daylight.setSun(sun.azimuthDeg, sun.elevationDeg);
+    const times = sunTimes(place, y, m, d);
+    clock.textContent = clockText(hours);
+    span.textContent = `sunrise ${clockText(times.rise)} · sunset ${clockText(times.set)}`;
+  };
+
+  // Opens on today at 10 am, or at ?time=17.5 when given (handy for comparing).
+  const params = new URLSearchParams(window.location.search);
+  dateInput.value = params.get('date') ?? now().date;
+  timeInput.value = params.get('time') ?? '10';
+  dateInput.addEventListener('input', update);
+  timeInput.addEventListener('input', update);
+  bar.querySelector('#sun-now')!.addEventListener('click', () => {
+    const n = now();
+    dateInput.value = n.date;
+    timeInput.value = String(Math.round(n.hours * 4) / 4);
+    update();
+  });
+  // Keys typed into the panel should not also walk or turn the camera.
+  bar.addEventListener('keydown', (e) => e.stopPropagation());
+  update();
 }

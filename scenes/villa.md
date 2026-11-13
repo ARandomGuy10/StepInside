@@ -81,6 +81,14 @@ None of this is on the plans; it is a starting point to repaint and move.
 - Paintings hang clear of the windows. Plants, lamps and small things on
   the tables are from the catalogue.
 
+## Sun
+
+Both designs are placed in Lucknow (city centre coordinates; the exact
+plot is not needed for the sun's path). The Sun panel at the top right sets
+the date and time of day; the sun follows its real path, with warm low
+light near sunrise and sunset and a night sky after dark. North is still
+assumed to be the top of the plan, which changes where shadows fall.
+
 ## Measurement check
 
 Furniture uses common real sizes: double beds 1.6 to 1.8 m wide and 2.0
@@ -119,9 +127,16 @@ outside space, a pool shower, and the guest door away from the sofa):
 - **Guest room at the front** (12 x 12.5 ft) with its own door from the
   garden, plus an inside door at the kitchen end.
 - **Upstairs:** a landing over the court, Bedroom 1 (13 x 15) with its own
-  bath and a balcony over the pool, Bedroom 2 (13.5 x 15), a family lounge
-  (14.75 x 15), Bedroom 3 (12 x 12.5) over the guest room, and a shared
-  bath. Nothing is built over the front garden, so it gets full sun.
+  bath and a balcony over the pool, Bedroom 2 (12 x 15), a family lounge
+  (16.25 x 15), Bedroom 3 (12 x 12.5) over the guest room, and a shared
+  bath. A 12 x 12.5 ft terrace over the front garden opens off the lounge
+  (and Bedroom 3), with an outdoor sofa set under a pergola; the patio
+  below it is shaded for eating outside, and the left part of the garden
+  with the tree stays open to the sky.
+- **Outside look**, after a modern charcoal grey reference: ash grey render
+  below and charcoal above, natural grey stacked stone on the guest room
+  and Bedroom 2 fronts, a screen of black aluminium fins with a warm light
+  strip over Bedroom 3, grey trim and boundary walls, glass railings.
 - **Stairs** are 13.5 ft long, 16 risers of 19 cm.
 
 Things to check with an architect before relying on it: structure

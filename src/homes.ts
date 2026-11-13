@@ -3,6 +3,7 @@ import villaFirst from '../scenes/villa-first.json';
 import villaBFirst from '../scenes/villa-b-first.json';
 import villaBGround from '../scenes/villa-b-ground.json';
 import villaGround from '../scenes/villa-ground.json';
+import type { Place } from './core/sun';
 
 /** One storey of a home: a scene file, and how high its floor is. */
 export interface LevelEntry {
@@ -42,11 +43,19 @@ export interface HomeEntry {
   design?: { group: string; name: string };
   /** How sizes are shown. The scene files are always in metres. */
   units?: 'm' | 'ft';
+  /**
+   * Where the home is, for the sun's path through the day. Homes without
+   * one keep the fixed sun in their scene file.
+   */
+  place?: Place & { name: string };
   /** Where the walk begins, if not at the first storey's own start. */
   start?: { position: [number, number]; yawDeg: number };
 }
 
 const FT = 0.3048;
+
+/** Lucknow city centre. The sun's path is the same anywhere in the city. */
+const LUCKNOW = { name: 'Lucknow', lat: 26.85, lon: 80.95, utcOffset: 5.5 };
 
 export const HOMES: readonly HomeEntry[] = [
   {
@@ -68,6 +77,7 @@ export const HOMES: readonly HomeEntry[] = [
     // Must match the staircase in scripts/make-villa.py.
     stairs: [{ lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.05 * FT, yBottom: 38.25 * FT, yTop: 24.25 * FT }],
     start: { position: [16.25 * FT, 67 * FT], yawDeg: 0 },
+    place: LUCKNOW,
   },
   {
     id: 'villa-b',
@@ -82,5 +92,6 @@ export const HOMES: readonly HomeEntry[] = [
     // Must match the staircase in scripts/make-villa.py.
     stairs: [{ lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.5 * FT, yBottom: 39.25 * FT, yTop: 25.75 * FT }],
     start: { position: [17.75 * FT, 67 * FT], yawDeg: 0 },
+    place: LUCKNOW,
   },
 ];

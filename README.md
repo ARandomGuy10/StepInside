@@ -49,6 +49,12 @@ bottom switches between **Whole house**, a **plan** of each floor and
 **Walk through**. Add `&view=walk` to the address to open straight in the
 walk.
 
+Homes with a `place` in `src/homes.ts` get a **Sun** panel at the top
+right: pick a date and drag the time of day, and the sun moves along its
+real path for that town (`src/core/sun.ts`), from sunrise to sunset and
+into the night. `&date=2026-06-21&time=18.5` in the address opens at that
+moment.
+
 A floor plan is 3D too: the floor is seen from nearly overhead with its
 ceiling off. Drag the background to turn or tilt it (tilt it all the way
 up for a flat plan), and use **Hide dimensions** / **Show dimensions** to

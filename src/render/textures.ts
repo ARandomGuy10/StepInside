@@ -265,15 +265,24 @@ export function floorTexture(material: string | undefined): THREE.Texture | null
 }
 
 /** A soft sky: pale at the horizon, bluer overhead. */
-export function skyTexture(): THREE.Texture {
+export function skyTexture(sunElevationDeg = 40): THREE.Texture {
+  // Sky colours at the top, middle and horizon for night, dusk and day;
+  // the sun's height blends between them.
+  const night = ['#0d1530', '#1c2747', '#33405f'];
+  const dusk = ['#4a6aa0', '#e3a07a', '#f6c48a'];
+  const day = ['#8fbbe6', '#d6e6f4', '#f3efe6'];
+  const toDusk = THREE.MathUtils.smoothstep(sunElevationDeg, -8, 0);
+  const toDay = THREE.MathUtils.smoothstep(sunElevationDeg, 2, 18);
+  const stop = (i: number): string =>
+    `#${new THREE.Color(night[i]).lerp(new THREE.Color(dusk[i]), toDusk).lerp(new THREE.Color(day[i]), toDay).getHexString()}`;
   const canvas = document.createElement('canvas');
   canvas.width = 4;
   canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
   const gradient = ctx.createLinearGradient(0, 0, 0, 256);
-  gradient.addColorStop(0, '#8fbbe6');
-  gradient.addColorStop(0.55, '#d6e6f4');
-  gradient.addColorStop(1, '#f3efe6');
+  gradient.addColorStop(0, stop(0));
+  gradient.addColorStop(0.55, stop(1));
+  gradient.addColorStop(1, stop(2));
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 4, 256);
   const texture = new THREE.CanvasTexture(canvas);

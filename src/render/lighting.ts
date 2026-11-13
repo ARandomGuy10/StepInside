@@ -1,19 +1,26 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import type { Light, Scene } from '../core/scene';
+import { skyTexture } from './textures';
 
 /**
  * Lights the home: soft light from all around, a sun that casts shadows
  * through the windows, and the lamps listed in the scene file.
  * `center` and `radius` describe the area the sun's shadows must cover.
  */
+/** Lets the app move the sun, for a time of day. */
+export interface Daylight {
+  /** Puts the sun at a compass bearing and height (degrees), and sets the light and sky to match. */
+  setSun(azimuthDeg: number, elevationDeg: number): void;
+}
+
 export function addLighting(
   renderer: THREE.WebGLRenderer,
   world: THREE.Scene,
   scene: Scene,
   center: THREE.Vector3,
   radius: number,
-): void {
+): Daylight {
   // An environment map is a picture of the surroundings that every surface
   // reflects a little. It gives metal, glass and polished wood something
   // to reflect, and adds gentle light from all directions.
@@ -24,28 +31,21 @@ export function addLighting(
 
   // Fill light: stands in for daylight bouncing around the rooms. Real
   // bounced light is expensive to compute, so real-time 3D fakes it.
-  world.add(new THREE.HemisphereLight(0xfff6ea, 0xcbbfae, 0.85));
+  const fill = new THREE.HemisphereLight(0xfff6ea, 0xcbbfae, 0.85);
+  world.add(fill);
   // Two weak side lights with no shadows. They shade walls that face
   // different ways slightly differently, so corners are easy to read.
+  const sides: THREE.DirectionalLight[] = [];
   for (const [x, z, strength] of [[0.6, 0.8, 0.35], [-0.8, -0.3, 0.18]] as const) {
     const side = new THREE.DirectionalLight(0xffffff, strength);
     side.position.set(x, 0.35, z);
+    side.userData.strength = strength;
+    sides.push(side);
     world.add(side);
   }
 
   // The sun: a directional light has parallel rays, like real sunlight.
   const sun = new THREE.DirectionalLight(scene.sun.color, scene.sun.intensity);
-  // The sun's compass bearing, turned into an angle on the plan:
-  // 0 is "from the top of the page" and it grows clockwise.
-  const az = THREE.MathUtils.degToRad(scene.sun.azimuthDeg + scene.northDeg);
-  const el = THREE.MathUtils.degToRad(scene.sun.elevationDeg);
-  const towardsSun = new THREE.Vector3(
-    Math.sin(az) * Math.cos(el),
-    Math.sin(el),
-    -Math.cos(az) * Math.cos(el),
-  );
-  sun.position.copy(center).addScaledVector(towardsSun, radius * 3);
-  sun.target.position.copy(center);
 
   // Shadows are drawn from the sun's point of view into a texture (the
   // "shadow map"). These settings size that view to fit the home.
@@ -64,6 +64,43 @@ export function addLighting(
   world.add(sun);
   world.add(sun.target);
 
+  const noon = new THREE.Color(scene.sun.color);
+  const lowSun = new THREE.Color('#ff9a52');
+  const dayFill = new THREE.Color(0xfff6ea);
+  const duskFill = new THREE.Color('#e7b3a0');
+  const nightFill = new THREE.Color('#5d6a8c');
+  let skyKey = '';
+
+  function setSun(azimuthDeg: number, elevationDeg: number): void {
+    // The sun's compass bearing, turned into an angle on the plan:
+    // 0 is "from the top of the page" and it grows clockwise.
+    const az = THREE.MathUtils.degToRad(azimuthDeg + scene.northDeg);
+    // Below the horizon the light is off, so its exact height does not matter.
+    const el = THREE.MathUtils.degToRad(Math.max(2, elevationDeg));
+    const towardsSun = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el));
+    sun.position.copy(center).addScaledVector(towardsSun, radius * 3);
+    sun.target.position.copy(center);
+
+    // 0 at night, 1 in full day; the sun warms and dims as it gets low.
+    const day = THREE.MathUtils.smoothstep(elevationDeg, -6, 12);
+    const warm = 1 - THREE.MathUtils.smoothstep(elevationDeg, 2, 25);
+    sun.color.copy(noon).lerp(lowSun, warm);
+    sun.intensity = scene.sun.intensity * THREE.MathUtils.smoothstep(elevationDeg, -1, 10);
+    sun.castShadow = elevationDeg > -1;
+    fill.intensity = 0.12 + 0.73 * day;
+    fill.color.copy(nightFill).lerp(duskFill, THREE.MathUtils.smoothstep(elevationDeg, -6, 2)).lerp(dayFill, 1 - warm);
+    for (const side of sides) side.intensity = side.userData.strength * (0.25 + 0.75 * day);
+    world.environmentIntensity = 0.08 + 0.22 * day;
+
+    const key = `${Math.round(elevationDeg)}`;
+    if (key !== skyKey) {
+      skyKey = key;
+      (world.background as THREE.Texture | null)?.dispose?.();
+      world.background = skyTexture(elevationDeg);
+    }
+  }
+  setSun(scene.sun.azimuthDeg, scene.sun.elevationDeg);
+  return { setSun };
 }
 
 /** The lamps of one storey, as a group to place at that storey's height. */

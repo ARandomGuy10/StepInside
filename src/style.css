@@ -625,3 +625,79 @@ body.blocked #view {
 body.orbit-view #panel > #design:not([hidden]) {
   display: block;
 }
+
+/* The sun panel, top right. */
+#sun-bar {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(250, 248, 244, 0.92);
+  box-shadow: 0 8px 28px rgba(30, 24, 16, 0.18), 0 0 0 1px rgba(30, 24, 16, 0.06);
+  backdrop-filter: blur(10px);
+  color: #3b352e;
+  font-size: 13px;
+}
+
+#sun-bar .sun-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#sun-bar .sun-head span {
+  flex: 1;
+  opacity: 0.7;
+}
+
+#sun-bar button {
+  border: 1px solid rgba(47, 42, 37, 0.18);
+  border-radius: 8px;
+  padding: 3px 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#sun-bar input[type='date'] {
+  font: inherit;
+  padding: 4px 6px;
+  border: 1px solid rgba(47, 42, 37, 0.18);
+  border-radius: 8px;
+}
+
+#sun-bar input[type='range'] {
+  width: 100%;
+  accent-color: #c8553d;
+}
+
+#sun-bar .sun-read {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#sun-bar #sun-clock {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+#sun-bar #sun-span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+@media (max-width: 700px) {
+  #sun-bar {
+    top: auto;
+    bottom: 130px;
+    width: 200px;
+  }
+}
