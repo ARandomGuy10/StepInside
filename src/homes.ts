@@ -66,7 +66,7 @@ export const HOMES: readonly HomeEntry[] = [
       { name: 'First floor', json: villaFirst, elevation: 3.05 },
     ],
     // Must match the staircase in scripts/make-villa.py.
-    stairs: [{ lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.25 * FT, yBottom: 39.25 * FT, yTop: 26.5 * FT }],
+    stairs: [{ lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.05 * FT, yBottom: 38.25 * FT, yTop: 24.25 * FT }],
     start: { position: [16.25 * FT, 67 * FT], yawDeg: 0 },
   },
   {
@@ -74,13 +74,13 @@ export const HOMES: readonly HomeEntry[] = [
     units: 'ft',
     design: { group: 'New house', name: 'Design B: courtyard house' },
     title: 'New house',
-    about: 'The same plot as a courtyard house: one open living space between a private pool court and the garden.',
+    about: 'The same plot as a courtyard house: one open living space between a private pool court with its own shower and a bigger front garden.',
     levels: [
       { name: 'Ground floor', json: villaBGround, elevation: 0, openCeilings: ['great'] },
       { name: 'First floor', json: villaBFirst, elevation: 3.05 },
     ],
     // Must match the staircase in scripts/make-villa.py.
-    stairs: [{ lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.5 * FT, yBottom: 40.5 * FT, yTop: 26.5 * FT }],
-    start: { position: [11 * FT, 67 * FT], yawDeg: 0 },
+    stairs: [{ lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.5 * FT, yBottom: 39.25 * FT, yTop: 25.75 * FT }],
+    start: { position: [17.75 * FT, 67 * FT], yawDeg: 0 },
   },
 ];

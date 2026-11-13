@@ -29,6 +29,11 @@ export interface Defaults {
   exteriorColor?: string;
   /** `stone` draws the outside walls as stone cladding; `render` (the default) as smooth plaster. */
   exteriorMaterial?: 'stone' | 'render';
+  /**
+   * How far the roof of the top storey climbs from the front of the home
+   * to the back, in metres (a single sloping roof). Without it the roof is flat.
+   */
+  roofRise?: number;
   floorColor: string;
   ceilingColor: string;
 }
@@ -293,7 +298,7 @@ export function parseScene(input: unknown): Scene {
   }
 
   const defaults = c.object(root.defaults, 'scene.defaults', [
-    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial',
+    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial', 'roofRise',
   ]);
   if (defaults) {
     c.positive(defaults.ceilingHeight, 'scene.defaults.ceilingHeight');
@@ -302,6 +307,7 @@ export function parseScene(input: unknown): Scene {
     c.color(defaults.wallColor, 'scene.defaults.wallColor');
     c.color(defaults.floorColor, 'scene.defaults.floorColor');
     c.color(defaults.ceilingColor, 'scene.defaults.ceilingColor');
+    if (defaults.roofRise !== undefined) c.positive(defaults.roofRise, 'scene.defaults.roofRise');
     if (defaults.exteriorColor !== undefined) c.color(defaults.exteriorColor, 'scene.defaults.exteriorColor');
     if (defaults.exteriorMaterial !== undefined && defaults.exteriorMaterial !== 'stone' && defaults.exteriorMaterial !== 'render') {
       c.fail('scene.defaults.exteriorMaterial', 'must be "stone" or "render"');

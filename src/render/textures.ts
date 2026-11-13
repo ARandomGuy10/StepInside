@@ -115,21 +115,68 @@ function drawCourses(ctx: CanvasRenderingContext2D, size: number, rows: number, 
   }
 }
 
-/** Short grass blades in many shades, for a lawn. */
+/**
+ * Short grass blades in many shades, for a lawn, with the faint light and
+ * dark stripes a mower leaves (two stripes across the texture).
+ */
 function drawLawn(ctx: CanvasRenderingContext2D, size: number): void {
   const random = seeded(31);
-  ctx.fillStyle = grey(225);
-  ctx.fillRect(0, 0, size, size);
-  for (let i = 0; i < 9000; i++) {
+  ctx.fillStyle = grey(232);
+  ctx.fillRect(0, 0, size / 2, size);
+  ctx.fillStyle = grey(212);
+  ctx.fillRect(size / 2, 0, size / 2, size);
+  for (let i = 0; i < 16000; i++) {
     const x = random() * size;
     const y = random() * size;
-    const g = Math.round(185 + random() * 70);
+    const g = Math.round((x < size / 2 ? 200 : 180) + random() * 55);
     ctx.strokeStyle = `rgb(${g},${g},${g})`;
     ctx.lineWidth = 1 + random();
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(x + (random() - 0.5) * 4, y - 3 - random() * 5);
     ctx.stroke();
+  }
+}
+
+/** White and pale grey pebbles, packed tight, for a gravel bed. */
+function drawPebbles(ctx: CanvasRenderingContext2D, size: number): void {
+  const random = seeded(41);
+  ctx.fillStyle = grey(120);
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 2600; i++) {
+    const x = random() * size;
+    const y = random() * size;
+    const r = 3 + random() * 6;
+    const shade = 205 + random() * 50;
+    const flat = 0.6 + random() * 0.35;
+    const turn = random() * Math.PI;
+    for (const [dx, dy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) {
+      ctx.fillStyle = grey(shade);
+      ctx.beginPath();
+      ctx.ellipse(x + dx, y + dy, r, r * flat, turn, 0, Math.PI * 2);
+      ctx.fill();
+      // A highlight on the top left of each pebble.
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(x + dx - r * 0.25, y + dy - r * 0.25, r * 0.4, r * 0.25, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+/** Small overlapping leaves, for clipped hedges, box balls and tree crowns. */
+function drawLeaves(ctx: CanvasRenderingContext2D, size: number): void {
+  const random = seeded(53);
+  ctx.fillStyle = grey(110);
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 7000; i++) {
+    const x = random() * size;
+    const y = random() * size;
+    const r = 2.5 + random() * 3.5;
+    ctx.fillStyle = grey(150 + random() * 105);
+    ctx.beginPath();
+    ctx.ellipse(x, y, r, r * 0.5, random() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -157,7 +204,7 @@ function cached(key: string, make: () => THREE.Texture): THREE.Texture {
   return texture;
 }
 
-export type Pattern = 'planks' | 'wood' | 'tiles' | 'fabric' | 'weave' | 'stone' | 'setts' | 'lawn';
+export type Pattern = 'planks' | 'wood' | 'tiles' | 'fabric' | 'weave' | 'stone' | 'setts' | 'lawn' | 'pebbles' | 'leaves';
 
 /**
  * Returns a texture for a pattern. `repeat` is how many times it tiles
@@ -182,6 +229,10 @@ export function pattern(kind: Pattern, repeatU = 1, repeatV = repeatU): THREE.Te
         return canvasTexture(1024, (ctx, size) => drawCourses(ctx, size, 16, [0.09, 0.16], 5, 23));
       case 'lawn':
         return canvasTexture(512, (ctx, size) => drawLawn(ctx, size));
+      case 'pebbles':
+        return canvasTexture(512, (ctx, size) => drawPebbles(ctx, size));
+      case 'leaves':
+        return canvasTexture(512, (ctx, size) => drawLeaves(ctx, size));
     }
   });
   const texture = base.clone();

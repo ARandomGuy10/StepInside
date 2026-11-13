@@ -46,15 +46,15 @@ the pool is open to the sky.
 5. **Windows** are not on the plans. Every window is a guess, including
    the tall ones from the living room and lounge towards the pool.
 6. **North** is unknown. The top of the plan is treated as north.
-7. **Stairs** are one straight flight, 3.5 ft wide and 12.75 ft long,
-   against the left wall of the living room, rising towards the rear.
+7. **Stairs** are one straight flight, 3.3 ft wide and 14 ft long,
+   against the left wall of the living room, rising towards the rear into
+   a notch at the end of the lounge, with 3 ft clear at the foot.
    The plans show where the stairs are but not their size. The walkable
    rectangle is in `src/homes.ts` and must match the staircase piece.
 8. **The double-height void** has a 1.1 m guard rail towards the lounge
    and the passage, and full walls towards Bedroom 3 and its Bath.
 9. **Outside.** The boundary wall is 1.8 m high round the garden and a
-   full storey high beside the pool court. The outside walls are plain,
-   in the wall colour, with a flat roof. The ground round the plot is a
+   full storey high beside the pool court. The roof is a guess (see below). The ground round the plot is a
    flat plane; neighbours and the street are not modelled. The pool is a
    flat surface at floor level that you can walk over.
 10. **Furniture** follows the symbols on the plans, with typical sizes.
@@ -65,13 +65,17 @@ None of this is on the plans; it is a starting point to repaint and move.
 
 - Walls are off-white with one accent wall per room. Outside, both designs
   have light stone cladding (`defaults.exteriorMaterial: "stone"`), white
-  bands at each floor and a white overhanging roof; design B has white render
-  on its first floor.
+  bands at each floor and a single sloping roof (`defaults.roofRise`): low and
+  thin over the front, rising 1.5 m to the back, white underneath with a dark
+  metal top. Design B has white render on its first floor.
 - Balconies have glass balustrades with flower boxes along the edge. The
   front boundary wall is 1.2 m with stone pillars and an open timber gate;
   the side walls are 1.8 m.
-- Gardens have a terrace and path of small stone setts, a lawn, borders, a
-  tree, a bench and potted plants.
+- Gardens have stepping stones in a bed of white pebbles with dark steel
+  edging from the gate to the front door, a flagstone patio, a striped lawn,
+  clipped box balls and planted borders. Design A's garden is mostly under
+  the balcony, so it has no tree; Design B's front garden is open to the sky
+  and has one.
 - Bedrooms have an oak laminate floor, the living areas and balcony large
   tiles, the baths grey tiles and the pool court timber decking.
 - Paintings hang clear of the windows. Plants, lamps and small things on
@@ -84,8 +88,8 @@ to 2.1 m long, wardrobes 0.55 to 0.6 m deep and 2.2 m high, kitchen
 counters 0.9 m high and 0.6 m deep, dining table 0.75 m high, dining
 chairs 0.5 m wide, toilets 0.4 x 0.68 m, loungers 0.7 x 1.9 m. Doors are
 2.1 m high and 2.5 to 3.25 ft wide. The one figure on the tight side is
-the staircase: 17 steps of 18 cm rise and 23 cm going. A more comfortable
-25 cm going needs a flight about 14 ft long instead of 12.75 ft.
+the staircase: 16 risers of 19 cm with a 26 to 27 cm going, and at least
+2 ft (0.6 m) clear at each end; Design A has 3 ft at the foot.
 
 ## Design B: courtyard house
 
@@ -93,25 +97,32 @@ A second design for the same 35 x 55 ft plot, in `villa-b-ground.json` and
 `villa-b-first.json`. It is my own proposal, not taken from the plans, with
 the same list of rooms. Pick it from the dropdown at the top of the panel.
 
-The thinking:
+The thinking (revised after review: bedrooms back to the plan sizes, more
+outside space, a pool shower, and the guest door away from the sofa):
 
-- **A private pool court.** The pool (10 x 14.5 ft) moves to the rear left,
-  walled on two sides, so it cannot be seen from the street. The living
-  space and the master bedroom both open straight onto it.
+- **A private pool court.** The pool (10 x 16 ft) sits in an L-shaped
+  court at the rear left, walled on two sides, so it cannot be seen from
+  the street. A strip beside it holds two loungers, shaded by the balcony
+  above. The living space and the master bedroom both open onto it.
+- **Pool shower + WC** (5.5 x 6 ft) between the pool and the living space,
+  with a door to each: wet feet come in from the court, and it is also the
+  guests' toilet.
 - **One open living space.** Kitchen, dining and living are a single room
-  33.5 ft wide and 20.5 ft deep, with daylight from two sides: the pool
-  court behind and the garden in front.
-- **Edges for services.** Stairs, baths, wardrobe and powder room sit
-  along the walls, so the middle of the house stays open.
-- **Guest room at the front** (12.5 x 12 ft), with its own door from the
-  garden and a second door to the living space. The powder room is next to it.
-- **Master suite at the rear** (16.5 x 14 ft), entered through its
-  wardrobe, with its own bath and a door to the pool.
-- **Upstairs:** a family lounge (about 16 x 20 ft) overlooking the pool,
-  Bedroom 1 as a suite over the master, Bedrooms 2 and 3 off a small hall
-  with a shared bath, and a 12 x 12 ft terrace over the entrance that also
-  shelters the front door.
-- **Stairs** are 14 ft long here, which gives a comfortable 25 cm going.
+  33.5 x 20 ft with daylight from two sides. The sofa faces the garden.
+- **Movement.** Gate, path and front door line up; the stairs rise along
+  the left wall with room to step off at both ends; the kitchen end, the
+  guest room's inside door and the master door are away from the sitting
+  area, so nobody walks through it.
+- **Ground floor for parents.** Master bedroom 13 x 15 ft with its own
+  bath and a door to the pool, and a wardrobe in the room instead of a
+  separate dressing room.
+- **Guest room at the front** (12 x 12.5 ft) with its own door from the
+  garden, plus an inside door at the kitchen end.
+- **Upstairs:** a landing over the court, Bedroom 1 (13 x 15) with its own
+  bath and a balcony over the pool, Bedroom 2 (13.5 x 15), a family lounge
+  (14.75 x 15), Bedroom 3 (12 x 12.5) over the guest room, and a shared
+  bath. Nothing is built over the front garden, so it gets full sun.
+- **Stairs** are 13.5 ft long, 16 risers of 19 cm.
 
 Things to check with an architect before relying on it: structure
 (the first floor spans the 33.5 ft living space, so it needs beams or

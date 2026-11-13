@@ -594,11 +594,7 @@ const tree: Builder = (k, [w, h, d]) => {
   const bark = mat('#6a5038', { roughness: 0.95 });
   const trunkH = h * 0.5;
   k.cyl(r * 0.07, r * 0.11, trunkH, 0, trunkH / 2, 0, bark, 10);
-  const greens = ['#3d7a3a', '#4c8c40', '#356b35', '#5c9a48'].map((c) => {
-    const m = mat(c, { roughness: 0.85 });
-    m.flatShading = true;
-    return m;
-  });
+  const greens = ['#3d7a3a', '#4c8c40', '#356b35', '#5c9a48'].map((c) => mat(c, { roughness: 0.85, map: 'leaves', repeat: 1.5 }));
   for (let i = 0; i < 5; i++) {
     const angle = i * 1.3;
     const branch = k.cyl(r * 0.025, r * 0.05, r * 0.9, Math.cos(angle) * r * 0.28, trunkH + r * 0.25, Math.sin(angle) * r * 0.28, bark, 6);
@@ -828,7 +824,7 @@ const lounger: Builder = (k, [w, h, d], color) => {
 const stairs: Builder = (k, [w, h, d], color) => {
   const base = mat(color, { roughness: 0.75 });
   const tread = mat('#a9794e', { roughness: 0.45, map: 'wood', repeat: 1 });
-  const steps = Math.max(3, Math.round(h / 0.18));
+  const steps = Math.max(3, Math.round(h / 0.19)); // risers of about 19 cm
   const rise = h / steps;
   const going = d / steps;
   for (let i = 0; i < steps; i++) {
@@ -860,6 +856,93 @@ const stairs: Builder = (k, [w, h, d], color) => {
 };
 
 // ---- Garden and terrace pieces ----
+
+/** An irregular flat stone: a rounded outline with a wobble, lying on y = 0. */
+function flagstone(length: number, width: number, seed: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  const corners = 9;
+  for (let i = 0; i < corners; i++) {
+    const a = (i / corners) * Math.PI * 2;
+    const r = 0.82 + 0.18 * random(seed * 17 + i);
+    const x = Math.cos(a) * (length / 2) * r;
+    const y = Math.sin(a) * (width / 2) * r;
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.025, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.015, bevelSegments: 2,
+  });
+  geometry.rotateX(-Math.PI / 2);
+  return geometry;
+}
+
+/**
+ * A bed of white pebbles with a dark steel edging and flat grey stones
+ * laid in it. A narrow strip gets one line of stepping stones; a wide
+ * one gets a patio of irregular flagstones.
+ */
+const steppingPath: Builder = (k, [w, , d], color) => {
+  const edge = mat('#34373a', { roughness: 0.5, metalness: 0.4 });
+  const lip = 0.04;
+  for (const sx of [-1, 1]) k.box(lip, 0.06, d, sx * (w / 2 - lip / 2), 0.03, 0, edge);
+  for (const sz of [-1, 1]) k.box(w - 2 * lip, 0.06, lip, 0, 0.03, sz * (d / 2 - lip / 2), edge);
+  const gravel = mat('#f3f1ec', { roughness: 0.95 });
+  gravel.map = pattern('pebbles', (w - 2 * lip) / 0.7, (d - 2 * lip) / 0.7);
+  k.box(w - 2 * lip, 0.035, d - 2 * lip, 0, 0.0175, 0, gravel);
+  const stones = [0, 0.08, -0.06, 0.14].map((t) => mat(t >= 0 ? lighter(color, t) : darker(color, -t), { roughness: 0.9 }));
+  const along = d >= w; // the strip runs along z
+  const long = along ? d : w;
+  const across = along ? w : d;
+  const lay = (x: number, z: number, length: number, width: number, i: number, turn: number): void => {
+    const stone = k.add(new THREE.Mesh(flagstone(length, width, i), stones[i % 4]), x, 0.03, z);
+    stone.rotation.y = turn;
+    stone.castShadow = false;
+    stone.receiveShadow = true;
+  };
+  if (across < 1.6) {
+    // Stepping stones, one pace (about 60 cm) apart.
+    const n = Math.max(1, Math.round((long - 0.2) / 0.6));
+    const pitch = (long - 0.2) / n;
+    for (let i = 0; i < n; i++) {
+      const t = -long / 2 + 0.1 + pitch * (i + 0.5);
+      const size = Math.min(across - 0.25, 0.75) * (0.85 + 0.15 * random(i + 3));
+      const wobble = (random(i + 9) - 0.5) * 0.12;
+      if (along) lay(wobble, t, size, Math.min(pitch - 0.14, 0.48), i, (random(i) - 0.5) * 0.4);
+      else lay(t, wobble, Math.min(pitch - 0.14, 0.48), size, i, (random(i) - 0.5) * 0.4);
+    }
+    return;
+  }
+  // A patio: rows of flagstones with pebble joints.
+  const cols = Math.max(1, Math.round((w - 0.15) / 0.62));
+  const rows = Math.max(1, Math.round((d - 0.15) / 0.52));
+  const cw = (w - 0.15) / cols;
+  const rd = (d - 0.15) / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      const x = -w / 2 + 0.075 + cw * (c + 0.5) + (random(i + 7) - 0.5) * 0.05;
+      const z = -d / 2 + 0.075 + rd * (r + 0.5) + (random(i + 13) - 0.5) * 0.04;
+      lay(x, z, cw - 0.1, rd - 0.1, i, (random(i + 5) - 0.5) * 0.15);
+    }
+  }
+};
+
+/** A clipped box ball: a slightly lumpy sphere of small leaves. */
+const shrubBall: Builder = (k, [w, h, d], color) => {
+  const geometry = new THREE.IcosahedronGeometry(1, 5);
+  const p = geometry.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const bump = 1 + 0.035 * Math.sin(v.x * 9 + v.y * 4) * Math.cos(v.z * 8 - v.y * 3) + 0.02 * Math.sin(v.x * 23 + v.z * 19);
+    v.multiplyScalar(bump);
+    p.setXYZ(i, (v.x * w) / 2.12, (v.y * h) / 2.12, (v.z * d) / 2.12);
+  }
+  geometry.computeVertexNormals();
+  const ball = k.add(new THREE.Mesh(geometry, mat(color, { roughness: 0.9, map: 'leaves', repeat: 3 })), 0, h / 2, 0);
+  ball.castShadow = true;
+};
 
 /** Paving of small stone setts: a thin slab with the setts pattern, for paths and terraces. */
 const paving: Builder = (k, [w, h, d], color) => {
@@ -959,7 +1042,7 @@ const flowerBox: Builder = (k, [w, h, d], color) => {
 
 /** A clipped hedge. */
 const hedge: Builder = (k, [w, h, d], color) => {
-  const leafy = mat(color, { roughness: 0.95 });
+  const leafy = mat(color, { roughness: 0.9, map: 'leaves', repeat: 2 });
   k.box(w, h, d, 0, h / 2, 0, leafy, Math.min(w, d) * 0.3);
   const lumps = Math.round(Math.max(w, d) / 0.25);
   for (let i = 0; i < lumps; i++) {
@@ -1038,6 +1121,8 @@ const builders: Record<string, Builder> = {
   lounger,
   stairs,
   paving,
+  'stepping-path': steppingPath,
+  'shrub-ball': shrubBall,
   'planting-bed': plantingBed,
   'flower-box': flowerBox,
   hedge,

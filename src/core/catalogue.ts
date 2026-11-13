@@ -24,4 +24,5 @@ export const CATALOGUE: readonly CatalogueItem[] = [
   { key: 'vase', name: 'Vase', model: 'vase', size: [0.2, 0.5, 0.2], color: '#c7b299' },
   { key: 'table-plant', name: 'Small plant', model: 'table-plant', size: [0.25, 0.32, 0.25], color: '#e9e3d8' },
   { key: 'books', name: 'Stack of books', model: 'books', size: [0.24, 0.12, 0.17], color: '#8a3b2e' },
+  { key: 'box-ball', name: 'Box ball shrub', model: 'shrub-ball', size: [0.7, 0.65, 0.7], color: '#3f6b34' },
 ];

@@ -99,11 +99,44 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
   const center = bounds.getCenter(new THREE.Vector2());
   // Each room gets its own roof slab, so courtyards and balconies stay
   // open to the sky and the sun can reach them.
+  const rise = options.roof === false ? 0 : (scene.defaults.roofRise ?? 0);
+  // A sloping roof is one plane over the whole storey: low over the front
+  // (largest y), where it shows as a thin white edge from the street, and
+  // climbing towards the back. Every room's piece of roof lies on it, so
+  // the pieces join up. The interior keeps its flat ceilings.
+  const front = bounds.max.y;
+  const depth = Math.max(1, bounds.max.y - bounds.min.y);
+  const roofTop = (p: Vec2): number => maxHeight + 0.45 + (rise * (front - p.y)) / depth;
   for (const room of scene.rooms) {
     if (room.kind === 'balcony' || options.openCeilings?.includes(room.id)) continue;
     // Under another storey the roof is only a thin cover, for the parts
     // the floor above does not reach.
     const covered = options.roof === false;
+    if (!covered && rise > 0) {
+      const points = room.polygon.map(toVec);
+      const height = roomHeight(scene, room);
+      // White walls carry on up to the slope, over the walls' thickness...
+      const upstand = new THREE.Mesh(
+        slopedPrism(spread(points, t), () => height, (p) => roofTop(p) - 0.2),
+        sided(matte('#f4f1ea', 0.9)),
+      );
+      // ...then a white roof slab that overhangs them, with a dark metal sheet on top.
+      const slab = new THREE.Mesh(
+        slopedPrism(spread(points, t + 0.5), (p) => roofTop(p) - 0.2, roofTop),
+        sided(matte('#f1efea', 0.9)),
+      );
+      const sheet = new THREE.Mesh(
+        slopedPrism(spread(points, t + 0.44), roofTop, (p) => roofTop(p) + 0.025),
+        sided(new THREE.MeshStandardMaterial({ color: '#4a4d50', roughness: 0.55, metalness: 0.3 })),
+      );
+      for (const part of [upstand, slab, sheet]) {
+        part.name = 'roof';
+        part.castShadow = true;
+        part.receiveShadow = true;
+        group.add(part);
+      }
+      continue;
+    }
     // The top roof is a white slab that overhangs the walls.
     const outline = covered ? room.polygon.map(toVec) : spread(room.polygon.map(toVec), t + 0.45);
     const roof = new THREE.Mesh(prism(outline, covered ? 0.03 : 0.26), matte(covered ? '#d9d6d0' : '#f1efea', 0.9));
@@ -179,6 +212,45 @@ function spread(points: readonly Vec2[], by: number): Vec2[] {
   return points.map((p) => ({ x: p.x + Math.sign(p.x - mid.x) * by, y: p.y + Math.sign(p.y - mid.y) * by }));
 }
 
+function sided(material: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+  material.side = THREE.DoubleSide;
+  return material;
+}
+
+/**
+ * A solid over a plan polygon whose bottom and top heights may vary from
+ * corner to corner (for sloping roofs). Heights are linear along each edge.
+ */
+function slopedPrism(points: readonly Vec2[], bottom: (p: Vec2) => number, top: (p: Vec2) => number): THREE.BufferGeometry {
+  const contour = points.map((p) => new THREE.Vector2(p.x, p.y));
+  const faces = THREE.ShapeUtils.triangulateShape(contour, []);
+  const out: number[] = [];
+  const push = (p: Vec2, h: number): void => {
+    out.push(p.x, h, p.y);
+  };
+  for (const [a, b, c] of faces) {
+    push(points[a], top(points[a]));
+    push(points[c], top(points[c]));
+    push(points[b], top(points[b]));
+    push(points[a], bottom(points[a]));
+    push(points[b], bottom(points[b]));
+    push(points[c], bottom(points[c]));
+  }
+  points.forEach((a, i) => {
+    const b = points[(i + 1) % points.length];
+    push(a, bottom(a));
+    push(b, bottom(b));
+    push(b, top(b));
+    push(a, bottom(a));
+    push(b, top(b));
+    push(a, top(a));
+  });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 /** A flat polygon at a given height, facing up (a floor) or down (a ceiling). */
 function flatPolygon(points: readonly Vec2[], height: number, faceUp: boolean): THREE.BufferGeometry {
   const contour = points.map((p) => new THREE.Vector2(p.x, p.y));
@@ -227,21 +299,36 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
   const length = Math.hypot(dx, dy);
   const top = slab.height;
 
-  const outline = new THREE.Shape();
-  outline.moveTo(0, 0);
-  for (const hole of slab.holes) {
+  // The wall's outline, walked along its bottom edge with each door
+  // notched out. A gate that is cut through the full height of a low wall
+  // splits the wall into separate pieces, so nothing is left over it.
+  const end = length + slab.extendEnd;
+  const pieces: { shape: THREE.Shape; from: number; to: number }[] = [];
+  let shape = new THREE.Shape();
+  let from = 0;
+  shape.moveTo(0, 0);
+  const close = (to: number): void => {
+    shape.lineTo(to, 0);
+    shape.lineTo(to, top);
+    shape.lineTo(from, top);
+    shape.closePath();
+    if (to - from > 0.005) pieces.push({ shape, from, to });
+  };
+  for (const hole of [...slab.holes].sort((p, q) => p.offset - q.offset)) {
     if (hole.sill > 0.001) continue;
-    // A gate in a low railing is cut all the way to the top.
-    const cut = Math.min(hole.height, top);
-    outline.lineTo(hole.offset, 0);
-    outline.lineTo(hole.offset, cut);
-    outline.lineTo(hole.offset + hole.width, cut);
-    outline.lineTo(hole.offset + hole.width, 0);
+    if (hole.height >= top) {
+      close(hole.offset);
+      shape = new THREE.Shape();
+      from = hole.offset + hole.width;
+      shape.moveTo(from, 0);
+      continue;
+    }
+    shape.lineTo(hole.offset, 0);
+    shape.lineTo(hole.offset, hole.height);
+    shape.lineTo(hole.offset + hole.width, hole.height);
+    shape.lineTo(hole.offset + hole.width, 0);
   }
-  outline.lineTo(length + slab.extendEnd, 0);
-  outline.lineTo(length + slab.extendEnd, top);
-  outline.lineTo(0, top);
-  outline.closePath();
+  close(end);
 
   for (const hole of slab.holes) {
     if (hole.sill <= 0.001) continue;
@@ -251,10 +338,11 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     path.lineTo(hole.offset + hole.width, hole.sill + hole.height);
     path.lineTo(hole.offset, hole.sill + hole.height);
     path.closePath();
-    outline.holes.push(path);
+    const piece = pieces.find((x) => hole.offset >= x.from - 1e-6 && hole.offset + hole.width <= x.to + 1e-6);
+    piece?.shape.holes.push(path);
   }
 
-  const geometry = new THREE.ExtrudeGeometry(outline, { depth: slab.thickness, bevelEnabled: false });
+  const geometry = new THREE.ExtrudeGeometry(pieces.map((x) => x.shape), { depth: slab.thickness, bevelEnabled: false });
   geometry.translate(0, 0, -slab.thickness);
 
   const material = matte(slab.color, 0.95);
@@ -288,7 +376,7 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     const finish = matte(exteriorColor, 0.95);
     if (scene.defaults.exteriorMaterial === 'stone') finish.map = pattern('stone', 1 / 2.4);
     const skin = new THREE.Mesh(
-      new THREE.ExtrudeGeometry(outline, { depth: 0.015, bevelEnabled: false }).translate(0, 0, -slab.thickness - 0.015),
+      new THREE.ExtrudeGeometry(pieces.map((x) => x.shape), { depth: 0.015, bevelEnabled: false }).translate(0, 0, -slab.thickness - 0.015),
       finish,
     );
     skin.name = 'skin';
@@ -428,14 +516,15 @@ function addTrim(mesh: THREE.Mesh, slab: WallSlab, length: number): void {
   const doors = slab.holes.filter((h) => h.sill <= 0.001);
   let cursor = 0;
   for (const d of doors) {
-    // A gate in a low wall gets a frame no taller than the wall.
-    const door = { ...d, height: Math.min(d.height, slab.height - FRAME_BAR) };
-    const from = door.offset - FRAME_BAR;
-    const to = door.offset + door.width + FRAME_BAR;
+    const from = d.offset - FRAME_BAR;
+    const to = d.offset + d.width + FRAME_BAR;
     part(from - cursor, 0.07, (cursor + from) / 2, 0.035);
-    part(FRAME_BAR, door.height, door.offset - FRAME_BAR / 2, door.height / 2);
-    part(FRAME_BAR, door.height, door.offset + door.width + FRAME_BAR / 2, door.height / 2);
-    part(to - from, FRAME_BAR, (from + to) / 2, door.height + FRAME_BAR / 2);
+    // A gate cut through the full height of a low wall has pillars, not a frame.
+    if (d.height < slab.height) {
+      part(FRAME_BAR, d.height, d.offset - FRAME_BAR / 2, d.height / 2);
+      part(FRAME_BAR, d.height, d.offset + d.width + FRAME_BAR / 2, d.height / 2);
+      part(to - from, FRAME_BAR, (from + to) / 2, d.height + FRAME_BAR / 2);
+    }
     cursor = to;
   }
   part(length - cursor, 0.07, (cursor + length) / 2, 0.035);
