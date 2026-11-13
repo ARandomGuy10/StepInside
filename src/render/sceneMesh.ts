@@ -14,7 +14,16 @@ const FRAME_BAR = 0.05;
  * Every mesh is named after the scene element it came from, which is
  * what the paint panel will use to find out what was clicked.
  */
-export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
+export interface ShellOptions {
+  /** False for a storey with another one on top: the floor above is its roof. */
+  roof?: boolean;
+  /** True for an upper storey: its floors get an underside, seen from below. */
+  raised?: boolean;
+  /** Rooms left without a ceiling, because a void in the storey above opens them up. */
+  openCeilings?: readonly string[];
+}
+
+export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions = {}): THREE.Group {
   const group = new THREE.Group();
   group.name = 'shell';
 
@@ -24,16 +33,27 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
     const points = room.polygon.map(toVec);
     const balcony = room.kind === 'balcony';
 
-    const floor = new THREE.Mesh(flatPolygon(points, 0, true), floorMaterial(scene, room));
-    floor.name = `floor:${room.id}`;
-    floor.receiveShadow = true;
-    group.add(floor);
+    if (room.kind !== 'void') {
+      const floor = new THREE.Mesh(flatPolygon(points, 0, true), floorMaterial(scene, room));
+      floor.name = `floor:${room.id}`;
+      floor.receiveShadow = true;
+      group.add(floor);
+      if (options.raised) {
+        // A thin slab under the floor, so it is solid when seen from below.
+        const under = new THREE.Mesh(prism(points, 0.04), matte(scene.defaults.ceilingColor, 1));
+        under.name = 'slab';
+        under.position.y = -0.045;
+        under.castShadow = true;
+        group.add(under);
+      }
+    }
 
     if (balcony) continue;
     const height = roomHeight(scene, room);
     maxHeight = Math.max(maxHeight, height);
     points.forEach((p) => bounds.expandByPoint(new THREE.Vector2(p.x, p.y)));
 
+    if (options.openCeilings?.includes(room.id)) continue;
     const ceiling = new THREE.Mesh(
       flatPolygon(points, height, false),
       matte(room.ceiling?.color ?? scene.defaults.ceilingColor, 1),
@@ -80,18 +100,35 @@ export function buildShell(scene: Scene, walls: WallModel): THREE.Group {
   // Each room gets its own roof slab, so courtyards and balconies stay
   // open to the sky and the sun can reach them.
   for (const room of scene.rooms) {
-    if (room.kind === 'balcony') continue;
-    const roof = new THREE.Mesh(prism(room.polygon.map(toVec), 0.2), matte('#d9d6d0', 1));
+    if (room.kind === 'balcony' || options.openCeilings?.includes(room.id)) continue;
+    // Under another storey the roof is only a thin cover, for the parts
+    // the floor above does not reach.
+    const covered = options.roof === false;
+    const roof = new THREE.Mesh(prism(room.polygon.map(toVec), covered ? 0.03 : 0.2), matte('#d9d6d0', 1));
     roof.name = 'roof';
-    roof.position.y = roomHeight(scene, room) + 0.01;
+    roof.position.y = roomHeight(scene, room) + (covered ? 0.001 : 0.01);
     roof.castShadow = true;
     group.add(roof);
   }
   const slabGeometry = new THREE.BoxGeometry(size.x + 2 * t, 0.2, size.y + 2 * t);
-  const ground = new THREE.Mesh(slabGeometry, matte('#55524d', 1));
-  ground.name = 'ground';
-  ground.position.set(center.x, -0.11, center.y);
-  group.add(ground);
+  if (!options.raised) {
+    const ground = new THREE.Mesh(slabGeometry, matte('#55524d', 1));
+    ground.name = 'ground';
+    ground.position.set(center.x, -0.11, center.y);
+    group.add(ground);
+    if (scene.site) {
+      // Open ground round the home: the street and the neighbours' side.
+      const reach = scene.site.margin;
+      const site = new THREE.Mesh(
+        new THREE.BoxGeometry(size.x + 2 * reach, 0.1, size.y + 2 * reach),
+        matte(scene.site.color, 1),
+      );
+      site.name = 'site';
+      site.position.set(center.x, -0.07, center.y);
+      site.receiveShadow = true;
+      group.add(site);
+    }
+  }
 
   return group;
 }
@@ -184,9 +221,11 @@ function buildSlab(slab: WallSlab): THREE.Mesh {
   outline.moveTo(0, 0);
   for (const hole of slab.holes) {
     if (hole.sill > 0.001) continue;
+    // A gate in a low railing is cut all the way to the top.
+    const cut = Math.min(hole.height, top);
     outline.lineTo(hole.offset, 0);
-    outline.lineTo(hole.offset, hole.height);
-    outline.lineTo(hole.offset + hole.width, hole.height);
+    outline.lineTo(hole.offset, cut);
+    outline.lineTo(hole.offset + hole.width, cut);
     outline.lineTo(hole.offset + hole.width, 0);
   }
   outline.lineTo(length + slab.extendEnd, 0);
@@ -223,7 +262,7 @@ function buildSlab(slab: WallSlab): THREE.Mesh {
   for (const hole of slab.holes) {
     if (!hole.primary) continue;
     if (hole.type === 'window') mesh.add(buildWindow(hole, slab.thickness));
-    else if (!hole.passable) mesh.add(buildClosedDoor(hole, slab.thickness));
+    else if (!hole.passable && slab.kind === 'wall') mesh.add(buildClosedDoor(hole, slab.thickness));
   }
   return mesh;
 }
@@ -242,7 +281,9 @@ function addTrim(mesh: THREE.Mesh, slab: WallSlab, length: number): void {
   };
   const doors = slab.holes.filter((h) => h.sill <= 0.001);
   let cursor = 0;
-  for (const door of doors) {
+  for (const d of doors) {
+    // A gate in a low wall gets a frame no taller than the wall.
+    const door = { ...d, height: Math.min(d.height, slab.height - FRAME_BAR) };
     const from = door.offset - FRAME_BAR;
     const to = door.offset + door.width + FRAME_BAR;
     part(from - cursor, 0.07, (cursor + from) / 2, 0.035);

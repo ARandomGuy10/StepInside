@@ -2,16 +2,59 @@ import apartment from '../scenes/home.json';
 import villaFirst from '../scenes/villa-first.json';
 import villaGround from '../scenes/villa-ground.json';
 
-/** The homes the start screen offers. Each one is a scene file in /scenes. */
+/** One storey of a home: a scene file, and how high its floor is. */
+export interface LevelEntry {
+  name: string;
+  json: unknown;
+  /** Height of this storey's floor above the ground, in metres. */
+  elevation: number;
+  /** Rooms with no ceiling, because a void in the storey above opens them up. */
+  openCeilings?: readonly string[];
+}
+
+/**
+ * A straight flight of stairs between two storeys, in plan metres. It
+ * runs along the page's y axis: you step on at `yBottom` and off at `yTop`.
+ */
+export interface StairEntry {
+  lower: number;
+  upper: number;
+  x0: number;
+  x1: number;
+  yBottom: number;
+  yTop: number;
+}
+
+/** A home the start screen offers. */
 export interface HomeEntry {
   id: string;
   title: string;
   about: string;
-  json: unknown;
+  levels: readonly LevelEntry[];
+  stairs?: readonly StairEntry[];
+  /** Where the walk begins, if not at the first storey's own start. */
+  start?: { position: [number, number]; yawDeg: number };
 }
 
+const FT = 0.3048;
+
 export const HOMES: readonly HomeEntry[] = [
-  { id: 'apartment', title: 'Apartment', about: 'The Amsterdam apartment, furnished from photos.', json: apartment },
-  { id: 'villa-ground', title: 'New house, ground floor', about: '35 × 55 ft plot: kitchen, master bedroom, dining and living, pool court, guest room and garden.', json: villaGround },
-  { id: 'villa-first', title: 'New house, first floor', about: 'Three bedrooms, sitting lounge around the double-height void, and the balcony.', json: villaFirst },
+  {
+    id: 'apartment',
+    title: 'Apartment',
+    about: 'The Amsterdam apartment, furnished from photos.',
+    levels: [{ name: 'Apartment', json: apartment, elevation: 0 }],
+  },
+  {
+    id: 'villa',
+    title: 'New house',
+    about: '35 × 55 ft plot, two floors: living and dining round a pool court, four bedrooms, garden and balcony. The walk starts at the gate.',
+    levels: [
+      { name: 'Ground floor', json: villaGround, elevation: 0, openCeilings: ['living'] },
+      { name: 'First floor', json: villaFirst, elevation: 3.05 },
+    ],
+    // Must match the staircase in scripts/make-villa.py.
+    stairs: [{ lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.25 * FT, yBottom: 39.25 * FT, yTop: 26.5 * FT }],
+    start: { position: [16.25 * FT, 67 * FT], yawDeg: 0 },
+  },
 ];

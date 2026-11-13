@@ -64,8 +64,15 @@ export function addLighting(
   world.add(sun);
   world.add(sun.target);
 
+}
+
+/** The lamps of one storey, as a group to place at that storey's height. */
+export function buildLamps(scene: Scene): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'lamps';
   const ceiling = scene.defaults.ceilingHeight;
-  for (const light of scene.lights ?? []) world.add(buildLamp(light, ceiling));
+  for (const light of scene.lights ?? []) group.add(buildLamp(light, ceiling));
+  return group;
 }
 
 /** A lamp: the light itself plus a simple fitting hanging from the ceiling. */

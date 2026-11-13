@@ -15,6 +15,8 @@ const MAX_PITCH = THREE.MathUtils.degToRad(85);
 export class FirstPersonControls {
   /** Set to false to freeze walking and looking, as in the top view. */
   enabled = true;
+  /** Height of the floor the walker stands on: a storey, or part-way up a stair. */
+  baseHeight = 0;
   private yaw = 0;
   private pitch = 0;
   private rightDrag = false;
@@ -76,7 +78,7 @@ export class FirstPersonControls {
 
   /** Puts the walker at a plan position, facing `yawDeg` (0 looks up the page). */
   teleport(x: number, y: number, yawDeg: number, pitchDeg = 0): void {
-    this.camera.position.set(x, EYE_HEIGHT, y);
+    this.camera.position.set(x, EYE_HEIGHT + this.baseHeight, y);
     this.yaw = THREE.MathUtils.degToRad(yawDeg);
     this.pitch = THREE.MathUtils.degToRad(pitchDeg);
     this.applyRotation();
@@ -104,7 +106,12 @@ export class FirstPersonControls {
       BODY_RADIUS,
       this.walls,
     );
-    this.camera.position.set(next.x, EYE_HEIGHT, next.y);
+    this.camera.position.set(next.x, EYE_HEIGHT + this.baseHeight, next.y);
+  }
+
+  /** Call after changing baseHeight while standing still. */
+  settle(): void {
+    this.camera.position.y = EYE_HEIGHT + this.baseHeight;
   }
 
   private down(...codes: string[]): boolean {

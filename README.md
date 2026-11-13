@@ -28,13 +28,26 @@ npm run preview  # serve the built site
 
 The start screen lists the homes; pick one to walk through it. **Change
 home** at the top of the panel goes back to the list. The address holds
-the choice (`?home=villa-ground`), so a home can be bookmarked.
+the choice (`?home=villa`), so a home can be bookmarked.
 
-| Home | Scene file | Notes |
+| Home | Scene files | Notes |
 | --- | --- | --- |
 | Apartment | `scenes/home.json` | `scenes/home.md` |
-| New house, ground floor | `scenes/villa-ground.json` | `scenes/villa.md` |
-| New house, first floor | `scenes/villa-first.json` | `scenes/villa.md` |
+| New house | `scenes/villa-ground.json`, `scenes/villa-first.json` | `scenes/villa.md` |
+
+A home can have several storeys. Each storey is a scene file of its own,
+and `src/homes.ts` stacks them: the height of each floor, where the
+stairs are, and where the walk starts. The new house starts outside, at
+the gate.
+
+- Walk onto the first step of the stairs and keep walking to go up or down.
+- The floor buttons at the top of the panel, or **Page Up** / **Page
+  Down**, jump straight to a floor. **Outside** goes back to the gate.
+- Furniture, paint, save and load act on the floor you are on. The top
+  view shows that floor, with the floors below it visible through any
+  opening.
+- A room of kind `void` is a hole in a floor, such as a stairwell. A
+  piece marked `fixed`, such as the staircase, can be painted but not moved.
 
 To add a home, put its scene file in `scenes/` and list it in
 `src/homes.ts`.

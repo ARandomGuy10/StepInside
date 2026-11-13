@@ -84,10 +84,15 @@ interface Edge {
   /** True when a and b are swapped relative to the scene file. */
   reversed: boolean;
   thickness: number;
+  /** A low guard instead of a wall: a balcony's edge, or an edge beside a void. */
+  railing: boolean;
   holes: Hole[];
 }
 
 const isBalcony = (room: Room): boolean => room.kind === 'balcony';
+const isVoid = (room: Room): boolean => room.kind === 'void';
+/** True when the scene file gives this edge its own wall height. */
+const hasOwnHeight = (e: Edge): boolean => e.room.walls?.some((w) => w.edge === e.index && w.height !== undefined) ?? false;
 
 /** A room's edges, all running clockwise on the page so "outward" is consistent. */
 function edgesOf(room: Room): Edge[] {
@@ -108,6 +113,7 @@ function edgesOf(room: Room): Edge[] {
       room, index, a, b, dir, reversed, length: len,
       outward: { x: dir.y, y: -dir.x },
       thickness: 0,
+      railing: false,
       holes: [],
     });
   }
@@ -134,14 +140,25 @@ export function buildWalls(scene: Scene): WallModel {
   for (const e of all) {
     const neighbours = all.filter((f) => f.room !== e.room && facingGap(e, f) !== null);
     facing.set(e, neighbours);
+    // A void leaves guarding its sides to the rooms round it. Where it
+    // reaches the outside of the home it still needs the outside wall.
+    if (isVoid(e.room) && neighbours.length > 0) continue;
     if (isBalcony(e.room)) {
+      e.railing = true;
       e.thickness = neighbours.length > 0 ? 0 : RAILING_THICKNESS;
+      continue;
+    }
+    // Beside a void, a room gets a guard rail, unless the scene file gives
+    // that edge a wall height of its own.
+    if (neighbours.some((f) => isVoid(f.room)) && !hasOwnHeight(e)) {
+      e.railing = true;
+      e.thickness = RAILING_THICKNESS;
       continue;
     }
     e.thickness = scene.defaults.exteriorWallThickness;
     for (const f of neighbours) {
       const gap = facingGap(e, f)!;
-      e.thickness = Math.min(e.thickness, isBalcony(f.room) ? gap : gap / 2);
+      e.thickness = Math.min(e.thickness, isBalcony(f.room) || isVoid(f.room) ? gap : gap / 2);
     }
   }
 
@@ -160,7 +177,9 @@ export function buildWalls(scene: Scene): WallModel {
       if (u0 < -TOLERANCE || u1 > f.length + TOLERANCE) continue;
       copies.push({ edge: f, offset: u0 });
     }
-    const passable = opening.type === 'door' && copies.length > 0;
+    // A door leads somewhere when a room is behind it. A door in a
+    // balcony's or garden's outer railing is a gate, and is open too.
+    const passable = opening.type === 'door' && (copies.length > 0 || isBalcony(e.room));
     e.holes.push(makeHole(opening, offset, true, passable));
     for (const copy of copies) {
       copy.edge.holes.push(makeHole(opening, copy.offset, false, passable));
@@ -193,13 +212,13 @@ export function buildWalls(scene: Scene): WallModel {
         slabs.push({
           roomId: e.room.id,
           edge: e.index,
-          kind: isBalcony(e.room) ? 'railing' : 'wall',
+          kind: e.railing ? 'railing' : 'wall',
           a: e.a,
           b: e.b,
           thickness: e.thickness,
-          height: wallHeight(scene, e.room, e.index),
+          height: e.railing && !isBalcony(e.room) ? scene.defaults.railingHeight : wallHeight(scene, e.room, e.index),
           extendEnd: cornerIsConvex ? next.thickness : 0,
-          color: isBalcony(e.room)
+          color: e.railing
             ? (e.room.walls?.find((w) => w.edge === e.index)?.color ?? RAILING_COLOR)
             : wallColor(scene, e.room, e.index),
           holes: [...e.holes].sort((p, q) => p.offset - q.offset),

@@ -19,16 +19,17 @@ class Home:
         self.rooms, self.openings, self.furniture, self.lights = [], [], [], []
         self.name, self.start, self.yaw = name, start, yaw
 
-    def room(self, id, name, poly, kind=None, floor=None, lamp=True):
+    def room(self, id, name, poly, kind=None, floor=None, lamp=True, walls=None):
         if len(poly) == 4 and not isinstance(poly[0], (list, tuple)):
             x0, y0, x1, y1 = poly
             poly = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
         r = {"id": id, "name": name, "polygon": [[m(x), m(y)] for x, y in poly]}
         if kind: r["kind"] = kind
         if floor: r["floor"] = floor
+        if walls: r["walls"] = walls
         self.rooms.append(r)
         r["_ft"] = poly
-        if lamp and kind != "balcony":
+        if lamp and kind not in ("balcony", "void"):
             xs, ys = [p[0] for p in poly], [p[1] for p in poly]
             self.lights.append({"id": f"lamp-{id}", "position": [m((min(xs) + max(xs)) / 2), m((min(ys) + max(ys)) / 2)],
                                 "height": 2.85, "color": "#ffe3bd", "intensity": 7, "style": "spot"})
@@ -55,10 +56,10 @@ class Home:
     def door(self, id, room, p, q): self.opening(id, "door", room, p, q)
     def window(self, id, room, p, q, height=1.4, sill=0.9): self.opening(id, "window", room, p, q, height, sill)
 
-    def put(self, id, name, model, room, x, y, rot, size, color):
+    def put(self, id, name, model, room, x, y, rot, size, color, **extra):
         """x, y in feet; size is [width, height, depth] in metres."""
         self.furniture.append({"id": id, "name": name, "model": model, "room": room,
-                               "position": [m(x), m(y)], "rotationDeg": rot, "size": size, "color": color})
+                               "position": [m(x), m(y)], "rotationDeg": rot, "size": size, "color": color, **extra})
 
     def write(self, path):
         for r in self.rooms: r.pop("_ft")
@@ -68,6 +69,7 @@ class Home:
             "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": m(EXT), "railingHeight": 1.1,
                          "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee"},
             "start": {"position": [m(self.start[0]), m(self.start[1])], "yawDeg": self.yaw},
+            **({"site": self.site} if getattr(self, "site", None) else {}),
             "rooms": self.rooms, "openings": self.openings, "lights": self.lights, "furniture": self.furniture,
         }
         # One room, opening, light or piece per line, like scenes/home.json.
@@ -85,6 +87,7 @@ class Home:
         with open(path, "w") as f: f.write("\n".join(lines) + "\n")
 
 
+BOUNDARY = "#e4dfd5"   # boundary walls of the plot
 TILE = {"material": "tile", "color": "#e6e2da"}
 BATH = {"material": "tile", "color": "#cfd8dc"}
 DECK = {"material": "decking", "color": "#9a7352"}
@@ -99,16 +102,24 @@ SPLIT = L + 18                                      # right side of the dining/l
 
 # ---------------------------------------------------------------- ground floor
 g = Home("New house, ground floor", (15.5, 39), 0)
+g.site = {"margin": 30, "color": "#9aa08f"}
 g.room("kitchen", "Kitchen", (L, T, L + 12, ROW1), floor=TILE)
 g.room("master", "Master bedroom", (L + 12.5, T, L + 25.5, ROW1))
 g.room("bath", "Bath", (L + 26, T, R, T + 9), floor=BATH)
 g.room("wardrobe", "Wardrobe", (L + 26, T + 9.5, R, ROW1))
-g.room("living", "Dining + Living", (L, MID0, SPLIT, MID1), floor=TILE)
-g.room("pool-court", "Pool court", (SPLIT + INT, MID0, R, MID0 + 18.5), kind="balcony", floor=DECK)
+g.room("living", "Dining + Living", (L, MID0, SPLIT, MID1), floor=TILE, lamp=False)
+# The living half is double height, so its lamps hang under the lounge above the dining table.
+for i, x in enumerate((6, 12)):
+    g.lights.append({"id": f"lamp-dining-{i+1}", "position": [m(x), m(21)], "height": 2.85, "color": "#ffe3bd", "intensity": 7, "style": "spot"})
+# The court's outer side is the plot's boundary wall, a full storey high.
+g.room("pool-court", "Pool court", (SPLIT + INT, MID0, R, MID0 + 18.5), kind="balcony", floor=DECK,
+       walls=[{"edge": 1, "height": 3.0, "color": BOUNDARY}])
 g.room("toilet", "Toilet", (SPLIT + INT, MID0 + 19, SPLIT + 9, MID1), floor=BATH)
 g.room("pool-shower", "Pool shower", (SPLIT + 9.5, MID0 + 19, R, MID1), floor=BATH)
 g.room("guest", "Guest room", (L, ROW3, L + 12, B))
-g.room("garden", "Garden", (L + 12.5, ROW3, L + 32.5, B), kind="balcony", floor=GRASS)
+# The garden's outer sides are the boundary wall, with the gate in the front.
+g.room("garden", "Garden", (L + 12.5, ROW3, L + 32.5, B), kind="balcony", floor=GRASS,
+       walls=[{"edge": 1, "height": 1.8, "color": BOUNDARY}, {"edge": 2, "height": 1.8, "color": BOUNDARY}])
 
 g.door("door-kitchen", "kitchen", (7, ROW1), (10, ROW1))
 g.door("door-master", "master", (14, ROW1), (17, ROW1))
@@ -119,6 +130,7 @@ g.door("door-toilet", "living", (SPLIT, 36.5), (SPLIT, 39))
 g.door("door-pool-shower", "pool-shower", (31, MID0 + 19), (33.5, MID0 + 19))
 g.door("door-guest", "living", (8.5, MID1), (11.25, MID1))
 g.door("door-main", "living", (14, MID1), (17.25, MID1))
+g.door("gate", "garden", (14.25, B), (18.25, B))
 g.door("door-guest-garden", "guest", (L + 12, 43), (L + 12, 45.75))
 g.window("win-kitchen", "kitchen", (4, T), (9.5, T), 1.1, 1.1)
 g.window("win-kitchen-side", "kitchen", (L, 6), (L, 10), 1.1, 1.1)
@@ -151,7 +163,9 @@ g.put("sofa", "Sofa", "sofa", "living", 7.6, 31.5, 90, [2.4, 0.8, 0.95], FABRIC)
 g.put("armchair", "Armchair", "armchair", "living", 10.5, 26.7, 180, [0.85, 0.8, 0.85], GREEN)
 g.put("coffee-table", "Coffee table", "coffee-table", "living", 11.6, 31.5, 90, [1.1, 0.42, 0.6], DARK)
 g.put("tv-unit", "TV unit", "tv-unit", "living", 17.9, 31.2, 270, [1.8, 0.55, 0.42], WOOD)
-g.put("stairs", "Staircase", "stairs", "living", 2.5, 36.9, 0, [1.0, 3.0, 2.55], "#c9c2b6")
+# The flight starts near the guest room wall and climbs towards the rear.
+# src/homes.ts holds the same rectangle, for walking up it.
+g.put("stairs", "Staircase", "stairs", "living", 2.5, (39.25 + 26.5) / 2, 0, [m(3.4), 3.05, m(12.7)], "#c9c2b6", fixed=True)
 g.put("toilet-wc", "Toilet", "toilet", "toilet", 22.5, 36.4, 180, [0.4, 0.78, 0.68], WHITE)
 g.put("toilet-basin", "Basin", "basin", "toilet", 25.6, 36.1, 180, [0.6, 0.85, 0.48], WOOD)
 g.put("pool-shower-tray", "Shower", "shower", "pool-shower", 31.25, 39.2, 0, [1.1, 2.0, 1.1], "#cfe0e2")
@@ -161,7 +175,7 @@ g.put("lounger-2", "Sun lounger", "lounger", "pool-court", 32.8, 29.6, 0, [0.7, 
 g.put("guest-bed", "Guest bed", "bed", "guest", 4.6, 47.6, 90, [1.6, 0.9, 2.0], GREEN)
 g.put("guest-table", "Bedside table", "side-table", "guest", 1.8, 43.3, 0, [0.45, 0.5, 0.45], WOOD)
 g.put("guest-wardrobe", "Wardrobe", "wardrobe", "guest", 11.7, 50, 270, [1.2, 2.2, 0.55], "#e9e6df")
-for i, (x, y) in enumerate(((19, 47.8), (24, 51), (29.5, 47.4))):
+for i, (x, y) in enumerate(((22, 45.5), (24.5, 51), (30, 47.4))):
     g.put(f"tree-{i+1}", "Garden tree", "floor-plant", "garden", x, y, 0, [1.3, 2.6, 1.3], "#8a6243")
 
 # ----------------------------------------------------------------- first floor
@@ -173,12 +187,18 @@ f.room("dressing", "Dressing", (L + 28, T + 10.5, R, ROW1))
 # The lounge wraps round the double-height void: the stairs come up its
 # left arm, and its right arm is the passage to bedroom 3 and the balcony.
 f.room("lounge", "Sitting lounge", [(L, MID0), (SPLIT, MID0), (SPLIT, MID1), (SPLIT - 3.5, MID1), (SPLIT - 3.5, MID0 + 10),
-                                     (L + 4, MID0 + 10), (L + 4, MID1), (L, MID1)], floor=TILE)
-f.room("void", "Double-height void", (L + 4.5, MID0 + 10.5, SPLIT - 4, MID1), kind="balcony", floor={"color": "#5a4634"})
-f.room("bath3", "Bath", (L, ROW3, L + 5.5, B), floor=BATH)
-f.room("bedroom3", "Bedroom 3", (L + 6, ROW3, SPLIT, B))
+                                     (L, MID0 + 10)], floor=TILE)
+# One hole in the floor for the stairwell and the double-height space
+# over the living room. The lounge and passage get a guard rail along it.
+# It stops a guard rail's thickness short of the lounge, so the outside wall has no slit.
+RAIL = 0.05 / FT
+f.room("void", "Double-height void", (L, MID0 + 10 + RAIL, SPLIT - 3.5 - RAIL, MID1), kind="void")
+# These two keep a full wall towards the void (a wall height of their own).
+f.room("bath3", "Bath", (L, ROW3, L + 5.5, B), floor=BATH, walls=[{"edge": 0, "height": 3.0}])
+f.room("bedroom3", "Bedroom 3", (L + 6, ROW3, SPLIT, B), walls=[{"edge": 0, "height": 3.0}])
 f.room("balcony", "Balcony", (SPLIT + INT, B - 18, R, B), kind="balcony", floor=TILE)
 
+f.door("stair-head", "lounge", (L + 0.2, MID0 + 10), (L + 3.5, MID0 + 10))
 f.door("door-bedroom2", "bedroom2", (2.5, ROW1), (5.5, ROW1))
 f.door("door-bedroom1", "bedroom1", (15.25, ROW1), (18.25, ROW1))
 f.door("door-dressing", "dressing", (L + 28, 12.25), (L + 28, 15))
@@ -214,7 +234,6 @@ f.put("lounge-rug", "Rug", "rug", "lounge", 8.5, 21.2, 0, [3.0, 0.02, 2.2], "#b8
 f.put("lounge-sofa", "Sofa", "sofa", "lounge", 9, 21.2, 270, [2.0, 0.8, 0.9], FABRIC)
 f.put("lounge-table", "Side table", "side-table", "lounge", 5.6, 21.2, 0, [0.7, 0.42, 0.7], DARK)
 f.put("lounge-armchair", "Armchair", "armchair", "lounge", 14.8, 18.6, 180, [0.85, 0.8, 0.85], WHITE)
-f.put("stairs-down", "Staircase down", "stairs-down", "lounge", 2.75, 34, 0, [1.0, 1.0, 4.0], "#c9c2b6")
 f.put("bed3", "Bed", "bed", "bedroom3", 12.75, 50.6, 0, [1.6, 0.95, 2.0], "#5b6b84")
 f.put("bed3-unit", "TV unit", "tv-unit", "bedroom3", 7.6, 46.5, 90, [1.6, 0.55, 0.42], WOOD)
 f.put("bath3-toilet", "Toilet", "toilet", "bath3", 2.1, 42.9, 180, [0.4, 0.78, 0.68], WHITE)

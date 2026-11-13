@@ -39,8 +39,12 @@ export interface WallOverride {
 export interface Room {
   id: string;
   name: string;
-  /** A balcony has no ceiling and gets railings instead of walls. */
-  kind?: 'room' | 'balcony';
+  /**
+   * A balcony has no ceiling and gets railings instead of walls. A void is
+   * a hole in the floor, such as a stairwell or a double-height space: it
+   * has a ceiling but no floor, and the rooms round it get a guard rail.
+   */
+  kind?: 'room' | 'balcony' | 'void';
   /** The inside outline of the floor, corner by corner. */
   polygon: Point[];
   ceilingHeight?: number;
@@ -84,6 +88,8 @@ export interface Furniture {
   size: [number, number, number];
   color?: string | null;
   removed?: boolean;
+  /** Part of the building, such as a staircase: it can be painted but not moved or taken out. */
+  fixed?: boolean;
   /** "wall" pieces, such as paintings, hang on a wall instead of standing on the floor. */
   mount?: 'floor' | 'wall';
   /** Height of the bottom of the piece above the floor. Defaults to 0. */
@@ -111,6 +117,8 @@ export interface Scene {
   sun: Sun;
   defaults: Defaults;
   start?: { position: Point; yawDeg: number };
+  /** Open ground round the home, `margin` metres past the rooms on every side. */
+  site?: { margin: number; color: string };
   rooms: Room[];
   openings: Opening[];
   solids?: Solid[];
@@ -262,7 +270,7 @@ class Checker {
 export function parseScene(input: unknown): Scene {
   const c = new Checker();
   const root = c.object(input, 'scene', [
-    'schemaVersion', 'name', 'units', 'northDeg', 'sun', 'defaults', 'start',
+    'schemaVersion', 'name', 'units', 'northDeg', 'sun', 'defaults', 'start', 'site',
     'rooms', 'openings', 'solids', 'lights', 'furniture',
   ]);
   if (!root) throw new SceneError(c.issues);
@@ -302,6 +310,14 @@ export function parseScene(input: unknown): Scene {
     }
   }
 
+  if (root.site !== undefined) {
+    const site = c.object(root.site, 'scene.site', ['margin', 'color']);
+    if (site) {
+      c.number(site.margin, 'scene.site.margin', 0, 100);
+      c.color(site.color, 'scene.site.color');
+    }
+  }
+
   // Rooms
   const ids = new Set<string>();
   const shapes: { path: string; points: Vec2[] }[] = [];
@@ -316,7 +332,7 @@ export function parseScene(input: unknown): Scene {
     if (!room) return;
     c.uniqueId(room.id, `${path}.id`, ids);
     c.string(room.name, `${path}.name`);
-    if (room.kind !== undefined) c.oneOf(room.kind, `${path}.kind`, ['room', 'balcony'] as const);
+    if (room.kind !== undefined) c.oneOf(room.kind, `${path}.kind`, ['room', 'balcony', 'void'] as const);
     if (room.ceilingHeight !== undefined) c.positive(room.ceilingHeight, `${path}.ceilingHeight`);
     if (room.floor !== undefined) {
       const floor = c.object(room.floor, `${path}.floor`, ['material', 'color']);
@@ -455,7 +471,7 @@ export function parseScene(input: unknown): Scene {
   (c.array(root.furniture, 'scene.furniture') ?? []).forEach((value, i) => {
     const path = `scene.furniture[${i}]`;
     const f = c.object(value, path, [
-      'id', 'name', 'model', 'room', 'position', 'rotationDeg', 'size', 'color', 'removed', 'mount', 'elevation',
+      'id', 'name', 'model', 'room', 'position', 'rotationDeg', 'size', 'color', 'removed', 'mount', 'elevation', 'fixed',
     ]);
     if (!f) return;
     c.uniqueId(f.id, `${path}.id`, ids);
@@ -474,6 +490,7 @@ export function parseScene(input: unknown): Scene {
     if (f.color !== undefined && f.color !== null) c.color(f.color, `${path}.color`);
     if (f.mount !== undefined) c.oneOf(f.mount, `${path}.mount`, ['floor', 'wall'] as const);
     if (f.elevation !== undefined) c.number(f.elevation, `${path}.elevation`, 0, 10);
+    if (f.fixed !== undefined && typeof f.fixed !== 'boolean') c.fail(`${path}.fixed`, 'must be true or false');
     if (f.removed !== undefined && typeof f.removed !== 'boolean') {
       c.fail(`${path}.removed`, 'must be true or false');
     }

@@ -37,6 +37,7 @@ export function roomThatFits(
 ): Room | undefined {
   const corners = footprint(f);
   return scene.rooms.find((room) => {
+    if (room.kind === 'void') return false; // nothing stands in a hole in the floor
     const outline = room.polygon.map(toVec);
     if (!pointInsideOrOn(toVec(f.position), outline)) return false;
     if (!corners.every((c) => pointInsideOrOn(c, outline))) return false;
@@ -57,7 +58,7 @@ export function roomThatFits(
 
 function update(scene: Scene, id: string, change: (f: Furniture) => Furniture | null): Scene {
   const index = scene.furniture.findIndex((f) => f.id === id);
-  if (index < 0) return scene;
+  if (index < 0 || scene.furniture[index].fixed) return scene;
   const next = change(scene.furniture[index]);
   if (next === null) return scene;
   const furniture = [...scene.furniture];
@@ -79,7 +80,7 @@ export function snapToWall(
   const p = toVec(target);
   let best: { position: Point; rotationDeg: number; room: string; distance: number } | undefined;
   for (const room of scene.rooms) {
-    if (room.kind === 'balcony') continue;
+    if (room.kind === 'balcony' || room.kind === 'void') continue;
     const outline = room.polygon.map(toVec);
     const sign = signedArea(outline) > 0 ? 1 : -1;
     for (let i = 0; i < outline.length; i++) {
@@ -286,10 +287,11 @@ export function addFurniture(scene: Scene, item: CatalogueItem, near: Point, rot
 
 /** Takes out every piece in one room. */
 export function emptyRoom(scene: Scene, roomId: string): Scene {
-  if (!scene.furniture.some((f) => f.room === roomId && !f.removed)) return scene;
+  const goes = (f: Furniture): boolean => f.room === roomId && !f.removed && !f.fixed;
+  if (!scene.furniture.some(goes)) return scene;
   return {
     ...scene,
-    furniture: scene.furniture.map((f) => (f.room === roomId && !f.removed ? { ...f, removed: true } : f)),
+    furniture: scene.furniture.map((f) => (goes(f) ? { ...f, removed: true } : f)),
   };
 }
 

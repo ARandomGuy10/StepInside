@@ -153,8 +153,10 @@ export class FurniturePanel {
       ? labelOf(selected)
       : 'Click a piece to select it, then drag it along the floor.';
     name.classList.toggle('muted', !selected);
-    byId('selected-actions').hidden = !selected;
-    byId('selected-size').hidden = !selected;
+    // A fixed piece, such as a staircase, has nothing to turn or resize.
+    const movable = !!selected && !selected.fixed;
+    byId('selected-actions').hidden = !movable;
+    byId('selected-size').hidden = !movable;
     if (selected) {
       // Scene order is width, height, depth. Leave a box alone while it is typed in.
       ['size-w', 'size-h', 'size-d'].forEach((id, i) => {

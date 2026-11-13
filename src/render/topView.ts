@@ -10,10 +10,7 @@ export class TopView {
   /** Shows where the walker stands and which way they face. */
   readonly marker: THREE.Mesh;
 
-  constructor(
-    private readonly bounds: THREE.Box2,
-    private readonly hiddenInTopView: THREE.Object3D[],
-  ) {
+  constructor(private readonly bounds: THREE.Box2) {
     const center = bounds.getCenter(new THREE.Vector2());
     this.camera.position.set(center.x, 60, center.y);
     // "Up" on screen is up the page of the floor plan, which is -Z in 3D.
@@ -34,7 +31,6 @@ export class TopView {
   }
 
   setActive(active: boolean): void {
-    for (const object of this.hiddenInTopView) object.visible = !active;
     this.marker.visible = active;
   }
 
@@ -54,8 +50,8 @@ export class TopView {
     this.camera.updateProjectionMatrix();
   }
 
-  placeMarker(x: number, y: number, yaw: number): void {
-    this.marker.position.set(x, 2.9, y);
+  placeMarker(x: number, y: number, yaw: number, floor = 0): void {
+    this.marker.position.set(x, floor + 2.9, y);
     this.marker.rotation.y = yaw;
   }
 }
