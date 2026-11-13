@@ -24,6 +24,13 @@ npm run build    # type-check and build a static site into dist/
 npm run preview  # serve the built site
 ```
 
+## On the internet
+
+`.github/workflows/pages.yml` builds the site and publishes it to GitHub
+Pages on every push to `main`. Switch it on once in the repository:
+Settings > Pages > Source: **GitHub Actions**. The site is then at
+`https://<user>.github.io/StepInside/`.
+
 ## Homes
 
 The start screen lists the homes; pick one to walk through it. **Change
