@@ -13,9 +13,10 @@ export class OrbitView {
   private distance = 0;
   // The view glides towards these, so buttons and the wheel feel smooth.
   private goal = { azimuth: 0, polar: 0, distance: 0 };
+  private fit = 1;
 
   /** `bounds` is the home's outline on the plan, `height` its total height. */
-  constructor(bounds: THREE.Box2, height: number, start = { azimuth: 0.6, polar: 0.95, reach: 1.75 }) {
+  constructor(bounds: THREE.Box2, height: number, start = { azimuth: 0.45, polar: 1.0, reach: 1.25 }) {
     const center = bounds.getCenter(new THREE.Vector2());
     const size = bounds.getSize(new THREE.Vector2());
     this.target = new THREE.Vector3(center.x, height * 0.35, center.y);
@@ -60,17 +61,28 @@ export class OrbitView {
     this.place();
   }
 
-  resize(width: number, height: number): void {
+  /**
+   * Fits the picture to the window. `left` and `bottom` are strips, in
+   * pixels, covered by the panel and the view bar: the home is centred in
+   * what is left over, so the buttons do not sit on top of it.
+   */
+  resize(width: number, height: number, left = 0, bottom = 0): void {
     this.camera.aspect = width / height;
+    // A view offset slides the picture without changing its perspective.
+    this.camera.setViewOffset(width, height, -left / 2, bottom / 2, width, height);
+    // Stand further back by as much as the free area is smaller than the window.
+    this.fit = Math.max(width / Math.max(200, width - left), height / Math.max(200, height - bottom));
     this.camera.updateProjectionMatrix();
+    this.place();
   }
 
   private place(): void {
     // `polar` is the angle down from straight above; azimuth 0 looks from the front.
-    const flat = Math.sin(this.polar) * this.distance;
+    const distance = this.distance * this.fit;
+    const flat = Math.sin(this.polar) * distance;
     this.camera.position.set(
       this.target.x + Math.sin(this.azimuth) * flat,
-      this.target.y + Math.cos(this.polar) * this.distance,
+      this.target.y + Math.cos(this.polar) * distance,
       this.target.z + Math.cos(this.azimuth) * flat,
     );
     this.camera.lookAt(this.target);

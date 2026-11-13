@@ -4,17 +4,17 @@
   "units": "m",
   "northDeg": 0,
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
-  "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#7d776d"},
+  "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#e3d8c4", "exteriorMaterial": "stone"},
   "start": {"position": [3.353, 11.887], "yawDeg": 0},
   "site": {"margin": 30, "color": "#a4b48e"},
   "rooms": [
-    {"id": "pool-court", "name": "Pool court", "polygon": [[0.229, 0.229], [5.258, 0.229], [5.258, 6.325], [0.229, 6.325]], "kind": "balcony", "floor": {"material": "decking", "color": "#9a7352"}, "walls": [{"edge": 0, "height": 3.0, "color": "#cfc4b0"}, {"edge": 3, "height": 3.0, "color": "#cfc4b0"}]},
+    {"id": "pool-court", "name": "Pool court", "polygon": [[0.229, 0.229], [5.258, 0.229], [5.258, 6.325], [0.229, 6.325]], "kind": "balcony", "floor": {"material": "decking", "color": "#9a7352"}, "walls": [{"edge": 0, "height": 3.0, "color": "#ddd3c1"}, {"edge": 3, "height": 3.0, "color": "#ddd3c1"}]},
     {"id": "master", "name": "Master bedroom", "polygon": [[5.41, 0.229], [10.439, 0.229], [10.439, 4.496], [5.41, 4.496]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "color": "#3f4f4a"}]},
     {"id": "wardrobe", "name": "Wardrobe", "polygon": [[5.41, 4.648], [7.696, 4.648], [7.696, 6.325], [5.41, 6.325]], "floor": {"material": "laminate", "color": "#c3a47c"}},
     {"id": "bath", "name": "Bath", "polygon": [[7.849, 4.648], [10.439, 4.648], [10.439, 6.325], [7.849, 6.325]], "floor": {"material": "large-tile", "color": "#cfd8dc"}, "walls": [{"edge": 2, "color": "#dfe7e6"}, {"edge": 1, "color": "#dfe7e6"}]},
     {"id": "great", "name": "Living + Dining + Kitchen", "polygon": [[0.229, 6.477], [10.439, 6.477], [10.439, 10.897], [8.458, 10.897], [8.458, 12.725], [0.229, 12.725]], "floor": {"material": "large-tile", "color": "#d7d2c8"}, "walls": [{"edge": 5, "color": "#b9a892"}]},
     {"id": "powder", "name": "Powder room", "polygon": [[8.611, 11.049], [10.439, 11.049], [10.439, 12.725], [8.611, 12.725]], "floor": {"material": "large-tile", "color": "#cfd8dc"}, "walls": [{"edge": 2, "color": "#dfe7e6"}]},
-    {"id": "garden", "name": "Garden", "polygon": [[0.229, 12.878], [6.477, 12.878], [6.477, 16.535], [0.229, 16.535]], "kind": "balcony", "floor": {"color": "#6f9a4e"}, "walls": [{"edge": 3, "height": 1.8, "color": "#cfc4b0"}, {"edge": 2, "height": 1.8, "color": "#cfc4b0"}]},
+    {"id": "garden", "name": "Garden", "polygon": [[0.229, 12.878], [6.477, 12.878], [6.477, 16.535], [0.229, 16.535]], "kind": "balcony", "floor": {"material": "lawn", "color": "#7fa85a"}, "walls": [{"edge": 3, "height": 1.8, "color": "#ddd3c1"}, {"edge": 2, "height": 1.2, "color": "#ddd3c1"}]},
     {"id": "guest", "name": "Guest room", "polygon": [[6.629, 12.878], [10.439, 12.878], [10.439, 16.535], [6.629, 16.535]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 1, "color": "#9c7b62"}]}
   ],
   "openings": [
@@ -96,11 +96,14 @@
     {"id": "lounger-1", "name": "Sun lounger", "model": "lounger", "room": "pool-court", "position": [4.831, 1.311], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
     {"id": "lounger-2", "name": "Sun lounger", "model": "lounger", "room": "pool-court", "position": [3.84, 5.883], "rotationDeg": 90, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
     {"id": "pool-planter", "name": "Planter", "model": "planter", "room": "pool-court", "position": [0.533, 2.896], "rotationDeg": 0, "size": [0.4, 1.2, 3.0], "color": "#4a4844"},
-    {"id": "garden-path", "name": "Stone path", "model": "paving", "room": "garden", "position": [3.353, 14.707], "rotationDeg": 0, "size": [1.1, 0.03, 3.597], "color": "#d9d2c4"},
-    {"id": "garden-hedge", "name": "Hedge", "model": "hedge", "room": "garden", "position": [0.503, 14.707], "rotationDeg": 0, "size": [0.5, 1.2, 3.536], "color": "#3f6f3a"},
+    {"id": "garden-terrace", "name": "Stone terrace", "model": "paving", "room": "garden", "position": [3.353, 13.487], "rotationDeg": 0, "size": [6.248, 0.02, 1.219], "color": "#cfc6b6"},
+    {"id": "garden-path", "name": "Stone path", "model": "paving", "room": "garden", "position": [3.353, 15.316], "rotationDeg": 0, "size": [1.2, 0.02, 2.438], "color": "#cfc6b6"},
+    {"id": "garden-hedge", "name": "Hedge", "model": "hedge", "room": "garden", "position": [0.503, 15.088], "rotationDeg": 0, "size": [0.5, 1.2, 2.743], "color": "#3f6f3a"},
     {"id": "garden-border-1", "name": "Planted border", "model": "planting-bed", "room": "garden", "position": [1.768, 16.276], "rotationDeg": 0, "size": [1.646, 0.6, 0.45], "color": "#8b8478"},
     {"id": "garden-border-2", "name": "Planted border", "model": "planting-bed", "room": "garden", "position": [5.182, 16.276], "rotationDeg": 0, "size": [2.134, 0.6, 0.45], "color": "#8b8478"},
-    {"id": "tree-1", "name": "Garden tree", "model": "tree", "room": "garden", "position": [1.737, 14.204], "rotationDeg": 0, "size": [1.6, 3.4, 1.6], "color": "#6a5038"},
-    {"id": "garden-bench", "name": "Garden bench", "model": "bench", "room": "garden", "position": [5.182, 13.198], "rotationDeg": 180, "size": [1.5, 0.85, 0.55], "color": "#8a6243"}
+    {"id": "garden-flowers", "name": "Flower box", "model": "flower-box", "room": "garden", "position": [6.203, 15.088], "rotationDeg": 270, "size": [1.829, 0.55, 0.35], "color": "#4a4844"},
+    {"id": "tree-1", "name": "Garden tree", "model": "tree", "room": "garden", "position": [1.737, 14.813], "rotationDeg": 0, "size": [1.6, 3.4, 1.6], "color": "#6a5038"},
+    {"id": "garden-bench", "name": "Garden bench", "model": "bench", "room": "garden", "position": [5.364, 13.198], "rotationDeg": 180, "size": [1.5, 0.85, 0.55], "color": "#8a6243"},
+    {"id": "garden-pot", "name": "Rubber plant", "model": "floor-plant", "room": "garden", "position": [4.054, 13.228], "rotationDeg": 0, "size": [0.6, 1.4, 0.6], "color": "#3d3a36"}
   ]
 }

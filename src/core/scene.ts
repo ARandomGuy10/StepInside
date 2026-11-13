@@ -27,6 +27,8 @@ export interface Defaults {
   wallColor: string;
   /** Colour of the outside of the outside walls. Without it they show the room's wall colour. */
   exteriorColor?: string;
+  /** `stone` draws the outside walls as stone cladding; `render` (the default) as smooth plaster. */
+  exteriorMaterial?: 'stone' | 'render';
   floorColor: string;
   ceilingColor: string;
 }
@@ -291,7 +293,7 @@ export function parseScene(input: unknown): Scene {
   }
 
   const defaults = c.object(root.defaults, 'scene.defaults', [
-    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor',
+    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial',
   ]);
   if (defaults) {
     c.positive(defaults.ceilingHeight, 'scene.defaults.ceilingHeight');
@@ -301,6 +303,9 @@ export function parseScene(input: unknown): Scene {
     c.color(defaults.floorColor, 'scene.defaults.floorColor');
     c.color(defaults.ceilingColor, 'scene.defaults.ceilingColor');
     if (defaults.exteriorColor !== undefined) c.color(defaults.exteriorColor, 'scene.defaults.exteriorColor');
+    if (defaults.exteriorMaterial !== undefined && defaults.exteriorMaterial !== 'stone' && defaults.exteriorMaterial !== 'render') {
+      c.fail('scene.defaults.exteriorMaterial', 'must be "stone" or "render"');
+    }
   }
   const defaultHeight =
     defaults && typeof defaults.ceilingHeight === 'number' ? defaults.ceilingHeight : NaN;

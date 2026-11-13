@@ -887,8 +887,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     topView.resize(w, h, PANEL_WIDTH);
-    orbit.resize(w, h);
-    plan.resize(w, h);
+    // Keep the home clear of the view bar, and in a plan of the panel too.
+    orbit.resize(w, h, 0, 130);
+    plan.resize(w, h, PANEL_WIDTH, 130);
   }
   window.addEventListener('resize', resize);
   resize();

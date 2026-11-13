@@ -88,7 +88,7 @@ class Home:
             "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
             "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": m(EXT), "railingHeight": 1.1,
                          "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee",
-                         "exteriorColor": self.exterior},
+                         "exteriorColor": self.exterior, "exteriorMaterial": getattr(self, "finish", "render")},
             "start": {"position": [m(self.start[0]), m(self.start[1])], "yawDeg": self.yaw},
             **({"site": self.site} if getattr(self, "site", None) else {}),
             "rooms": self.rooms, "openings": self.openings, "lights": self.lights, "furniture": self.furniture,
@@ -108,12 +108,12 @@ class Home:
         with open(path, "w") as f: f.write("\n".join(lines) + "\n")
 
 
-BOUNDARY = "#cfc4b0"   # boundary walls of the plot
+BOUNDARY = "#ddd3c1"   # boundary walls of the plot
 TILE = {"material": "large-tile", "color": "#e6e2da"}
 BATH = {"material": "large-tile", "color": "#cfd8dc"}
 DECK = {"material": "decking", "color": "#9a7352"}
 OAK = {"material": "laminate", "color": "#c3a47c"}
-GRASS = {"color": "#6f9a4e"}
+GRASS = {"material": "lawn", "color": "#7fa85a"}
 WOOD, DARK, WHITE, FABRIC, GREEN = "#8a6243", "#3a2a22", "#f4f2ee", "#d9d3c6", "#7d8a74"
 
 L, R, T, B = EXT, 35 - EXT, EXT, 55 - EXT          # inside faces of the outside walls
@@ -125,7 +125,8 @@ SPLIT = L + 18                                      # right side of the dining/l
 # ---------------------------------------------------------------- ground floor
 g = Home("New house, ground floor", (15.5, 39), 0)
 g.site = {"margin": 30, "color": "#a4b48e"}
-g.exterior = "#cdb797"   # warm sand render on the ground storey
+g.exterior = "#e6dcc8"   # light beige stone cladding
+g.finish = "stone"
 g.room("kitchen", "Kitchen", (L, T, L + 12, ROW1), floor=TILE)
 g.room("master", "Master bedroom", (L + 12.5, T, L + 25.5, ROW1), floor=OAK)
 g.room("bath", "Bath", (L + 26, T, R, T + 9), floor=BATH)
@@ -142,7 +143,7 @@ g.room("pool-shower", "Pool shower", (SPLIT + 9.5, MID0 + 19, R, MID1), floor=BA
 g.room("guest", "Guest room", (L, ROW3, L + 12, B), floor=OAK)
 # The garden's outer sides are the boundary wall, with the gate in the front.
 g.room("garden", "Garden", (L + 12.5, ROW3, L + 32.5, B), kind="balcony", floor=GRASS,
-       walls=[{"edge": 1, "height": 1.8, "color": BOUNDARY}, {"edge": 2, "height": 1.8, "color": BOUNDARY}])
+       walls=[{"edge": 1, "height": 1.8, "color": BOUNDARY}, {"edge": 2, "height": 1.2, "color": BOUNDARY}])
 
 # Paint: a calm off-white throughout, with one accent wall per room.
 g.paint("kitchen", top="#5f7464", left="#5f7464")
@@ -222,18 +223,23 @@ g.put("table-lamp-master-1", "Table lamp", "table-lamp", "master", 15.6, 2, 0, [
 g.put("table-lamp-master-2", "Table lamp", "table-lamp", "master", 23.9, 2, 0, [0.28, 0.5, 0.28], "#d9d2c3", elevation=0.5)
 g.put("table-lamp-guest", "Table lamp", "table-lamp", "guest", 1.8, 43.3, 0, [0.28, 0.5, 0.28], "#d9d2c3", elevation=0.5)
 g.put("rug-master", "Rug", "rug", "master", 19.75, 9.5, 0, [2.4, 0.02, 1.4], "#c9bfae")
-# The garden: a stone path from the gate to the door, a lawn, planted
-# borders along the walls, one tree and a bench against the house.
-g.put("garden-path", "Stone path", "paving", "garden", 16.2, 48, 0, [1.1, 0.03, m(12.2)], "#d9d2c4")
-g.put("garden-border-side", "Planted border", "planting-bed", "garden", 32.35, 48, 0, [0.5, 0.75, m(11.6)], "#8b8478")
-g.put("garden-border-front", "Planted border", "planting-bed", "garden", 25, 53.4, 0, [m(11.5), 0.6, 0.45], "#8b8478")
-g.put("tree-1", "Garden tree", "tree", "garden", 27, 47.6, 0, [1.6, 3.4, 1.6], "#6a5038")
+# The garden: a terrace of small stone setts along the house, a setts path
+# from the gate, a lawn with a tree, and planted borders along the walls.
+g.put("garden-terrace", "Stone terrace", "paving", "garden", 23.25, 44.25, 0, [m(20), 0.02, m(4)], "#cfc6b6")
+g.put("garden-path", "Stone path", "paving", "garden", 16.25, 50.25, 0, [1.2, 0.02, m(8)], "#cfc6b6")
+g.put("garden-border-side", "Planted border", "planting-bed", "garden", 32.35, 49.5, 0, [0.5, 0.75, m(9)], "#8b8478")
+g.put("garden-border-front", "Planted border", "planting-bed", "garden", 25.25, 53.4, 0, [m(12), 0.6, 0.45], "#8b8478")
+g.put("garden-flowers", "Flower box", "flower-box", "garden", 13.9, 51.5, 90, [m(5), 0.55, 0.35], "#4a4844")
+g.put("tree-1", "Garden tree", "tree", "garden", 27, 49, 0, [1.6, 3.4, 1.6], "#6a5038")
 g.put("garden-bench", "Garden bench", "bench", "garden", 23.5, 42.75, 180, [1.5, 0.85, 0.55], "#8a6243")
+g.put("garden-pot-1", "Rubber plant", "floor-plant", "garden", 19.2, 43.2, 0, [0.6, 1.4, 0.6], "#3d3a36")
+g.put("garden-pot-2", "Rubber plant", "floor-plant", "garden", 31.6, 43.3, 0, [0.6, 1.2, 0.6], "#3d3a36")
 g.put("pool-planter", "Planter", "planter", "pool-court", 28, 17.05, 0, [1.8, 1.1, 0.4], "#4a4844")
 
 # ----------------------------------------------------------------- first floor
 f = Home("New house, first floor", (10, 21), 180)
-f.exterior = "#f2ede4"   # white render on the first storey
+f.exterior = "#efe7d8"   # the same stone, a shade lighter, above
+f.finish = "stone"
 f.room("bedroom2", "Bedroom 2", (L, T, L + 13.5, ROW1), floor=OAK)
 f.room("bedroom1", "Bedroom 1", (L + 14, T, L + 27.5, ROW1), floor=OAK)
 f.room("bath1", "Bath", (L + 28, T, R, T + 10), floor=BATH)
@@ -304,13 +310,15 @@ f.put("bath3-shower", "Shower", "shower", "bath3", 3.5, 51.6, 0, [1.2, 2.0, 1.2]
 f.put("balcony-table", "Round table", "round-table", "balcony", 26.5, 40.5, 0, [1.1, 0.75, 1.1], "#5a3324")
 for i, (x, y) in enumerate(((26.5, 38.2), (28.8, 40.5), (26.5, 42.8), (24.2, 40.5))):
     f.put(f"balcony-chair-{i+1}", "Chair", "dining-chair", "balcony", x, y, (180, 270, 0, 90)[i], [0.5, 0.9, 0.5], "#7a4a35")
-f.put("balcony-pergola", "Pergola", "pergola", "balcony", 27, 49.5, 0, [3.4, 2.4, 2.6], "#8a6243")
-f.put("balcony-rug", "Outdoor rug", "rug", "balcony", 27, 50, 0, [3.0, 0.02, 2.2], "#b9b4a8")
-f.put("balcony-sofa", "Outdoor sofa", "sofa", "balcony", 27, 52.6, 0, [2.2, 0.75, 0.9], "#c9c2b4")
-f.put("balcony-armchair-1", "Outdoor armchair", "armchair", "balcony", 22.9, 49.3, 90, [0.8, 0.75, 0.8], "#c9c2b4")
-f.put("balcony-armchair-2", "Outdoor armchair", "armchair", "balcony", 31.1, 49.3, 270, [0.8, 0.75, 0.8], "#c9c2b4")
-f.put("balcony-coffee", "Coffee table", "coffee-table", "balcony", 27, 49.3, 0, [1.1, 0.4, 0.6], "#3a2a22")
-f.put("balcony-planter-1", "Planter", "planter", "balcony", 33.55, 41, 0, [0.4, 1.1, 2.0], "#4a4844")
+f.put("balcony-pergola", "Pergola", "pergola", "balcony", 27, 48, 0, [3.4, 2.4, 2.6], "#8a6243")
+f.put("balcony-rug", "Outdoor rug", "rug", "balcony", 27, 48.5, 0, [3.0, 0.02, 2.2], "#b9b4a8")
+f.put("balcony-sofa", "Outdoor sofa", "sofa", "balcony", 27, 51.1, 0, [2.2, 0.75, 0.9], "#c9c2b4")
+f.put("balcony-armchair-1", "Outdoor armchair", "armchair", "balcony", 22.9, 47.8, 90, [0.8, 0.75, 0.8], "#c9c2b4")
+f.put("balcony-armchair-2", "Outdoor armchair", "armchair", "balcony", 31.1, 47.8, 270, [0.8, 0.75, 0.8], "#c9c2b4")
+f.put("balcony-coffee", "Coffee table", "coffee-table", "balcony", 27, 47.8, 0, [1.1, 0.4, 0.6], "#3a2a22")
+for i, x in enumerate((23.0, 30.5)):
+    f.put(f"balcony-flowers-front-{i+1}", "Flower box", "flower-box", "balcony", x, B - 0.62, 0, [2.2, 0.6, 0.35], "#f2efe9")
+f.put("balcony-flowers-side", "Flower box", "flower-box", "balcony", R - 0.62, 43, 270, [2.4, 0.6, 0.35], "#f2efe9")
 f.put("balcony-planter-2", "Planter", "planter", "balcony", 19.95, 41.9, 0, [0.4, 1.1, 0.75], "#4a4844")
 f.hang("art-bed2", "Painting", "painting-1", "bedroom2", "left", 5, 1.3, [1.2, 0.8, 0.04], "#2b2520")
 f.hang("art-bed1", "Painting", "painting-3", "bedroom1", "right", 6, 1.3, [0.8, 0.8, 0.04], "#f2f0ea")
@@ -346,7 +354,8 @@ DARK_TILE = {"material": "large-tile", "color": "#d7d2c8"}
 
 h = Home("Courtyard house, ground floor", (11, 39), 0)
 h.site = {"margin": 30, "color": "#a4b48e"}
-h.exterior = "#7d776d"    # dark taupe render below
+h.exterior = "#e3d8c4"    # beige stone cladding below
+h.finish = "stone"
 h.room("pool-court", "Pool court", (L, T, PX, 20.75), kind="balcony", floor=DECK,
        walls=[{"edge": 0, "height": 3.0, "color": BOUNDARY}, {"edge": 3, "height": 3.0, "color": BOUNDARY}])
 h.room("master", "Master bedroom", (SX, T, R, 14.75), floor=OAK)
@@ -358,7 +367,7 @@ for i, (x, y) in enumerate(((13, 26), (27.5, 27), (20, 38), (9, 34))):
     h.lights.append({"id": f"lamp-great-{i+1}", "position": [m(x), m(y)], "height": 2.85, "color": "#ffe3bd", "intensity": 7, "style": "spot"})
 h.room("powder", "Powder room", (28.25, 36.25, R, GY1), floor=BATH)
 h.room("garden", "Garden", (L, FY, GX, B), kind="balcony", floor=GRASS,
-       walls=[{"edge": 3, "height": 1.8, "color": BOUNDARY}, {"edge": 2, "height": 1.8, "color": BOUNDARY}])
+       walls=[{"edge": 3, "height": 1.8, "color": BOUNDARY}, {"edge": 2, "height": 1.2, "color": BOUNDARY}])
 h.room("guest", "Guest room", (GX + INT, FY, R, B), floor=OAK)
 h.paint("master", top="#3f4f4a")
 h.paint("guest", right="#9c7b62")
@@ -430,15 +439,18 @@ h.put("pool", "Swimming pool", "pool", "pool-court", 9, 9.5, 0, [m(10), 0.06, m(
 h.put("lounger-1", "Sun lounger", "lounger", "pool-court", 15.85, 4.3, 0, [0.7, 0.4, 1.9], WHITE)
 h.put("lounger-2", "Sun lounger", "lounger", "pool-court", 12.6, 19.3, 90, [0.7, 0.4, 1.9], WHITE)
 h.put("pool-planter", "Planter", "planter", "pool-court", 1.75, 9.5, 0, [0.4, 1.2, 3.0], "#4a4844")
-h.put("garden-path", "Stone path", "paving", "garden", 11, 48.25, 0, [1.1, 0.03, m(11.8)], "#d9d2c4")
-h.put("garden-hedge", "Hedge", "hedge", "garden", 1.65, 48.25, 0, [0.5, 1.2, m(11.6)], "#3f6f3a")
+h.put("garden-terrace", "Stone terrace", "paving", "garden", 11, 44.25, 0, [m(20.5), 0.02, m(4)], "#cfc6b6")
+h.put("garden-path", "Stone path", "paving", "garden", 11, 50.25, 0, [1.2, 0.02, m(8)], "#cfc6b6")
+h.put("garden-hedge", "Hedge", "hedge", "garden", 1.65, 49.5, 0, [0.5, 1.2, m(9)], "#3f6f3a")
 h.put("garden-border-1", "Planted border", "planting-bed", "garden", 5.8, 53.4, 0, [m(5.4), 0.6, 0.45], "#8b8478")
 h.put("garden-border-2", "Planted border", "planting-bed", "garden", 17, 53.4, 0, [m(7), 0.6, 0.45], "#8b8478")
-h.put("tree-1", "Garden tree", "tree", "garden", 5.7, 46.6, 0, [1.6, 3.4, 1.6], "#6a5038")
-h.put("garden-bench", "Garden bench", "bench", "garden", 17, 43.3, 180, [1.5, 0.85, 0.55], "#8a6243")
+h.put("garden-flowers", "Flower box", "flower-box", "garden", 20.35, 49.5, 270, [m(6), 0.55, 0.35], "#4a4844")
+h.put("tree-1", "Garden tree", "tree", "garden", 5.7, 48.6, 0, [1.6, 3.4, 1.6], "#6a5038")
+h.put("garden-bench", "Garden bench", "bench", "garden", 17.6, 43.3, 180, [1.5, 0.85, 0.55], "#8a6243")
+h.put("garden-pot", "Rubber plant", "floor-plant", "garden", 13.3, 43.4, 0, [0.6, 1.4, 0.6], "#3d3a36")
 
 k = Home("Courtyard house, first floor", (12, 30), 0)
-k.exterior = "#f1eee8"    # white render above
+k.exterior = "#f4f1ea"    # white render above
 k.room("bedroom1", "Bedroom 1", (SX, T, R, 14.75), floor=OAK)
 k.room("dressing", "Dressing", (SX, 15.25, 25.25, 20.75), floor=OAK)
 k.room("bath1", "Bath", (25.75, 15.25, R, 20.75), floor=BATH)
@@ -508,13 +520,14 @@ k.put("bed3", "Bed", "bed", "bedroom3", 30.95, 49.6, 270, [1.6, 0.95, 2.0], "#5b
 k.put("bed3-table-1", "Bedside table", "side-table", "bedroom3", 33.4, 46, 0, [0.45, 0.5, 0.45], WOOD)
 k.put("bed3-table-2", "Bedside table", "side-table", "bedroom3", 33.4, 53.2, 0, [0.45, 0.5, 0.45], WOOD)
 k.put("bed3-wardrobe", "Wardrobe", "wardrobe", "bedroom3", 30, 43.4, 180, [1.5, 2.2, 0.6], "#e9e6df")
-k.put("terrace-pergola", "Pergola", "pergola", "balcony", 15.25, 50, 0, [3.2, 2.4, 2.4], "#8a6243")
-k.put("terrace-rug", "Outdoor rug", "rug", "balcony", 15.25, 50, 0, [2.8, 0.02, 2.0], "#b9b4a8")
-k.put("terrace-sofa", "Outdoor sofa", "sofa", "balcony", 15.25, 52.6, 0, [2.0, 0.75, 0.9], "#c9c2b4")
-k.put("terrace-armchair-1", "Outdoor armchair", "armchair", "balcony", 12.3, 49.4, 90, [0.8, 0.75, 0.8], "#c9c2b4")
-k.put("terrace-armchair-2", "Outdoor armchair", "armchair", "balcony", 18.3, 49.4, 270, [0.8, 0.75, 0.8], "#c9c2b4")
-k.put("terrace-coffee", "Coffee table", "coffee-table", "balcony", 15.25, 49.5, 0, [1.1, 0.4, 0.6], "#3a2a22")
-k.put("terrace-planter-1", "Planter", "planter", "balcony", 9.95, 48.2, 0, [0.4, 1.1, 2.4], "#4a4844")
+k.put("terrace-pergola", "Pergola", "pergola", "balcony", 15.25, 48.5, 0, [3.2, 2.4, 2.4], "#8a6243")
+k.put("terrace-rug", "Outdoor rug", "rug", "balcony", 15.25, 48.5, 0, [2.8, 0.02, 2.0], "#b9b4a8")
+k.put("terrace-sofa", "Outdoor sofa", "sofa", "balcony", 15.25, 51.1, 0, [2.0, 0.75, 0.9], "#c9c2b4")
+k.put("terrace-armchair-1", "Outdoor armchair", "armchair", "balcony", 12.3, 47.9, 90, [0.8, 0.75, 0.8], "#c9c2b4")
+k.put("terrace-armchair-2", "Outdoor armchair", "armchair", "balcony", 18.3, 47.9, 270, [0.8, 0.75, 0.8], "#c9c2b4")
+k.put("terrace-coffee", "Coffee table", "coffee-table", "balcony", 15.25, 48, 0, [1.1, 0.4, 0.6], "#3a2a22")
+k.put("terrace-flowers-front", "Flower box", "flower-box", "balcony", 15.25, B - 0.62, 0, [3.2, 0.6, 0.35], "#f2efe9")
+k.put("terrace-flowers-side", "Flower box", "flower-box", "balcony", 9.25 + 0.62, 47.5, 90, [2.4, 0.6, 0.35], "#f2efe9")
 k.put("terrace-planter-2", "Planter", "planter", "balcony", 15.25, 43.1, 0, [1.6, 1.0, 0.4], "#4a4844") if False else None
 
 here = os.path.dirname(os.path.abspath(__file__))

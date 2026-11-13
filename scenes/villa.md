@@ -63,9 +63,15 @@ the pool is open to the sky.
 
 None of this is on the plans; it is a starting point to repaint and move.
 
-- Walls are off-white with one accent wall per room. The outside is sand
-  coloured render on the ground storey and white above
-  (`defaults.exteriorColor` in each scene file).
+- Walls are off-white with one accent wall per room. Outside, both designs
+  have light stone cladding (`defaults.exteriorMaterial: "stone"`), white
+  bands at each floor and a white overhanging roof; design B has white render
+  on its first floor.
+- Balconies have glass balustrades with flower boxes along the edge. The
+  front boundary wall is 1.2 m with stone pillars and an open timber gate;
+  the side walls are 1.8 m.
+- Gardens have a terrace and path of small stone setts, a lawn, borders, a
+  tree, a bench and potted plants.
 - Bedrooms have an oak laminate floor, the living areas and balcony large
   tiles, the baths grey tiles and the pool court timber decking.
 - Paintings hang clear of the windows. Plants, lamps and small things on

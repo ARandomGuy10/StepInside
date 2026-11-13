@@ -86,6 +86,53 @@ function drawTiles(ctx: CanvasRenderingContext2D, size: number, count: number): 
   }
 }
 
+/**
+ * Stones laid in courses, like cladding or small paving setts: `rows`
+ * courses across the canvas, each stone between `length[0]` and
+ * `length[1]` of the canvas long, with grout lines `gap` pixels wide.
+ */
+function drawCourses(ctx: CanvasRenderingContext2D, size: number, rows: number, length: [number, number], gap: number, seed: number): void {
+  const random = seeded(seed);
+  const row = size / rows;
+  ctx.fillStyle = grey(150);
+  ctx.fillRect(0, 0, size, size);
+  for (let r = 0; r < rows; r++) {
+    // Each course starts at a random point and wraps round, so the pattern tiles.
+    let x = -random() * size * length[1];
+    const start = x;
+    while (x < size + start) {
+      const w = size * (length[0] + random() * (length[1] - length[0]));
+      const shade = 222 + random() * 30;
+      for (const dx of [0, size]) {
+        ctx.fillStyle = grey(shade);
+        ctx.fillRect(x + dx + gap / 2, r * row + gap / 2, w - gap, row - gap);
+        // A faint grain across each stone.
+        ctx.fillStyle = `rgba(0,0,0,${0.03 + random() * 0.04})`;
+        ctx.fillRect(x + dx + gap / 2, r * row + row * (0.3 + random() * 0.4), w - gap, 1 + random() * 2);
+      }
+      x += w;
+    }
+  }
+}
+
+/** Short grass blades in many shades, for a lawn. */
+function drawLawn(ctx: CanvasRenderingContext2D, size: number): void {
+  const random = seeded(31);
+  ctx.fillStyle = grey(225);
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 9000; i++) {
+    const x = random() * size;
+    const y = random() * size;
+    const g = Math.round(185 + random() * 70);
+    ctx.strokeStyle = `rgb(${g},${g},${g})`;
+    ctx.lineWidth = 1 + random();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (random() - 0.5) * 4, y - 3 - random() * 5);
+    ctx.stroke();
+  }
+}
+
 /** Fine speckle, for fabric and woven rugs. */
 function drawWeave(ctx: CanvasRenderingContext2D, size: number, contrast: number): void {
   const random = seeded(11);
@@ -110,7 +157,7 @@ function cached(key: string, make: () => THREE.Texture): THREE.Texture {
   return texture;
 }
 
-export type Pattern = 'planks' | 'wood' | 'tiles' | 'fabric' | 'weave';
+export type Pattern = 'planks' | 'wood' | 'tiles' | 'fabric' | 'weave' | 'stone' | 'setts' | 'lawn';
 
 /**
  * Returns a texture for a pattern. `repeat` is how many times it tiles
@@ -129,6 +176,12 @@ export function pattern(kind: Pattern, repeatU = 1, repeatV = repeatU): THREE.Te
         return canvasTexture(256, (ctx, size) => drawWeave(ctx, size, 14));
       case 'weave':
         return canvasTexture(256, (ctx, size) => drawWeave(ctx, size, 44));
+      case 'stone':
+        return canvasTexture(1024, (ctx, size) => drawCourses(ctx, size, 8, [0.25, 0.5], 3, 17));
+      case 'setts':
+        return canvasTexture(1024, (ctx, size) => drawCourses(ctx, size, 16, [0.09, 0.16], 5, 23));
+      case 'lawn':
+        return canvasTexture(512, (ctx, size) => drawLawn(ctx, size));
     }
   });
   const texture = base.clone();
@@ -147,6 +200,11 @@ export function floorTexture(material: string | undefined): THREE.Texture | null
       return pattern('planks', 1 / 1.2);
     case 'tile':
       return pattern('tiles', 1 / 1.2);
+    case 'lawn':
+      return pattern('lawn', 1 / 1.5);
+    case 'setts':
+      // The setts pattern spans 1.6 m: courses 10 cm deep.
+      return pattern('setts', 1 / 1.6);
     case 'large-tile':
       // Four tiles across the pattern, so each tile is 80 cm.
       return pattern('tiles', 1 / 3.2);

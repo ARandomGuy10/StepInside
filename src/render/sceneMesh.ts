@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { roomHeight, toVec, wallColor, type Room, type Scene } from '../core/scene';
 import type { Vec2 } from '../core/collision';
 import type { Hole, WallModel, WallSlab } from '../core/walls';
-import { floorTexture } from './textures';
+import { floorTexture, pattern } from './textures';
 
 const FRAME_COLOR = 0xfafafa;
 const FRONT_DOOR_COLOR = 0x3f5f85;
@@ -62,7 +62,7 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     group.add(ceiling);
   }
 
-  for (const slab of walls.slabs) group.add(buildSlab(slab, scene.defaults.exteriorColor));
+  for (const slab of walls.slabs) group.add(buildSlab(slab, scene, !!options.raised));
 
   // The floor carries on through each doorway, in the colour of the room
   // the door was declared on.
@@ -104,9 +104,9 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     // Under another storey the roof is only a thin cover, for the parts
     // the floor above does not reach.
     const covered = options.roof === false;
-    // The top roof is a dark slab that sticks out a little past the walls.
-    const outline = covered ? room.polygon.map(toVec) : spread(room.polygon.map(toVec), t + 0.25);
-    const roof = new THREE.Mesh(prism(outline, covered ? 0.03 : 0.22), matte(covered ? '#d9d6d0' : '#5f6368', 0.9));
+    // The top roof is a white slab that overhangs the walls.
+    const outline = covered ? room.polygon.map(toVec) : spread(room.polygon.map(toVec), t + 0.45);
+    const roof = new THREE.Mesh(prism(outline, covered ? 0.03 : 0.26), matte(covered ? '#d9d6d0' : '#f1efea', 0.9));
     roof.name = 'roof';
     roof.position.y = roomHeight(scene, room) + (covered ? 0.001 : 0.01);
     roof.castShadow = true;
@@ -220,7 +220,8 @@ function prism(points: readonly Vec2[], height: number): THREE.BufferGeometry {
  * thickness. In the wall's local space, X runs along the wall, Y is up
  * and Z points into the room, so the thickness sits at negative Z.
  */
-function buildSlab(slab: WallSlab, exteriorColor?: string): THREE.Mesh {
+function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
+  const exteriorColor = scene.defaults.exteriorColor;
   const dx = slab.b.x - slab.a.x;
   const dy = slab.b.y - slab.a.y;
   const length = Math.hypot(dx, dy);
@@ -256,26 +257,51 @@ function buildSlab(slab: WallSlab, exteriorColor?: string): THREE.Mesh {
   const geometry = new THREE.ExtrudeGeometry(outline, { depth: slab.thickness, bevelEnabled: false });
   geometry.translate(0, 0, -slab.thickness);
 
-  const mesh = new THREE.Mesh(geometry, matte(slab.color, 0.95));
+  const material = matte(slab.color, 0.95);
+  if (slab.glass) {
+    // A glass balustrade: the slab itself is the pane.
+    material.color.set('#cfe2e6');
+    material.roughness = 0.05;
+    material.transparent = true;
+    material.opacity = 0.22;
+    material.depthWrite = false;
+  } else if (slab.boundary) {
+    material.map = pattern('stone', 1 / 2.4);
+  }
+  const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `${slab.kind}:${slab.roomId}:${slab.edge}`;
   const along = new THREE.Vector3(dx / length, 0, dy / length);
   const up = new THREE.Vector3(0, 1, 0);
   const inward = new THREE.Vector3().crossVectors(along, up);
   mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(along, up, inward));
   mesh.position.set(slab.a.x, 0, slab.a.y);
-  mesh.castShadow = true;
+  mesh.castShadow = !slab.glass;
   mesh.receiveShadow = true;
 
-  if (slab.outside && exteriorColor) {
-    // The outside of an outside wall is a thin skin in the render colour.
+  const doors = slab.holes.filter((h) => h.sill <= 0.001);
+  const full = length + slab.extendEnd;
+  if (slab.glass) addGlassFittings(mesh, slab, full, doors, raised && slab.outside);
+  if (slab.boundary) addBoundaryFittings(mesh, slab, full, doors);
+
+  if (slab.kind === 'wall' && slab.outside && exteriorColor) {
+    // The outside of an outside wall is a thin skin: stone cladding or render.
+    const finish = matte(exteriorColor, 0.95);
+    if (scene.defaults.exteriorMaterial === 'stone') finish.map = pattern('stone', 1 / 2.4);
     const skin = new THREE.Mesh(
       new THREE.ExtrudeGeometry(outline, { depth: 0.015, bevelEnabled: false }).translate(0, 0, -slab.thickness - 0.015),
-      matte(exteriorColor, 0.95),
+      finish,
     );
     skin.name = 'skin';
     skin.castShadow = true;
     skin.receiveShadow = true;
     mesh.add(skin);
+    // A white band where the floor above (or the roof) meets the wall, standing proud of it.
+    const band = new THREE.Mesh(new THREE.BoxGeometry(full + 0.4, 0.32, 0.2), matte('#f6f4ef', 0.85));
+    band.name = 'band';
+    band.position.set(full / 2, top + 0.04, -slab.thickness - 0.1);
+    band.castShadow = true;
+    band.receiveShadow = true;
+    mesh.add(band);
   }
   if (slab.kind === 'wall') addTrim(mesh, slab, length);
 
@@ -285,6 +311,106 @@ function buildSlab(slab: WallSlab, exteriorColor?: string): THREE.Mesh {
     else if (!hole.passable && slab.kind === 'wall') mesh.add(buildClosedDoor(hole, slab.thickness));
   }
   return mesh;
+}
+
+/** The stretches of a wall between its doorways, as [from, to] along the wall. */
+function between(length: number, doors: readonly Hole[]): [number, number][] {
+  const parts: [number, number][] = [];
+  let cursor = 0;
+  for (const door of [...doors].sort((p, q) => p.offset - q.offset)) {
+    if (door.offset - cursor > 0.02) parts.push([cursor, door.offset]);
+    cursor = Math.max(cursor, door.offset + door.width);
+  }
+  if (length - cursor > 0.02) parts.push([cursor, length]);
+  return parts;
+}
+
+/** Steel handrail and base shoe for a glass balustrade, and a white slab edge under a raised balcony. */
+function addGlassFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, doors: readonly Hole[], edge: boolean): void {
+  const steel = new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.3, metalness: 0.9 });
+  for (const [from, to] of between(length, doors)) {
+    for (const [h, y] of [[0.04, slab.height - 0.02], [0.06, 0.03]] as const) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(to - from, h, slab.thickness + 0.03), steel);
+      bar.name = 'trim';
+      bar.position.set((from + to) / 2, y, -slab.thickness / 2);
+      bar.castShadow = true;
+      mesh.add(bar);
+    }
+  }
+  if (edge) {
+    const fascia = new THREE.Mesh(new THREE.BoxGeometry(length + 0.5, 0.36, 0.25), matte('#f6f4ef', 0.85));
+    fascia.name = 'band';
+    fascia.position.set(length / 2, -0.15, -slab.thickness - 0.1);
+    fascia.castShadow = true;
+    fascia.receiveShadow = true;
+    mesh.add(fascia);
+  }
+}
+
+/** A white coping on a boundary wall, and a timber gate between grey posts in each gateway. */
+function addBoundaryFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, doors: readonly Hole[]): void {
+  const white = matte('#f6f4ef', 0.85);
+  for (const [from, to] of between(length, doors)) {
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(to - from, 0.05, slab.thickness + 0.06), white);
+    cap.name = 'trim';
+    cap.position.set((from + to) / 2, slab.height + 0.025, -slab.thickness / 2);
+    cap.castShadow = true;
+    mesh.add(cap);
+  }
+  const post = matte('#9c9a96', 0.8);
+  for (const door of doors) {
+    if (!door.primary || !door.passable) continue;
+    const height = Math.max(1.5, slab.height + 0.25);
+    for (const x of [door.offset - 0.15, door.offset + door.width + 0.15]) {
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.3, height, slab.thickness + 0.14), post);
+      pillar.name = 'trim';
+      pillar.position.set(x, height / 2, -slab.thickness / 2);
+      pillar.castShadow = true;
+      mesh.add(pillar);
+    }
+    // Two leaves, swung open into the garden so the way in stays clear.
+    const leafWidth = door.width / 2 - 0.02;
+    for (const side of [1, -1]) {
+      const leaf = buildGateLeaf(leafWidth, Math.max(1.4, slab.height), side);
+      leaf.position.set(side === 1 ? door.offset + 0.01 : door.offset + door.width - 0.01, 0.05, -slab.thickness / 2);
+      leaf.rotation.y = -side * 1.25;
+      mesh.add(leaf);
+    }
+  }
+}
+
+/**
+ * One leaf of a timber gate: horizontal slats in a dark steel frame with a
+ * half-circle of steel rings on its free edge, so a closed pair shows a circle.
+ * It runs from its hinge at x = 0 towards +x (side 1) or -x (side -1).
+ */
+function buildGateLeaf(width: number, height: number, side: number): THREE.Group {
+  const leaf = new THREE.Group();
+  leaf.name = 'gate';
+  const wood = new THREE.MeshStandardMaterial({ color: 0xa8784b, roughness: 0.55 });
+  wood.map = pattern('wood', 1);
+  const steel = new THREE.MeshStandardMaterial({ color: 0x3b3b3d, roughness: 0.45, metalness: 0.6 });
+  const part = (w: number, h: number, d: number, x: number, y: number, material: THREE.Material): void => {
+    const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+    box.position.set(side * x, y, 0);
+    box.castShadow = true;
+    leaf.add(box);
+  };
+  const slats = Math.round((height - 0.1) / 0.14);
+  for (let i = 0; i < slats; i++) part(width - 0.08, 0.12, 0.03, width / 2, 0.08 + i * ((height - 0.1) / slats) + 0.06, wood);
+  part(width, 0.04, 0.05, width / 2, 0.02, steel);
+  part(width, 0.04, 0.05, width / 2, height - 0.02, steel);
+  part(0.04, height, 0.05, 0.02, height / 2, steel);
+  part(0.04, height, 0.05, width - 0.02, height / 2, steel);
+  for (let i = 0; i < 3; i++) {
+    const r = height * 0.32 - i * 0.07;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.012, 6, 32, Math.PI), steel);
+    // A half ring, its open side on the leaf's free edge.
+    ring.rotation.z = side === 1 ? Math.PI / 2 : -Math.PI / 2;
+    ring.position.set(side * width, height / 2, 0.03);
+    leaf.add(ring);
+  }
+  return leaf;
 }
 
 /** Skirting boards along the foot of a wall and a frame around each doorway. */

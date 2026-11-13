@@ -861,18 +861,11 @@ const stairs: Builder = (k, [w, h, d], color) => {
 
 // ---- Garden and terrace pieces ----
 
-/** Stepping stones: big flat slabs laid in a row along the longer side, with gaps. */
+/** Paving of small stone setts: a thin slab with the setts pattern, for paths and terraces. */
 const paving: Builder = (k, [w, h, d], color) => {
-  const stone = mat(color, { roughness: 0.9 });
-  const alongZ = d >= w;
-  const length = alongZ ? d : w;
-  const n = Math.max(1, Math.round(length / 0.75));
-  const pitch = length / n;
-  for (let i = 0; i < n; i++) {
-    const at = -length / 2 + pitch * (i + 0.5);
-    if (alongZ) k.box(w, h, pitch - 0.08, 0, h / 2, at, stone, 0.004);
-    else k.box(pitch - 0.08, h, d, at, h / 2, 0, stone, 0.004);
-  }
+  const stone = mat(color, { roughness: 0.85 });
+  stone.map = pattern('setts', w / 1.6, d / 1.6);
+  k.box(w, Math.max(0.01, h), d, 0, Math.max(0.01, h) / 2, 0, stone);
 };
 
 /** A planting bed: an edged strip of soil filled with shrubs, grasses and flowers. */
@@ -916,6 +909,50 @@ const plantingBed: Builder = (k, [w, h, d], color) => {
         const rr = size * (0.3 + 0.6 * random(j + i * 5));
         k.ball(0.028, x + Math.cos(a) * rr, 0.1 + size * 1.05 + 0.02 * random(j), z + Math.sin(a) * rr, blooms[(i + j) % 4]);
       }
+    }
+  }
+};
+
+/**
+ * A long, low flower box for a balcony or terrace edge: flowering
+ * mounds on top and trailing plants spilling over its back (+z), which
+ * faces the edge, so they hang down the front of the house.
+ */
+const flowerBox: Builder = (k, [w, h, d], color) => {
+  const boxH = Math.min(0.32, h * 0.5);
+  k.box(w, boxH, d, 0, boxH / 2, 0, mat(color, { roughness: 0.6 }), 0.01);
+  k.box(w - 0.05, 0.02, d - 0.05, 0, boxH - 0.005, 0, mat('#3a2c20', { roughness: 1 }));
+  const greens = ['#3d7a3a', '#5a9450', '#2f6335'].map((c) => mat(c, { roughness: 0.85 }));
+  const blooms = ['#f2a7b6', '#ffffff', '#f6c8a0', '#e46c7c', '#f7e3ef'].map((c) => mat(c, { roughness: 0.7 }));
+  const vine = leafMat('#4e8a44');
+  const top = h - boxH;
+  const mounds = Math.max(2, Math.round(w / 0.28));
+  for (let i = 0; i < mounds; i++) {
+    const x = -w / 2 + (w * (i + 0.5)) / mounds;
+    const size = Math.min(d * 0.55, top * 0.75) * (0.8 + 0.4 * random(i));
+    const mound = k.add(new THREE.Mesh(new THREE.IcosahedronGeometry(size, 2), greens[i % 3]), x, boxH + size * 0.45, (random(i + 4) - 0.5) * d * 0.3);
+    mound.scale.y = 0.75;
+    mound.castShadow = true;
+    for (let j = 0; j < 7; j++) {
+      const a = j * 2.4 + i;
+      const rr = size * (0.25 + 0.65 * random(i * 7 + j));
+      k.ball(0.03, x + Math.cos(a) * rr, boxH + size * (0.65 + 0.2 * random(j)), mound.position.z + Math.sin(a) * rr * 0.8, blooms[(i + j) % 5]);
+    }
+  }
+  // Trailing stems over the back edge, each a string of small leaves.
+  const stems = Math.max(2, Math.round(w / 0.16));
+  for (let i = 0; i < stems; i++) {
+    const x = -w / 2 + (w * (i + 0.5)) / stems + (random(i + 40) - 0.5) * 0.06;
+    const drop = 0.45 + 0.75 * random(i + 50);
+    const leaves = Math.round(drop / 0.09);
+    for (let j = 0; j < leaves; j++) {
+      const t = j / leaves;
+      const leaf = new THREE.Mesh(leafGeometry(0.09, 0.05, 0.2), vine);
+      leaf.position.set(x + Math.sin(j * 1.7 + i) * 0.03, boxH - t * drop, d / 2 + 0.05 + 0.06 * Math.sin(t * Math.PI));
+      leaf.rotation.order = 'YXZ';
+      leaf.rotation.set(0.6 + random(i * 11 + j) * 0.8, j * 2.4, 0);
+      k.group.add(leaf);
+      if (j % 4 === 2) k.ball(0.022, leaf.position.x, leaf.position.y, leaf.position.z + 0.02, blooms[(i + j) % 5]);
     }
   }
 };
@@ -1002,6 +1039,7 @@ const builders: Record<string, Builder> = {
   stairs,
   paving,
   'planting-bed': plantingBed,
+  'flower-box': flowerBox,
   hedge,
   planter,
   bench,
