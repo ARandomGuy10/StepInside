@@ -21,6 +21,9 @@ export class FirstPersonControls {
   private pitch = 0;
   private rightDrag = false;
   private readonly keys = new Set<string>();
+  /** Movement from the on-screen stick on a phone: forward and sideways, each -1..1. */
+  private stick = { forward: 0, strafe: 0 };
+  private touchLook: { id: number; x: number; y: number } | null = null;
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
@@ -51,6 +54,25 @@ export class FirstPersonControls {
       this.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, this.pitch));
       this.applyRotation();
     });
+    // On a touch screen a finger dragged across the view looks around.
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' && !this.touchLook) this.touchLook = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      const t = this.touchLook;
+      if (!t || t.id !== e.pointerId || !this.enabled || document.body.classList.contains('dragging')) return;
+      this.yaw += (e.clientX - t.x) * 0.005;
+      this.pitch += (e.clientY - t.y) * 0.005;
+      this.pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, this.pitch));
+      t.x = e.clientX;
+      t.y = e.clientY;
+      this.applyRotation();
+    });
+    const endTouch = (e: PointerEvent): void => {
+      if (this.touchLook?.id === e.pointerId) this.touchLook = null;
+    };
+    canvas.addEventListener('pointerup', endTouch);
+    canvas.addEventListener('pointercancel', endTouch);
     window.addEventListener('keydown', (e) => {
       if (!e.metaKey && !e.ctrlKey) this.keys.add(e.code);
     });
@@ -62,9 +84,29 @@ export class FirstPersonControls {
     return document.pointerLockElement === this.canvas;
   }
 
-  /** Hides the cursor and starts mouse look. Must be called from a click. */
+  /**
+   * Hides the cursor and starts mouse look. Must be called from a click.
+   * Phones and iPads have no pointer lock; there a finger drag looks around.
+   */
   lock(): void {
-    if (!this.locked) void this.canvas.requestPointerLock();
+    if (this.locked || typeof this.canvas.requestPointerLock !== 'function') return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+    try {
+      const result = this.canvas.requestPointerLock() as unknown;
+      if (result instanceof Promise) result.catch(() => {});
+    } catch {
+      // Some browsers refuse outside a user gesture; mouse look just stays off.
+    }
+  }
+
+  /** Lets the mouse go again, where the browser supports locking it. */
+  unlock(): void {
+    if (typeof document.exitPointerLock === 'function' && document.pointerLockElement) document.exitPointerLock();
+  }
+
+  /** Sets the on-screen stick's push: forward and sideways, each from -1 to 1. */
+  setStick(forward: number, strafe: number): void {
+    this.stick = { forward, strafe };
   }
 
   /** Where the walker stands on the plan, and the way they face in radians. */
@@ -87,12 +129,16 @@ export class FirstPersonControls {
   /** Call once per frame with the time since the last frame, in seconds. */
   update(dt: number): void {
     if (!this.enabled) return;
-    const forward = Number(this.down('KeyW', 'ArrowUp')) - Number(this.down('KeyS', 'ArrowDown'));
-    const strafe = Number(this.down('KeyD', 'ArrowRight')) - Number(this.down('KeyA', 'ArrowLeft'));
-    if (forward === 0 && strafe === 0) return;
+    const keyForward = Number(this.down('KeyW', 'ArrowUp')) - Number(this.down('KeyS', 'ArrowDown'));
+    const keyStrafe = Number(this.down('KeyD', 'ArrowRight')) - Number(this.down('KeyA', 'ArrowLeft'));
+    const forward = keyForward || this.stick.forward;
+    const strafe = keyStrafe || this.stick.strafe;
+    const push = Math.min(1, Math.hypot(forward, strafe));
+    if (push < 0.05) return;
 
     const speed = this.down('ShiftLeft', 'ShiftRight') ? FAST_SPEED : WALK_SPEED;
-    const scale = (speed * dt) / Math.hypot(forward, strafe);
+    // Keys walk at full speed; the stick walks slower the less it is pushed.
+    const scale = (speed * dt * push) / Math.hypot(forward, strafe);
     // At yaw 0 the camera looks along -Z, which is "up the page" on the plan.
     const sin = Math.sin(this.yaw);
     const cos = Math.cos(this.yaw);

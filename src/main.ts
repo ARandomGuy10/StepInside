@@ -385,7 +385,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   function setTopView(on: boolean): void {
     inTopView = on;
     inOrbit = false;
-    if (on) document.exitPointerLock();
+    if (on) controls.unlock();
     controls.enabled = !on;
     topView.setActive(on);
     showLevels();
@@ -399,7 +399,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   function setOrbit(): void {
     setTopView(false);
     inOrbit = true;
-    document.exitPointerLock();
+    controls.unlock();
     controls.enabled = false;
     selectedId = null;
     paintTarget = null;
@@ -878,6 +878,87 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
   });
 
+  // ---- Touch screens: pinch to zoom, a stick to walk, a panel that folds away ----
+
+  const touches = new Map<number, { x: number; y: number }>();
+  let pinch = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!touches.has(e.pointerId)) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size !== 2 || (!inOrbit && !inTopView)) return;
+    const [a, b] = [...touches.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch > 0) turnable().zoom(pinch / d);
+    pinch = d;
+    turning = null; // two fingers zoom; they do not also turn
+  });
+  const lift = (e: PointerEvent): void => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch = 0;
+  };
+  canvas.addEventListener('pointerup', lift);
+  canvas.addEventListener('pointercancel', lift);
+
+  if (window.matchMedia('(pointer: coarse)').matches) {
+    document.body.classList.add('touch');
+    const pad = document.createElement('div');
+    pad.id = 'walk-pad';
+    pad.innerHTML = '<div class="knob"></div>';
+    pad.title = 'Push to walk';
+    document.body.append(pad);
+    const knob = pad.firstElementChild as HTMLElement;
+    let held: number | null = null;
+    const push = (e: PointerEvent): void => {
+      const r = pad.getBoundingClientRect();
+      const reach = r.width / 2;
+      let dx = (e.clientX - (r.left + reach)) / reach;
+      let dy = (e.clientY - (r.top + reach)) / reach;
+      const len = Math.hypot(dx, dy);
+      if (len > 1) {
+        dx /= len;
+        dy /= len;
+      }
+      knob.style.transform = `translate(${dx * reach * 0.6}px, ${dy * reach * 0.6}px)`;
+      controls.setStick(-dy, dx);
+    };
+    pad.addEventListener('pointerdown', (e) => {
+      held = e.pointerId;
+      try {
+        pad.setPointerCapture(e.pointerId);
+      } catch {
+        // Not every browser can capture a touch; the stick still works while the finger stays on it.
+      }
+      document.body.classList.add('hint-gone');
+      push(e);
+    });
+    pad.addEventListener('pointermove', (e) => {
+      if (e.pointerId === held) push(e);
+    });
+    const release = (e: PointerEvent): void => {
+      if (e.pointerId !== held) return;
+      held = null;
+      knob.style.transform = '';
+      controls.setStick(0, 0);
+    };
+    pad.addEventListener('pointerup', release);
+    pad.addEventListener('pointercancel', release);
+  }
+
+  // On a phone the editing tools fold away under a "More" button.
+  const more = document.createElement('button');
+  more.id = 'panel-more';
+  more.type = 'button';
+  const showMore = (open: boolean): void => {
+    document.body.classList.toggle('panel-open', open);
+    more.textContent = open ? 'Less ▴' : 'Edit ▾';
+  };
+  more.addEventListener('click', () => showMore(!document.body.classList.contains('panel-open')));
+  showMore(false);
+  document.getElementById('home-bar')!.append(more);
+
   // ---- Sizing and the render loop ----
 
   function resize(): void {
@@ -886,10 +967,15 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     composer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    topView.resize(w, h, PANEL_WIDTH);
+    // On a phone the panel sits across the top, so nothing moves aside for it,
+    // and the sun panel joins the view bar at the bottom.
+    const phone = w <= 700;
+    const side = phone ? 0 : PANEL_WIDTH;
+    const bottom = phone ? 210 : 130;
+    topView.resize(w, h, side);
     // Keep the home clear of the view bar, and in a plan of the panel too.
-    orbit.resize(w, h, 0, 130);
-    plan.resize(w, h, PANEL_WIDTH, 130);
+    orbit.resize(w, h, 0, bottom);
+    plan.resize(w, h, side, bottom);
   }
   window.addEventListener('resize', resize);
   resize();

@@ -626,6 +626,18 @@ body.orbit-view #panel > #design:not([hidden]) {
   display: block;
 }
 
+#view {
+  touch-action: none; /* fingers turn and zoom the view, not the page */
+}
+
+#panel-more {
+  display: none;
+}
+
+#walk-pad {
+  display: none;
+}
+
 /* The sun panel, top right. */
 #sun-bar {
   position: fixed;
@@ -694,10 +706,138 @@ body.orbit-view #panel > #design:not([hidden]) {
   opacity: 0.7;
 }
 
+/* ---- Phones ---- */
 @media (max-width: 700px) {
+  #panel {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    bottom: auto;
+    width: auto;
+    max-height: 55vh;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  #panel-more {
+    display: inline-block;
+    margin-left: auto;
+  }
+
+  /* Open, the panel scrolls instead of squeezing its sections. */
+  #panel > *,
+  #panel .pane > * {
+    flex-shrink: 0;
+  }
+
+  #panel .pane {
+    flex: none;
+  }
+
+  body.touch.panel-open:not(.orbit-view):not(.top-view) #walk-pad {
+    display: none;
+  }
+
+  /* Folded: just the home, the design and the floors. */
+  body:not(.panel-open) #panel > :not(#home-bar):not(#design):not(#levels) {
+    display: none;
+  }
+
+  body.orbit-view #panel-more {
+    display: none;
+  }
+
+  #view-bar,
+  body.orbit-view #view-bar {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    transform: none;
+  }
+
+  #views,
+  #orbit-tools {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  #view-bar button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
   #sun-bar {
     top: auto;
-    bottom: 130px;
-    width: 200px;
+    left: 8px;
+    right: 8px;
+    bottom: 66px;
+    width: auto;
+    padding: 8px 12px;
+    gap: 4px;
+    font-size: 12px;
   }
+
+  body.orbit-view #sun-bar {
+    bottom: 112px;
+  }
+
+  /* A plan needs the room more than the sun does. */
+  body.top-view #sun-bar {
+    display: none;
+  }
+
+  #panel {
+    z-index: 4; /* above the room labels */
+  }
+
+  #sun-bar .sun-read {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  #sun-bar #sun-clock {
+    font-size: 15px;
+  }
+
+  #sun-bar #sun-span {
+    font-size: 11px;
+  }
+
+  #sun-bar input[type='date'] {
+    padding: 2px 6px;
+  }
+
+  #hint {
+    display: none;
+  }
+}
+
+/* The walking stick on touch screens, only while walking. */
+body.touch:not(.orbit-view):not(.top-view) #walk-pad {
+  display: block;
+  position: fixed;
+  left: 20px;
+  bottom: 220px;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: rgba(250, 248, 244, 0.35);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6), 0 6px 20px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(6px);
+  touch-action: none;
+  z-index: 6;
+}
+
+#walk-pad .knob {
+  position: absolute;
+  left: 32px;
+  top: 32px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(250, 248, 244, 0.95);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
 }
