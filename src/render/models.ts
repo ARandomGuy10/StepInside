@@ -503,20 +503,165 @@ const wallShelf: Builder = (k, [w, , d], color) => {
   k.cyl(0.035, 0.05, 0.14, 0.02, 0.1, 0, mat('#e8dcc0', { roughness: 0.35 }));
 };
 
+const random = (i: number): number => Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
+
+/**
+ * One leaf: a blade that is widest a third of the way along, folded a
+ * little along its midrib and drooping towards the tip. It lies along
+ * +z from its stalk at the origin.
+ */
+function leafGeometry(length: number, width: number, droop: number): THREE.BufferGeometry {
+  const geometry = new THREE.PlaneGeometry(1, 1, 4, 8);
+  const p = geometry.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const across = p.getX(i) * 2; // -1..1
+    const along = p.getY(i) + 0.5; // 0..1
+    const half = (width / 2) * Math.pow(Math.sin(Math.PI * Math.pow(along, 0.75)), 0.8);
+    const fold = Math.abs(across) * half * 0.35;
+    p.setXYZ(i, across * half, fold - droop * length * along * along, along * length);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+const leafMat = (color: string): THREE.MeshStandardMaterial => {
+  const m = mat(color, { roughness: 0.45 });
+  m.side = THREE.DoubleSide;
+  return m;
+};
+
+/** A plant pot with soil, standing on the floor. Returns the height of the soil. */
+function pot(k: Kit, r: number, h: number, color: THREE.Color): number {
+  k.cyl(r, r * 0.78, h, 0, h / 2, 0, mat(color, { roughness: 0.55 }), 32);
+  k.cyl(r * 1.04, r * 1.04, h * 0.08, 0, h * 0.96, 0, mat(lighter(color, 0.08), { roughness: 0.5 }), 32);
+  k.cyl(r * 0.94, r * 0.94, 0.02, 0, h * 0.97, 0, mat('#2e2219', { roughness: 1 }), 24);
+  return h * 0.97;
+}
+
+/** A rubber plant: a few upright stems with large glossy leaves all the way up. */
 const floorPlant: Builder = (k, [w, h, d], color) => {
   const r = Math.min(w, d) / 2;
-  k.cyl(r * 0.55, r * 0.42, h * 0.25, 0, h * 0.125, 0, mat(color, { roughness: 0.6 }));
-  k.cyl(r * 0.5, r * 0.5, 0.02, 0, h * 0.25 - 0.012, 0, mat('#3b2a1e', { roughness: 1 }));
-  k.cyl(0.018, 0.025, h * 0.5, 0, h * 0.5, 0, mat('#5a4530'), 8);
-  const random = (i: number): number => Math.abs(Math.sin(i * 12.9898) * 43758.5453) % 1;
-  const greens = [mat('#3f7d46', { roughness: 0.7 }), mat('#2f6238', { roughness: 0.7 }), mat('#5b9456', { roughness: 0.7 })];
-  for (let i = 0; i < 22; i++) {
+  const potH = Math.min(0.36, h * 0.24);
+  const soil = pot(k, Math.min(0.2, r * 0.6), potH, color);
+  const greens = [leafMat('#2f5d34'), leafMat('#3a6e3c'), leafMat('#28502e'), leafMat('#4a8246')];
+  const bark = mat('#5d4a34', { roughness: 0.9 });
+  const stems = 3;
+  for (let sIndex = 0; sIndex < stems; sIndex++) {
+    const lean = sIndex === 0 ? 0 : 0.16;
+    const turn = sIndex * 2.2;
+    const top = (h - soil) * (sIndex === 0 ? 0.86 : 0.62 + 0.1 * sIndex);
+    const stem = new THREE.Group();
+    stem.position.set(Math.cos(turn) * 0.03 * sIndex, soil, Math.sin(turn) * 0.03 * sIndex);
+    stem.rotation.set(Math.cos(turn) * lean, 0, Math.sin(turn) * lean);
+    k.group.add(stem);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.016, top, 8), bark);
+    trunk.position.y = top / 2;
+    stem.add(trunk);
+    const leaves = Math.max(5, Math.round(top / 0.11));
+    for (let i = 0; i < leaves; i++) {
+      const t = (i + 1) / leaves;
+      const length = Math.min(r * 0.95, 0.34) * (1.05 - 0.45 * t) * (0.85 + 0.3 * random(i + sIndex * 31));
+      const leaf = new THREE.Mesh(leafGeometry(length, length * 0.5, 0.25 + 0.3 * random(i * 7 + sIndex)), greens[(i + sIndex) % 4]);
+      leaf.position.y = top * (0.18 + 0.82 * t);
+      // Leaves spiral round the stem and point up and out.
+      leaf.rotation.order = 'YXZ';
+      leaf.rotation.set(-(0.35 + 0.75 * t), i * 2.4 + turn, 0);
+      leaf.castShadow = true;
+      stem.add(leaf);
+    }
+  }
+};
+
+/** A small plant for a table top: a pot with a tuft of leaves. */
+const tablePlant: Builder = (k, [w, h, d], color) => {
+  const r = Math.min(w, d) / 2;
+  const soil = pot(k, r * 0.62, h * 0.4, color);
+  const greens = [leafMat('#3f7d46'), leafMat('#2f6238'), leafMat('#5b9456')];
+  for (let i = 0; i < 16; i++) {
+    const length = (h - soil) * (0.75 + 0.45 * random(i));
+    const leaf = new THREE.Mesh(leafGeometry(length, length * 0.3, 0.7), greens[i % 3]);
+    leaf.position.y = soil;
+    leaf.rotation.order = 'YXZ';
+    leaf.rotation.set(-(0.5 + 0.8 * random(i + 5)), i * 2.4, 0);
+    leaf.castShadow = true;
+    k.group.add(leaf);
+  }
+};
+
+/** A garden tree: a trunk, a few branches and a crown of leafy clumps. */
+const tree: Builder = (k, [w, h, d]) => {
+  const r = Math.min(w, d) / 2;
+  const bark = mat('#6a5038', { roughness: 0.95 });
+  const trunkH = h * 0.5;
+  k.cyl(r * 0.07, r * 0.11, trunkH, 0, trunkH / 2, 0, bark, 10);
+  const greens = ['#3d7a3a', '#4c8c40', '#356b35', '#5c9a48'].map((c) => {
+    const m = mat(c, { roughness: 0.85 });
+    m.flatShading = true;
+    return m;
+  });
+  for (let i = 0; i < 5; i++) {
+    const angle = i * 1.3;
+    const branch = k.cyl(r * 0.025, r * 0.05, r * 0.9, Math.cos(angle) * r * 0.28, trunkH + r * 0.25, Math.sin(angle) * r * 0.28, bark, 6);
+    branch.rotation.set(Math.sin(angle) * 0.7, 0, -Math.cos(angle) * 0.7);
+  }
+  // The crown: many small leafy clumps packed into a rounded shape.
+  const crownY = trunkH + (h - trunkH) * 0.45;
+  const crownR = (h - trunkH) * 0.55;
+  for (let i = 0; i < 70; i++) {
+    const angle = i * 2.399963;
+    const up = 1 - (2 * (i + 0.5)) / 70; // -1..1, evenly spread over a ball
+    const ring = Math.sqrt(1 - up * up);
+    const depth = 0.55 + 0.45 * random(i + 11);
+    const size = r * (0.16 + 0.12 * random(i + 23));
+    const clump = new THREE.Mesh(new THREE.IcosahedronGeometry(size, 1), greens[i % 4]);
+    clump.position.set(Math.cos(angle) * ring * r * 0.8 * depth, crownY + up * crownR * depth, Math.sin(angle) * ring * r * 0.8 * depth);
+    clump.rotation.set(i, i * 2, i * 3);
+    clump.castShadow = true;
+    k.group.add(clump);
+  }
+};
+
+const tableLamp: Builder = (k, [w, h, d], color) => {
+  const r = Math.min(w, d) / 2;
+  const body = mat(color, { roughness: 0.35 });
+  k.cyl(r * 0.45, r * 0.5, 0.02, 0, 0.01, 0, body, 24);
+  k.ball(r * 0.42, 0, h * 0.28, 0, body).scale.set(1, 1.25, 1);
+  k.cyl(0.008, 0.008, h * 0.3, 0, h * 0.5, 0, BRASS(), 8);
+  const shade = mat('#f3e7cf', { roughness: 0.9, emissive: '#8a6a3a' });
+  shade.side = THREE.DoubleSide;
+  k.add(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.7, r, h * 0.42, 32, 1, true), shade), 0, h * 0.79, 0);
+  k.ball(0.03, 0, h * 0.75, 0, mat('#fff4d6', { emissive: '#ffe2a8' }));
+};
+
+const vase: Builder = (k, [w, h, d], color) => {
+  const r = Math.min(w, d) / 2;
+  // A lathe spins an outline round the upright axis, like a potter's wheel.
+  const outline = [[0.01, 0], [0.55, 0], [0.9, 0.3], [0.7, 0.62], [0.36, 0.8], [0.42, 1]].map(
+    ([x, y]) => new THREE.Vector2(x * r, y * h * 0.55),
+  );
+  const body = mat(color, { roughness: 0.25 });
+  body.side = THREE.DoubleSide;
+  k.add(new THREE.Mesh(new THREE.LatheGeometry(outline, 28), body));
+  const stalk = mat('#6f7f4a', { roughness: 0.8 });
+  const head = mat('#e9d9b4', { roughness: 0.9 });
+  for (let i = 0; i < 7; i++) {
     const angle = i * 2.4;
-    const up = 0.4 + random(i) * 0.55;
-    const reach = r * (0.25 + random(i + 7) * 0.7) * (1.1 - Math.abs(up - 0.7));
-    const leaf = k.ball(r * 0.42, Math.cos(angle) * reach, h * up, Math.sin(angle) * reach, greens[i % 3]);
-    leaf.scale.set(1.25, 0.28, 0.7);
-    leaf.rotation.set(random(i + 3) - 0.5, -angle, 0.55);
+    const lean = 0.12 + 0.2 * random(i);
+    const length = h * (0.55 + 0.25 * random(i + 3));
+    const stem = k.cyl(0.003, 0.003, length, Math.cos(angle) * lean * length * 0.5, h * 0.45 + length * 0.45, Math.sin(angle) * lean * length * 0.5, stalk, 5);
+    stem.rotation.set(Math.sin(angle) * lean, 0, -Math.cos(angle) * lean);
+    const tuft = k.ball(0.018, Math.cos(angle) * lean * length, Math.min(h - 0.02, h * 0.45 + length * 0.9), Math.sin(angle) * lean * length, head);
+    tuft.scale.set(1, 2.4, 1);
+  }
+};
+
+const books: Builder = (k, [w, h, d]) => {
+  const covers = ['#8a3b2e', '#2f4a5c', '#d8c9a3', '#3d5a44'];
+  const n = Math.max(2, Math.round(h / 0.035));
+  for (let i = 0; i < n; i++) {
+    const t = h / n;
+    const book = k.box(w * (0.82 + 0.18 * random(i)), t * 0.92, d * (0.8 + 0.2 * random(i + 4)), 0, t * (i + 0.5), 0, mat(covers[i % 4], { roughness: 0.7 }), 0.004);
+    book.rotation.y = (random(i + 9) - 0.5) * 0.3;
   }
 };
 
@@ -722,6 +867,11 @@ const builders: Record<string, Builder> = {
   'wall-mirror': wallMirror,
   'wall-shelf': wallShelf,
   'floor-plant': floorPlant,
+  'table-plant': tablePlant,
+  tree,
+  'table-lamp': tableLamp,
+  vase,
+  books,
   'floor-lamp': floorLamp,
   'side-table': sideTable,
   bookcase,

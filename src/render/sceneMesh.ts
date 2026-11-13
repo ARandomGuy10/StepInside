@@ -62,7 +62,7 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     group.add(ceiling);
   }
 
-  for (const slab of walls.slabs) group.add(buildSlab(slab));
+  for (const slab of walls.slabs) group.add(buildSlab(slab, scene.defaults.exteriorColor));
 
   // The floor carries on through each doorway, in the colour of the room
   // the door was declared on.
@@ -220,7 +220,7 @@ function prism(points: readonly Vec2[], height: number): THREE.BufferGeometry {
  * thickness. In the wall's local space, X runs along the wall, Y is up
  * and Z points into the room, so the thickness sits at negative Z.
  */
-function buildSlab(slab: WallSlab): THREE.Mesh {
+function buildSlab(slab: WallSlab, exteriorColor?: string): THREE.Mesh {
   const dx = slab.b.x - slab.a.x;
   const dy = slab.b.y - slab.a.y;
   const length = Math.hypot(dx, dy);
@@ -266,6 +266,17 @@ function buildSlab(slab: WallSlab): THREE.Mesh {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
+  if (slab.outside && exteriorColor) {
+    // The outside of an outside wall is a thin skin in the render colour.
+    const skin = new THREE.Mesh(
+      new THREE.ExtrudeGeometry(outline, { depth: 0.015, bevelEnabled: false }).translate(0, 0, -slab.thickness - 0.015),
+      matte(exteriorColor, 0.95),
+    );
+    skin.name = 'skin';
+    skin.castShadow = true;
+    skin.receiveShadow = true;
+    mesh.add(skin);
+  }
   if (slab.kind === 'wall') addTrim(mesh, slab, length);
 
   for (const hole of slab.holes) {

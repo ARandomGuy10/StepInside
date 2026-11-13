@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { footprint, roomThatFits } from '../src/core/edits';
+import { clashes, footprint, roomThatFits } from '../src/core/edits';
 import { parseScene } from '../src/core/scene';
 import { buildWalls } from '../src/core/walls';
 import { HOMES } from '../src/homes';
@@ -16,6 +16,14 @@ describe.each(storeys)('%s', (_name, json) => {
     const scene = parseScene(json);
     const outside = scene.furniture.filter((f) => roomThatFits(scene, f)?.id !== f.room).map((f) => f.id);
     expect(outside).toEqual([]);
+  });
+
+  it('has no two pieces standing in the same spot', () => {
+    // The apartment keeps a few overlaps from its photos: the L-shaped sofa
+    // is checked by its bounding box, and two chests stand corner to corner.
+    const known = new Set(['coffee-table|sofa', 'sideboard|wicker-drawers']);
+    const found = clashes(parseScene(json)).map((pair) => pair.join('|')).filter((pair) => !known.has(pair));
+    expect(found).toEqual([]);
   });
 
   it('starts the walker inside a room', () => {

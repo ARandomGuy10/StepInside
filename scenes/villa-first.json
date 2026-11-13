@@ -4,17 +4,17 @@
   "units": "m",
   "northDeg": 0,
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
-  "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee"},
+  "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#f2ede4"},
   "start": {"position": [3.048, 6.401], "yawDeg": 180},
   "rooms": [
-    {"id": "bedroom2", "name": "Bedroom 2", "polygon": [[0.229, 0.229], [4.343, 0.229], [4.343, 4.801], [0.229, 4.801]]},
-    {"id": "bedroom1", "name": "Bedroom 1", "polygon": [[4.496, 0.229], [8.611, 0.229], [8.611, 4.801], [4.496, 4.801]]},
-    {"id": "bath1", "name": "Bath", "polygon": [[8.763, 0.229], [10.439, 0.229], [10.439, 3.277], [8.763, 3.277]], "floor": {"material": "tile", "color": "#cfd8dc"}},
+    {"id": "bedroom2", "name": "Bedroom 2", "polygon": [[0.229, 0.229], [4.343, 0.229], [4.343, 4.801], [0.229, 4.801]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "color": "#6d7f9a"}]},
+    {"id": "bedroom1", "name": "Bedroom 1", "polygon": [[4.496, 0.229], [8.611, 0.229], [8.611, 4.801], [4.496, 4.801]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "color": "#8a9a83"}]},
+    {"id": "bath1", "name": "Bath", "polygon": [[8.763, 0.229], [10.439, 0.229], [10.439, 3.277], [8.763, 3.277]], "floor": {"material": "tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "color": "#dfe7e6"}, {"edge": 1, "color": "#dfe7e6"}]},
     {"id": "dressing", "name": "Dressing", "polygon": [[8.763, 3.429], [10.439, 3.429], [10.439, 4.801], [8.763, 4.801]]},
     {"id": "lounge", "name": "Sitting lounge", "polygon": [[0.229, 4.953], [5.715, 4.953], [5.715, 12.573], [4.648, 12.573], [4.648, 8.001], [0.229, 8.001]], "floor": {"material": "tile", "color": "#e6e2da"}},
-    {"id": "void", "name": "Double-height void", "polygon": [[0.229, 8.051], [4.598, 8.051], [4.598, 12.573], [0.229, 12.573]], "kind": "void"},
-    {"id": "bath3", "name": "Bath", "polygon": [[0.229, 12.725], [1.905, 12.725], [1.905, 16.535], [0.229, 16.535]], "floor": {"material": "tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "height": 3.0}]},
-    {"id": "bedroom3", "name": "Bedroom 3", "polygon": [[2.057, 12.725], [5.715, 12.725], [5.715, 16.535], [2.057, 16.535]], "walls": [{"edge": 0, "height": 3.0}]},
+    {"id": "void", "name": "Double-height void", "polygon": [[0.229, 8.051], [4.598, 8.051], [4.598, 12.573], [0.229, 12.573]], "kind": "void", "walls": [{"edge": 3, "color": "#c9a58a"}]},
+    {"id": "bath3", "name": "Bath", "polygon": [[0.229, 12.725], [1.905, 12.725], [1.905, 16.535], [0.229, 16.535]], "floor": {"material": "tile", "color": "#cfd8dc"}, "walls": [{"edge": 0, "height": 3.0}, {"edge": 3, "color": "#dfe7e6"}, {"edge": 2, "color": "#dfe7e6"}]},
+    {"id": "bedroom3", "name": "Bedroom 3", "polygon": [[2.057, 12.725], [5.715, 12.725], [5.715, 16.535], [2.057, 16.535]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 0, "height": 3.0}, {"edge": 2, "color": "#c2a15f"}]},
     {"id": "balcony", "name": "Balcony", "polygon": [[5.867, 11.049], [10.439, 11.049], [10.439, 16.535], [5.867, 16.535]], "kind": "balcony", "floor": {"material": "tile", "color": "#e6e2da"}}
   ],
   "openings": [
@@ -74,6 +74,17 @@
     {"id": "balcony-chair-2", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [8.534, 14.173], "rotationDeg": 270, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
     {"id": "balcony-chair-3", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [7.772, 14.935], "rotationDeg": 0, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
     {"id": "balcony-chair-4", "name": "Chair", "model": "dining-chair", "room": "balcony", "position": [7.01, 14.173], "rotationDeg": 90, "size": [0.5, 0.9, 0.5], "color": "#7a4a35"},
-    {"id": "balcony-lounger", "name": "Sun lounger", "model": "lounger", "room": "balcony", "position": [9.967, 13.716], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"}
+    {"id": "balcony-lounger", "name": "Sun lounger", "model": "lounger", "room": "balcony", "position": [9.967, 13.716], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
+    {"id": "art-bed2", "name": "Painting", "model": "painting-1", "room": "bedroom2", "position": [0.253, 1.524], "rotationDeg": 90, "size": [1.2, 0.8, 0.04], "color": "#2b2520", "mount": "wall", "elevation": 1.3},
+    {"id": "art-bed1", "name": "Painting", "model": "painting-3", "room": "bedroom1", "position": [8.587, 1.829], "rotationDeg": 270, "size": [0.8, 0.8, 0.04], "color": "#f2f0ea", "mount": "wall", "elevation": 1.3},
+    {"id": "art-bed3", "name": "Painting", "model": "painting-2", "room": "bedroom3", "position": [2.081, 15.728], "rotationDeg": 90, "size": [0.6, 0.9, 0.04], "color": "#d8c7a6", "mount": "wall", "elevation": 1.3},
+    {"id": "plant-lounge", "name": "Rubber plant", "model": "floor-plant", "room": "lounge", "position": [0.549, 5.227], "rotationDeg": 0, "size": [0.5, 1.3, 0.5], "color": "#d8d2c6"},
+    {"id": "plant-bed1", "name": "Rubber plant", "model": "floor-plant", "room": "bedroom1", "position": [8.23, 2.438], "rotationDeg": 0, "size": [0.6, 1.4, 0.6], "color": "#3d3a36"},
+    {"id": "table-lamp-bed2-1", "name": "Table lamp", "model": "table-lamp", "room": "bedroom2", "position": [1.036, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
+    {"id": "table-lamp-bed2-2", "name": "Table lamp", "model": "table-lamp", "room": "bedroom2", "position": [3.536, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
+    {"id": "table-lamp-bed1-1", "name": "Table lamp", "model": "table-lamp", "room": "bedroom1", "position": [5.304, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
+    {"id": "table-lamp-bed1-2", "name": "Table lamp", "model": "table-lamp", "room": "bedroom1", "position": [7.803, 0.61], "rotationDeg": 0, "size": [0.28, 0.5, 0.28], "color": "#d9d2c3", "elevation": 0.5},
+    {"id": "plant-lounge-table", "name": "Small plant", "model": "table-plant", "room": "lounge", "position": [1.707, 6.462], "rotationDeg": 0, "size": [0.22, 0.3, 0.22], "color": "#e9e3d8", "elevation": 0.42},
+    {"id": "plant-balcony", "name": "Rubber plant", "model": "floor-plant", "room": "balcony", "position": [6.309, 16.093], "rotationDeg": 0, "size": [0.7, 1.5, 0.7], "color": "#3d3a36"}
   ]
 }

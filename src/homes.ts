@@ -32,6 +32,8 @@ export interface HomeEntry {
   about: string;
   levels: readonly LevelEntry[];
   stairs?: readonly StairEntry[];
+  /** How sizes are shown. The scene files are always in metres. */
+  units?: 'm' | 'ft';
   /** Where the walk begins, if not at the first storey's own start. */
   start?: { position: [number, number]; yawDeg: number };
 }
@@ -47,6 +49,7 @@ export const HOMES: readonly HomeEntry[] = [
   },
   {
     id: 'villa',
+    units: 'ft',
     title: 'New house',
     about: '35 × 55 ft plot, two floors: living and dining round a pool court, four bedrooms, garden and balcony. The walk starts at the gate.',
     levels: [

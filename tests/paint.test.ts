@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE } from '../src/core/catalogue';
 import {
-  addFurniture, colorOf, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resetPaint,
+  addFurniture, emptyRoom, colorOf, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resetPaint,
   roomThatFits, rotateFurniture, snapToWall, takeOut,
 } from '../src/core/edits';
 import { parseScene, type Scene } from '../src/core/scene';
@@ -139,13 +139,13 @@ describe('adding floor pieces', () => {
   });
 
   it('every catalogue item can be added to the real home', () => {
-    let s = parseScene(home);
+    const real = parseScene(home);
     for (const entry of CATALOGUE) {
-      const result = addFurniture(s, entry, [1.75, 5.6]);
+      // one at a time: together they would not all fit in the room
+      const result = addFurniture(emptyRoom(real, 'living'), entry, [1.75, 5.6]);
       expect(result.id, entry.key).toBeDefined();
-      s = result.scene;
+      expect(() => parseScene(result.scene)).not.toThrow();
     }
-    expect(() => parseScene(s)).not.toThrow();
   });
 });
 

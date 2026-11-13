@@ -540,3 +540,67 @@ body.orbit-view #panel {
   height: auto;
   max-height: none;
 }
+
+body.top-view #orbit-tools {
+  display: flex;
+}
+
+body.top-view #btn-roof,
+body.orbit-view #btn-dimensions {
+  display: none;
+}
+
+#view-bar #btn-dimensions.active {
+  background: rgba(47, 42, 37, 0.1);
+  color: #22201d;
+}
+
+/* Room names and sizes over a floor plan. */
+#labels {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+
+#labels[hidden],
+#labels > [hidden] {
+  display: none;
+}
+
+#labels > div {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 1px 4px rgba(30, 24, 16, 0.16);
+  color: #22201d;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+#labels > div span {
+  font-variant-numeric: tabular-nums;
+  color: #5d564d;
+}
+
+#labels > div.piece {
+  background: #ff9f1c;
+  color: #201400;
+}
+
+#labels > div.piece span {
+  color: #3d2a05;
+}
+
+body.blocked #view {
+  cursor: not-allowed;
+}

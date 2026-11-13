@@ -41,6 +41,19 @@ bottom switches between **Whole house**, a **plan** of each floor and
 **Walk through**. Add `&view=walk` to the address to open straight in the
 walk.
 
+A floor plan is 3D too: the floor is seen from nearly overhead with its
+ceiling off. Drag the background to turn or tilt it (tilt it all the way
+up for a flat plan), and use **Hide dimensions** / **Show dimensions** to
+switch the room names and sizes off and on. Sizes show in feet and inches
+or in metres, set per home in `src/homes.ts`.
+
+Furniture is solid. A piece cannot be put where another one stands; while
+a drag is blocked the highlight turns red and the piece slides along
+whatever is in its way. The exceptions: anything can stand on a rug, a
+chair can be pushed in under a table, and small things (table lamp, vase,
+small plant, books) stand on top of tables, desks, counters and TV units
+and move along with them.
+
 A home can have several storeys. Each storey is a scene file of its own,
 and `src/homes.ts` stacks them: the height of each floor, where the
 stairs are, and where the walk starts. The new house starts outside, at

@@ -45,6 +45,8 @@ export interface WallSlab {
   /** Edge index in the room's polygon, as written in the scene file. */
   edge: number;
   kind: 'wall' | 'railing';
+  /** True when nothing is behind this wall: its far side is the outside of the home. */
+  outside: boolean;
   /**
    * The inside face runs from a to b. Looking from a to b, the room is
    * on the right and the slab's thickness grows to the left.
@@ -213,6 +215,7 @@ export function buildWalls(scene: Scene): WallModel {
           roomId: e.room.id,
           edge: e.index,
           kind: e.railing ? 'railing' : 'wall',
+          outside: !e.railing && facing.get(e)!.length === 0,
           a: e.a,
           b: e.b,
           thickness: e.thickness,

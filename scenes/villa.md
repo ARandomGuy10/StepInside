@@ -58,3 +58,25 @@ the pool is open to the sky.
    flat plane; neighbours and the street are not modelled. The pool is a
    flat surface at floor level that you can walk over.
 10. **Furniture** follows the symbols on the plans, with typical sizes.
+
+## Finishes and decor
+
+None of this is on the plans; it is a starting point to repaint and move.
+
+- Walls are off-white with one accent wall per room. The outside is sand
+  coloured render on the ground storey and white above
+  (`defaults.exteriorColor` in each scene file).
+- Bedrooms have an oak laminate floor, the living areas and balcony large
+  tiles, the baths grey tiles and the pool court timber decking.
+- Paintings hang clear of the windows. Plants, lamps and small things on
+  the tables are from the catalogue.
+
+## Measurement check
+
+Furniture uses common real sizes: double beds 1.6 to 1.8 m wide and 2.0
+to 2.1 m long, wardrobes 0.55 to 0.6 m deep and 2.2 m high, kitchen
+counters 0.9 m high and 0.6 m deep, dining table 0.75 m high, dining
+chairs 0.5 m wide, toilets 0.4 x 0.68 m, loungers 0.7 x 1.9 m. Doors are
+2.1 m high and 2.5 to 3.25 ft wide. The one figure on the tight side is
+the staircase: 17 steps of 18 cm rise and 23 cm going. A more comfortable
+25 cm going needs a flight about 14 ft long instead of 12.75 ft.

@@ -15,12 +15,12 @@ export class OrbitView {
   private goal = { azimuth: 0, polar: 0, distance: 0 };
 
   /** `bounds` is the home's outline on the plan, `height` its total height. */
-  constructor(bounds: THREE.Box2, height: number) {
+  constructor(bounds: THREE.Box2, height: number, start = { azimuth: 0.6, polar: 0.95, reach: 1.75 }) {
     const center = bounds.getCenter(new THREE.Vector2());
     const size = bounds.getSize(new THREE.Vector2());
     this.target = new THREE.Vector3(center.x, height * 0.35, center.y);
-    // Start from the front, a little to one side and well above the roof.
-    this.home = { azimuth: 0.6, polar: 0.95, distance: Math.max(size.length(), height * 2) * 1.75 };
+    // By default: from the front, a little to one side and well above the roof.
+    this.home = { azimuth: start.azimuth, polar: start.polar, distance: Math.max(size.length(), height * 2) * start.reach };
     this.reset(true);
   }
 
@@ -33,12 +33,17 @@ export class OrbitView {
   /** Turns by angles in radians: `around` the home, and `over` the top of it. */
   turn(around: number, over = 0, jump = false): void {
     this.goal.azimuth += around;
-    this.goal.polar = Math.max(0.12, Math.min(1.5, this.goal.polar + over));
+    this.goal.polar = Math.max(0.02, Math.min(1.5, this.goal.polar + over));
     if (jump) {
       this.azimuth = this.goal.azimuth;
       this.polar = this.goal.polar;
       this.place();
     }
+  }
+
+  /** Looks at a point this high above the ground: the floor of a storey. */
+  lookAtHeight(y: number): void {
+    this.target.y = y;
   }
 
   /** Zooms by a factor: below 1 moves closer. */

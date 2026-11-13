@@ -7,6 +7,7 @@ import {
 import { History } from './core/history';
 import { HOMES, type HomeEntry, type StairEntry } from './homes';
 import { loadLayout, saveLayout } from './core/layout';
+import { formatLength, formatSize, roomSize } from './core/measure';
 import { parseScene, SceneError, toVec, type Scene } from './core/scene';
 import type { Segment } from './core/collision';
 import { buildWalls } from './core/walls';
@@ -101,6 +102,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const top = levels[levels.length - 1];
   const orbit = new OrbitView(bounds, top.elevation + scenes[scenes.length - 1].defaults.ceilingHeight);
   let inOrbit = false;
+  // A floor plan is seen at an angle too, from nearly overhead, so the
+  // walls and furniture read as 3D. Tilt it all the way up for a flat plan.
+  const plan = new OrbitView(bounds, 1, { azimuth: 0.3, polar: 0.5, reach: 1.25 });
+  const units = home.units ?? 'm';
+  let dimensions = true;
   // A home without an outside to show, such as a flat, opens with its lid off.
   let roofHidden = !scenes[0].site;
   if (scenes[0].site) {
@@ -108,7 +114,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }
   world.add(topView.marker);
   let inTopView = false;
-  const activeCamera = (): THREE.Camera => (inOrbit ? orbit.camera : inTopView ? topView.camera : camera);
+  const activeCamera = (): THREE.Camera => (inOrbit ? orbit.camera : inTopView ? plan.camera : camera);
 
   // Adding ?fast to the address skips the post-processing below, for
   // slow machines.
@@ -148,6 +154,29 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   (selection.material as THREE.Material).depthTest = false;
   selection.renderOrder = 10;
   world.add(selection);
+
+  // The selected piece of furniture gets a glowing pad on the floor and a
+  // see-through box round it. Both turn red while a drag is blocked.
+  const SELECTED = 0xff9f1c;
+  const BLOCKED = 0xe5484d;
+  const glow = new THREE.MeshBasicMaterial({ color: SELECTED, transparent: true, opacity: 0.32, depthWrite: false });
+  const haze = new THREE.MeshBasicMaterial({ color: SELECTED, transparent: true, opacity: 0.1, depthWrite: false });
+  const edge = new THREE.LineBasicMaterial({ color: SELECTED, depthTest: false });
+  const highlight = new THREE.Group();
+  const pad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), glow);
+  const cage = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), haze);
+  const cageEdges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), edge);
+  cageEdges.renderOrder = 10;
+  highlight.add(pad, cage, cageEdges);
+  highlight.visible = false;
+  world.add(highlight);
+  let blocked = false;
+  const setBlocked = (on: boolean): void => {
+    if (on === blocked) return;
+    blocked = on;
+    for (const m of [glow, haze, edge]) m.color.set(on ? BLOCKED : SELECTED);
+    document.body.classList.toggle('blocked', on);
+  };
 
   const selectedPiece = () =>
     now().furniture.find((f) => f.id === selectedId && !f.removed);
@@ -322,8 +351,24 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (selectedId && !selectedPiece()) selectedId = null;
     const picked = paintInfo();
     const object = mode === 'paint' ? picked?.object : selectedId ? lv().furniture.objectFor(selectedId) : undefined;
-    selection.visible = !!object;
-    if (object) selection.setFromObject(object);
+    const chosen = mode === 'furniture' ? selectedPiece() : undefined;
+    selection.visible = !!object && !chosen;
+    if (object && !chosen) selection.setFromObject(object);
+    highlight.visible = !!chosen;
+    if (chosen) {
+      const [w, h, d] = chosen.size;
+      const up = chosen.elevation ?? 0;
+      highlight.position.set(chosen.position[0], lv().elevation, chosen.position[1]);
+      highlight.rotation.y = -THREE.MathUtils.degToRad(chosen.rotationDeg);
+      const onWall = chosen.mount === 'wall';
+      pad.visible = !onWall;
+      pad.scale.set(w + 0.24, 1, d + 0.24);
+      pad.position.y = 0.012;
+      cage.scale.set(w + 0.03, h + 0.03, d + 0.03);
+      cage.position.y = up + h / 2;
+      cageEdges.scale.copy(cage.scale);
+      cageEdges.position.copy(cage.position);
+    }
     panel.render({
       scene,
       mode,
@@ -376,7 +421,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   };
   const wholeButton = viewButton(scenes[0].site ? 'Whole house' : 'Whole home', 'See it from outside: drag to turn, scroll to zoom', setOrbit);
   const planButtons = levels.map((l, i) =>
-    viewButton(levels.length > 1 ? `${l.name} plan` : 'Floor plan', 'Look straight down at this floor', () => {
+    viewButton(levels.length > 1 ? `${l.name} plan` : 'Floor plan', 'This floor as a 3D plan with its sizes', () => {
       if (i !== level) goTo(i);
       setTopView(true);
     }),
@@ -390,14 +435,67 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     showLevels();
     updateHint();
   });
+  const dimensionsButton = viewButton('', 'Show or hide the room names and sizes', () => {
+    dimensions = !dimensions;
+    updateHint();
+  });
+  roofButton.id = 'btn-roof';
+  dimensionsButton.id = 'btn-dimensions';
+  /** The camera that drags, the wheel and these buttons act on. */
+  const turnable = (): OrbitView => (inOrbit ? orbit : plan);
   tools.replaceChildren(
-    viewButton('⟲', 'Turn left', () => orbit.turn(-Math.PI / 4)),
-    viewButton('⟳', 'Turn right', () => orbit.turn(Math.PI / 4)),
-    viewButton('+', 'Zoom in', () => orbit.zoom(0.8)),
-    viewButton('−', 'Zoom out', () => orbit.zoom(1.25)),
-    viewButton('Reset view', 'Back to the first view', () => orbit.reset()),
+    viewButton('⟲', 'Turn left', () => turnable().turn(-Math.PI / 4)),
+    viewButton('⟳', 'Turn right', () => turnable().turn(Math.PI / 4)),
+    viewButton('+', 'Zoom in', () => turnable().zoom(0.8)),
+    viewButton('−', 'Zoom out', () => turnable().zoom(1.25)),
+    viewButton('Reset view', 'Back to the first view', () => turnable().reset()),
     roofButton,
+    dimensionsButton,
   );
+
+  // Room names and sizes are HTML labels laid over the 3D view, one per
+  // room of the floor on show, plus one for the selected piece.
+  const labelLayer = document.getElementById('labels')!;
+  const labelPool: HTMLElement[] = [];
+  const spot = new THREE.Vector3();
+  function placeLabels(): void {
+    const show = inTopView && dimensions;
+    labelLayer.hidden = !show;
+    if (!show) return;
+    const items: { text: string; sub: string; x: number; y: number; z: number; piece?: boolean }[] = [];
+    for (const room of now().rooms) {
+      if (room.kind === 'void') continue;
+      const size = roomSize(room);
+      items.push({ text: room.name ?? room.id, sub: formatSize(size.width, size.depth, units), x: size.center[0], y: 0.05, z: size.center[1] });
+    }
+    const chosen = selectedPiece();
+    if (chosen) {
+      const [w, h, d] = chosen.size;
+      items.push({
+        text: labelOf(chosen),
+        sub: `${formatSize(w, d, units)}, ${formatLength(h, units)} high`,
+        x: chosen.position[0], y: (chosen.elevation ?? 0) + h + 0.25, z: chosen.position[1], piece: true,
+      });
+    }
+    while (labelPool.length < items.length) {
+      const el = document.createElement('div');
+      el.append(document.createElement('strong'), document.createElement('span'));
+      labelLayer.append(el);
+      labelPool.push(el);
+    }
+    const { innerWidth: w, innerHeight: h } = window;
+    labelPool.forEach((el, i) => {
+      const item = items[i];
+      el.hidden = !item;
+      if (!item) return;
+      spot.set(item.x, lv().elevation + item.y, item.z).project(plan.camera);
+      el.style.transform = `translate(-50%, -50%) translate(${((spot.x + 1) / 2) * w}px, ${((1 - spot.y) / 2) * h}px)`;
+      el.classList.toggle('piece', !!item.piece);
+      if (el.firstElementChild!.textContent !== item.text) el.firstElementChild!.textContent = item.text;
+      if (el.lastElementChild!.textContent !== item.sub) el.lastElementChild!.textContent = item.sub;
+    });
+  }
+
 
   /**
    * The top view shows one storey: everything above it is hidden, and so
@@ -450,6 +548,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     selectedId = null;
     paintTarget = null;
     floorPlane.constant = -lv().elevation;
+    plan.lookAtHeight(lv().elevation);
     levelButtons.forEach((b, j) => b.classList.toggle('active', j === i));
     showLevels();
     updateHint();
@@ -502,6 +601,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     planButtons.forEach((b, i) => b.classList.toggle('active', inTopView && i === level));
     walkButton.classList.toggle('active', !inOrbit && !inTopView);
     roofButton.textContent = roofHidden ? 'Show roof' : 'Hide roof';
+    dimensionsButton.textContent = dimensions ? 'Hide dimensions' : 'Show dimensions';
+    dimensionsButton.classList.toggle('active', dimensions);
     if (inOrbit) {
       document.getElementById('hint-title')!.textContent = home.title;
       document.getElementById('hint-text')!.textContent =
@@ -509,14 +610,14 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       return;
     }
     document.getElementById('hint-title')!.textContent = inTopView
-      ? 'Top view'
+      ? `${lv().name}: plan`
       : painting
         ? 'Click a surface to paint it'
         : 'Click the room to look around';
     document.getElementById('hint-text')!.textContent = inTopView
       ? painting
-        ? 'Click a floor, wall or piece, then choose a colour · T to walk again'
-        : 'Click a piece to select it · drag to move · R to turn · T to walk again'
+        ? 'Click a floor, wall or piece, then choose a colour · drag the background to turn the plan'
+        : 'Click a piece to select it · drag to move · R to turn · drag the background to turn the plan'
       : painting
         ? 'W A S D to walk · right-drag or double-click to look around · while looking, click picks what the dot is on'
         : `W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view${levels.length > 1 ? ' · Page Up / Page Down to change floor' : ''}`;
@@ -618,9 +719,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // In the whole-house view a drag turns the home and the wheel zooms.
   let turning: { x: number; y: number } | null = null;
   canvas.addEventListener('wheel', (e) => {
-    if (!inOrbit) return;
+    if (!inOrbit && !inTopView) return;
     e.preventDefault();
-    orbit.zoom(Math.exp(e.deltaY * 0.0012));
+    turnable().zoom(Math.exp(e.deltaY * 0.0012));
   }, { passive: false });
 
   canvas.addEventListener('pointerdown', (e) => {
@@ -641,8 +742,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       return;
     }
     press = { x: e.clientX, y: e.clientY };
+    // In a plan, dragging anything but a piece of furniture turns the plan.
+    const id = mode === 'paint' ? undefined : pickFurniture(e);
+    if (!id && inTopView) {
+      turning = { x: e.clientX, y: e.clientY };
+      canvas.setPointerCapture(e.pointerId);
+    }
     if (mode === 'paint') return;
-    const id = pickFurniture(e);
     if (!id) return;
     selectedId = id;
     const piece = selectedPiece();
@@ -663,11 +769,15 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   canvas.addEventListener('pointermove', (e) => {
     if (turning) {
-      orbit.turn(-(e.clientX - turning.x) * 0.006, -(e.clientY - turning.y) * 0.005, true);
+      turnable().turn(-(e.clientX - turning.x) * 0.006, -(e.clientY - turning.y) * 0.005, true);
       turning = { x: e.clientX, y: e.clientY };
       return;
     }
-    if (!drag) return;
+    if (!drag) {
+      // Show that a piece can be picked up.
+      if (mode === 'furniture' && !controls.locked && !inOrbit) canvas.style.cursor = pickFurniture(e) ? 'grab' : '';
+      return;
+    }
     if (drag.lift !== undefined) {
       const hit = wallPoint(e);
       if (!hit) return;
@@ -680,19 +790,21 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     const p = floorPoint(e);
     if (!p) return;
     const target: [number, number] = [mm(p[0] + drag.offset[0]), mm(p[1] + drag.offset[1])];
-    preview(moveFurniture(now(), drag.id, target));
+    const moved = moveFurniture(now(), drag.id, target);
+    preview(moved);
+    // Red while the piece cannot follow the mouse: a wall or another piece is in the way.
+    const at = moved.furniture.find((f) => f.id === drag!.id)!.position;
+    setBlocked(Math.hypot(at[0] - target[0], at[1] - target[1]) > 0.08);
   });
 
   canvas.addEventListener('pointerup', (e) => {
-    if (turning || inOrbit) {
-      turning = null;
-      return;
-    }
-    if (e.button !== 0) return;
+    turning = null;
+    if (inOrbit || e.button !== 0) return;
     const wasClick = press !== null && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5;
     press = null;
     if (drag) {
       drag = null;
+      setBlocked(false);
       history.endGesture();
       document.body.classList.remove('dragging');
       return;
@@ -776,6 +888,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     camera.updateProjectionMatrix();
     topView.resize(w, h, PANEL_WIDTH);
     orbit.resize(w, h);
+    plan.resize(w, h);
   }
   window.addEventListener('resize', resize);
   resize();
@@ -791,6 +904,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     const dt = Math.min(timer.getDelta(), 0.1);
     controls.update(dt);
     if (inOrbit) orbit.update(dt);
+    if (inTopView) plan.update(dt);
+    placeLabels();
     walkStairs();
     const pose = controls.pose;
     topView.placeMarker(pose.x, pose.y, pose.yaw, controls.baseHeight);
@@ -810,7 +925,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   // Handy in the browser console, and used by the automated screenshots.
-  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, topCamera: topView.camera } });
+  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, planCamera: plan.camera, topCamera: topView.camera } });
 }
 
 // The address picks the home: ?home=apartment. Without it, the start

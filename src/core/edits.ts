@@ -68,6 +68,92 @@ function update(scene: Scene, id: string, change: (f: Furniture) => Furniture | 
 
 const mm = (v: number): number => Math.round(v * 1000) / 1000;
 
+// ---- What may stand where ----
+
+/** Rugs and other flat things, and what hangs at a wall (curtains, radiators): they are in nobody's way. */
+const isFlat = (f: Pick<Furniture, 'size'> & { model?: string }): boolean =>
+  f.size[1] <= 0.1 || /curtain|radiator/.test(f.model ?? '');
+/** Small things that belong on a table top. */
+const SMALL = /^(table-lamp|vase|table-plant|books)$/;
+/** Furniture with a top that small things can stand on. */
+const SURFACE = /table|desk|tv-unit|island|counter|bureau|sideboard/;
+const SEAT = /chair|stool/;
+/** A chair may be pushed in under a table. */
+const tucksUnder = (a: Furniture, b: Furniture): boolean => SEAT.test(a.model) && /table|desk|island|bureau/.test(b.model);
+
+/** The ids of the floor pieces whose footprint overlaps that of `f`. */
+function overlapping(scene: Scene, f: Furniture): Furniture[] {
+  if (f.mount === 'wall' || isFlat(f)) return [];
+  const corners = footprint(f);
+  return scene.furniture.filter(
+    (o) => o.id !== f.id && !o.removed && o.mount !== 'wall' && !isFlat(o) && polygonsOverlap(corners, footprint(o)),
+  );
+}
+
+/**
+ * Decides whether floor piece `f` may stand where it is. Two pieces
+ * cannot share floor space, with these exceptions: flat things such as
+ * rugs, a chair pushed under a table, and a small thing (a lamp, a vase)
+ * standing wholly on a table top. `allowed` lists pieces it may overlap
+ * anyway: the ones it already overlapped, so it can be dragged free.
+ * Returns the height it stands at (0 on the floor), or null if blocked.
+ */
+export function standingHeight(scene: Scene, f: Furniture, allowed: ReadonlySet<string> = new Set()): number | null {
+  const corners = footprint(f);
+  let height = 0;
+  for (const o of overlapping(scene, f)) {
+    if (allowed.has(o.id) || tucksUnder(f, o) || tucksUnder(o, f)) continue;
+    const top = footprint(o);
+    if (SMALL.test(f.model) && SURFACE.test(o.model) && corners.every((c) => pointInsideOrOn(c, top))) {
+      height = Math.max(height, o.size[1]);
+      continue;
+    }
+    // A small thing standing on this very piece is not in its way.
+    if (SMALL.test(o.model) && (o.elevation ?? 0) > 0 && SURFACE.test(f.model)) continue;
+    return null;
+  }
+  return height;
+}
+
+/** The floor pieces that overlap one another without one of the exceptions. For checking a scene file. */
+export function clashes(scene: Scene): [string, string][] {
+  const found: [string, string][] = [];
+  for (const f of scene.furniture) {
+    if (f.removed || f.mount === 'wall' || isFlat(f)) continue;
+    for (const o of overlapping(scene, f)) {
+      if (o.id < f.id || tucksUnder(f, o) || tucksUnder(o, f)) continue;
+      if (standingHeight(scene, f, new Set(scene.furniture.filter((x) => x.id !== o.id).map((x) => x.id))) !== null) continue;
+      if (standingHeight(scene, o, new Set(scene.furniture.filter((x) => x.id !== f.id).map((x) => x.id))) !== null) continue;
+      found.push([f.id, o.id]);
+    }
+  }
+  return found;
+}
+
+/**
+ * Puts floor piece `f` at the spot it describes, if it fits in a room and
+ * is not blocked by other furniture. Returns the placed piece or null.
+ */
+function settle(scene: Scene, f: Furniture, allowed: ReadonlySet<string>): Furniture | null {
+  const room = roomThatFits(scene, f);
+  if (!room) return null;
+  const height = standingHeight(scene, f, allowed);
+  if (height === null) return null;
+  const { elevation: _old, ...rest } = f;
+  return height > 0 ? { ...rest, room: room.id, elevation: mm(height) } : { ...rest, room: room.id };
+}
+
+const idsOf = (list: readonly Furniture[]): Set<string> => new Set(list.map((o) => o.id));
+
+/** The small things standing on `f`. */
+function riders(scene: Scene, f: Furniture): Furniture[] {
+  if (!SURFACE.test(f.model)) return [];
+  const top = footprint(f);
+  return scene.furniture.filter(
+    (o) => !o.removed && SMALL.test(o.model) && (o.elevation ?? 0) > 0 && footprint(o).every((c) => pointInsideOrOn(c, top)),
+  );
+}
+
 /**
  * Where a wall-hung piece ends up when dropped at `target`: flat against
  * the nearest wall of the room it is in, facing into the room.
@@ -115,45 +201,52 @@ export function snapToWall(
  * A wall-hung piece jumps to the nearest wall instead.
  */
 export function moveFurniture(scene: Scene, id: string, target: Point): Scene {
-  return update(scene, id, (f) => {
+  const before = scene.furniture.find((f) => f.id === id);
+  const moved = update(scene, id, (f) => {
     if (f.mount === 'wall') {
       const snap = snapToWall(scene, f, target);
       if (!snap) return null;
       if (snap.position[0] === f.position[0] && snap.position[1] === f.position[1]) return null;
       return { ...f, position: snap.position, rotationDeg: snap.rotationDeg, room: snap.room };
     }
+    const allowed = idsOf(overlapping(scene, f));
     const attempts: Point[] = [target, [target[0], f.position[1]], [f.position[0], target[1]]];
     for (const position of attempts) {
       if (position[0] === f.position[0] && position[1] === f.position[1]) continue;
-      const room = roomThatFits(scene, { ...f, position });
-      if (room) return { ...f, position, room: room.id };
+      const placed = settle(scene, { ...f, position }, allowed);
+      if (placed) return placed;
     }
     return null;
   });
+  if (moved === scene || !before || before.mount === 'wall') return moved;
+  // What stands on a table moves with the table.
+  const onTop = idsOf(riders(scene, before));
+  if (onTop.size === 0) return moved;
+  const after = moved.furniture.find((f) => f.id === id)!;
+  const dx = after.position[0] - before.position[0];
+  const dy = after.position[1] - before.position[1];
+  return {
+    ...moved,
+    furniture: moved.furniture.map((f) =>
+      onTop.has(f.id) ? { ...f, room: after.room, position: [mm(f.position[0] + dx), mm(f.position[1] + dy)] as Point } : f,
+    ),
+  };
 }
 
 /**
- * The nearest spot to `near`, within 3 m, where a floor piece fits. Spots
- * clear of the other furniture are preferred; if there is none, standing
- * over another piece is accepted (rugs never count as in the way).
+ * The nearest spot to `near`, within 3 m, where a new floor piece fits
+ * clear of the walls and of the other furniture.
  */
-function findSpot(scene: Scene, f: Pick<Furniture, 'rotationDeg' | 'size'>, near: Point): { position: Point; room: string } | undefined {
-  const others = scene.furniture
-    .filter((o) => !o.removed && o.mount !== 'wall' && o.size[1] > 0.1)
-    .map((o) => footprint(o));
-  let crowded: { position: Point; room: string } | undefined;
+function findSpot(scene: Scene, f: Furniture, near: Point): Furniture | undefined {
   for (let step = 0; step <= 30; step++) {
     for (let k = 0; k < (step === 0 ? 1 : 12); k++) {
       const angle = (k * Math.PI) / 6;
       const position: Point = [mm(near[0] + Math.cos(angle) * step * 0.1), mm(near[1] + Math.sin(angle) * step * 0.1)];
-      const room = roomThatFits(scene, { ...f, position });
-      if (!room) continue;
-      const corners = footprint({ ...f, position });
-      if (f.size[1] <= 0.1 || !others.some((o) => polygonsOverlap(corners, o))) return { position, room: room.id };
-      crowded ??= { position, room: room.id };
+      const placed = settle(scene, { ...f, position }, new Set());
+      if (placed) return placed;
     }
   }
-  return crowded;
+  return undefined;
 }
 
 /**
@@ -166,7 +259,9 @@ export function rotateFurniture(scene: Scene, id: string, deltaDeg: number): Sce
     if (f.mount === 'wall') return null;
     const rotationDeg = (((f.rotationDeg + deltaDeg) % 360) + 360) % 360;
     const turned = { ...f, rotationDeg };
-    if (roomThatFits(scene, turned)) return turned;
+    const allowed = idsOf(overlapping(scene, f));
+    const inPlace = settle(scene, turned, allowed);
+    if (inPlace) return inPlace;
     for (let step = 1; step <= 20; step++) {
       for (let k = 0; k < 8; k++) {
         const angle = (k * Math.PI) / 4;
@@ -174,8 +269,8 @@ export function rotateFurniture(scene: Scene, id: string, deltaDeg: number): Sce
           Math.round((f.position[0] + Math.cos(angle) * step * 0.05) * 1000) / 1000,
           Math.round((f.position[1] + Math.sin(angle) * step * 0.05) * 1000) / 1000,
         ];
-        const room = roomThatFits(scene, { ...turned, position });
-        if (room) return { ...turned, position, room: room.id };
+        const placed = settle(scene, { ...turned, position }, allowed);
+        if (placed) return placed;
       }
     }
     return null;
@@ -203,12 +298,13 @@ export function resizeFurniture(scene: Scene, id: string, size: readonly [number
     }
     const room = scene.rooms.find((r) => r.id === f.room);
     if (next[1] > (room ? roomHeight(scene, room) : scene.defaults.ceilingHeight)) return null;
+    const allowed = idsOf(overlapping(scene, f));
     for (let step = 0; step <= 20; step++) {
       for (let k = 0; k < (step === 0 ? 1 : 8); k++) {
         const angle = (k * Math.PI) / 4;
         const position: Point = [mm(f.position[0] + Math.cos(angle) * step * 0.05), mm(f.position[1] + Math.sin(angle) * step * 0.05)];
-        const fits = roomThatFits(scene, { ...sized, position });
-        if (fits) return { ...sized, position, room: fits.id };
+        const placed = settle(scene, { ...sized, position }, allowed);
+        if (placed) return placed;
       }
     }
     return null;
@@ -228,15 +324,15 @@ export function putBack(scene: Scene, id: string, position?: Point): Scene {
       const snap = snapToWall(scene, f, position ?? f.position);
       return snap ? { ...f, ...snap, removed: false } : null;
     }
-    const placed = { ...f, position: position ?? f.position };
-    const room = roomThatFits(scene, placed);
-    return room ? { ...placed, room: room.id, removed: false } : null;
+    const placed = settle(scene, { ...f, removed: false, position: position ?? f.position }, new Set());
+    return placed ? { ...placed, removed: false } : null;
   });
 }
 
 /** Raises or lowers a wall-hung piece, keeping it between floor and ceiling. */
 export function raiseFurniture(scene: Scene, id: string, delta: number): Scene {
   return update(scene, id, (f) => {
+    if (f.mount !== 'wall') return null;
     const room = scene.rooms.find((r) => r.id === f.room);
     const top = (room ? roomHeight(scene, room) : scene.defaults.ceilingHeight) - f.size[1];
     const elevation = mm(Math.max(0, Math.min(top, (f.elevation ?? 0) + delta)));
@@ -278,9 +374,9 @@ export function addFurniture(scene: Scene, item: CatalogueItem, near: Point, rot
     if (!snap) return { scene };
     piece = { ...base, ...snap, mount: 'wall', elevation: item.elevation ?? 1.2 };
   } else {
-    const spot = findSpot(scene, { rotationDeg, size: item.size }, near);
+    const spot = findSpot(scene, { ...base, room: '', position: near, rotationDeg }, near);
     if (!spot) return { scene };
-    piece = { ...base, room: spot.room, position: spot.position, rotationDeg };
+    piece = spot;
   }
   return { scene: { ...scene, furniture: [...scene.furniture, piece] }, id };
 }

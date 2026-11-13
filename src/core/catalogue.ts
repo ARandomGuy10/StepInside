@@ -8,7 +8,7 @@ export const CATALOGUE: readonly CatalogueItem[] = [
   { key: 'print', name: 'Small print', model: 'painting-4', size: [0.4, 0.5, 0.03], color: '#1f1f1f', mount: 'wall', elevation: 1.4 },
   { key: 'wall-mirror', name: 'Round wall mirror', model: 'wall-mirror', size: [0.7, 0.7, 0.04], color: '#b08d4c', mount: 'wall', elevation: 1.2 },
   { key: 'wall-shelf', name: 'Wall shelf', model: 'wall-shelf', size: [0.9, 0.25, 0.2], color: '#5a3d2b', mount: 'wall', elevation: 1.5 },
-  { key: 'plant', name: 'Floor plant', model: 'floor-plant', size: [0.6, 1.5, 0.6], color: '#c9c3b8' },
+  { key: 'plant', name: 'Floor plant', model: 'floor-plant', size: [0.7, 1.6, 0.7], color: '#c9c3b8' },
   { key: 'floor-lamp', name: 'Floor lamp', model: 'floor-lamp', size: [0.4, 1.6, 0.4], color: '#2b2b2b' },
   { key: 'armchair', name: 'Armchair', model: 'armchair', size: [0.85, 0.8, 0.85], color: '#7d8a74' },
   { key: 'side-table', name: 'Side table', model: 'side-table', size: [0.45, 0.5, 0.45], color: '#5a3d2b' },
@@ -20,4 +20,8 @@ export const CATALOGUE: readonly CatalogueItem[] = [
   { key: 'sofa-2', name: 'Two-seat sofa', model: 'sofa', size: [1.7, 0.75, 0.9], color: '#8c8577' },
   { key: 'chair', name: 'Dining chair', model: 'dining-chair', size: [0.5, 0.9, 0.5], color: '#7a4a35' },
   { key: 'coffee-table', name: 'Coffee table', model: 'coffee-table', size: [1.0, 0.42, 0.55], color: '#3a2a22' },
+  { key: 'table-lamp', name: 'Table lamp', model: 'table-lamp', size: [0.28, 0.5, 0.28], color: '#d9d2c3' },
+  { key: 'vase', name: 'Vase', model: 'vase', size: [0.2, 0.5, 0.2], color: '#c7b299' },
+  { key: 'table-plant', name: 'Small plant', model: 'table-plant', size: [0.25, 0.32, 0.25], color: '#e9e3d8' },
+  { key: 'books', name: 'Stack of books', model: 'books', size: [0.24, 0.12, 0.17], color: '#8a3b2e' },
 ];

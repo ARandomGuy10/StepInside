@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   emptyRoom, footprint, moveFurniture, putBack, resetLayout, roomAt, roomThatFits,
-  addFurniture, resizeFurniture, rotateFurniture, takeOut,
+  addFurniture, resizeFurniture, rotateFurniture, standingHeight, takeOut,
 } from '../src/core/edits';
 import { CATALOGUE } from '../src/core/catalogue';
 import { History } from '../src/core/history';
@@ -15,7 +15,7 @@ function furnished(): Scene {
   s.furniture = [
     { id: 'sofa', model: 'sofa', room: 'a', position: [1.5, 1.5], rotationDeg: 0, size: [2, 0.8, 1] },
     { id: 'chair', model: 'chair', room: 'b', position: [4.5, 1.5], rotationDeg: 0, size: [0.5, 0.9, 0.5] },
-    { id: 'lamp', model: 'lamp', room: 'a', position: [0.3, 0.3], rotationDeg: 0, size: [0.3, 1.5, 0.3] },
+    { id: 'lamp', model: 'lamp', room: 'a', position: [2.75, 2.75], rotationDeg: 0, size: [0.3, 1.5, 0.3] },
   ];
   return parseScene(s);
 }
@@ -227,5 +227,87 @@ describe('resizing', () => {
     const shelf = next.furniture.find((f) => f.id === added.id)!;
     expect(shelf.position[0]).toBeCloseTo(0.154, 3);
     expect(shelf.mount).toBe('wall');
+  });
+});
+
+describe('furniture cannot share floor space', () => {
+  /** Room a (3 x 3 m) with a table, a chair, a rug, a wardrobe and a table lamp. */
+  function crowded(): Scene {
+    const s = twoRooms();
+    s.furniture = [
+      { id: 'table', model: 'dining-table', room: 'a', position: [1.5, 1.5], rotationDeg: 0, size: [1.2, 0.75, 0.8] },
+      { id: 'chair', model: 'dining-chair', room: 'a', position: [1.5, 2.6], rotationDeg: 0, size: [0.5, 0.9, 0.5] },
+      { id: 'rug', model: 'rug', room: 'a', position: [1.5, 1.5], rotationDeg: 0, size: [2, 0.02, 2] },
+      { id: 'wardrobe', model: 'wardrobe', room: 'a', position: [0.3, 0.5], rotationDeg: 0, size: [0.6, 2, 1] },
+      { id: 'lamp', model: 'table-lamp', room: 'a', position: [2.7, 0.3], rotationDeg: 0, size: [0.25, 0.45, 0.25] },
+    ];
+    return parseScene(s);
+  }
+
+  it('stops a piece that would stand in another one', () => {
+    const scene = crowded();
+    expect(standingHeight(scene, { ...piece(scene, 'wardrobe'), position: [1.5, 1.5] })).toBeNull();
+    // dragged onto the table it does not end up there
+    expect(piece(moveFurniture(scene, 'wardrobe', [1.5, 1.5]), 'wardrobe').position).not.toEqual([1.5, 1.5]);
+  });
+
+  it('slides a piece along the one in its way', () => {
+    const next = moveFurniture(crowded(), 'wardrobe', [0.8, 2.3]);
+    // the full move would stand in the table, moving along x alone is free
+    expect(piece(next, 'wardrobe').position).toEqual([0.8, 0.5]);
+  });
+
+  it('lets a chair be pushed in under a table', () => {
+    const next = moveFurniture(crowded(), 'chair', [1.5, 2.0]);
+    expect(piece(next, 'chair').position).toEqual([1.5, 2.0]);
+    expect(piece(next, 'chair').elevation).toBeUndefined();
+  });
+
+  it('lets anything stand on a rug', () => {
+    const next = moveFurniture(crowded(), 'wardrobe', [0.3, 2.4]);
+    expect(piece(next, 'wardrobe').position).toEqual([0.3, 2.4]);
+  });
+
+  it('stands a small thing on a table top, and back on the floor after', () => {
+    const onTable = moveFurniture(crowded(), 'lamp', [1.5, 1.5]);
+    expect(piece(onTable, 'lamp').elevation).toBe(0.75);
+    const off = moveFurniture(onTable, 'lamp', [2.7, 0.3]);
+    expect(piece(off, 'lamp').elevation).toBeUndefined();
+  });
+
+  it('does not let a small thing hang over the edge of a table', () => {
+    const scene = crowded();
+    const next = moveFurniture(scene, 'lamp', [2.1, 1.5]); // half on, half off
+    expect(piece(next, 'lamp').position).not.toEqual([2.1, 1.5]);
+  });
+
+  it('carries what stands on a table along with the table', () => {
+    const onTable = moveFurniture(crowded(), 'lamp', [1.5, 1.5]);
+    const next = moveFurniture(onTable, 'table', [1.7, 1.5]);
+    expect(piece(next, 'table').position).toEqual([1.7, 1.5]);
+    expect(piece(next, 'lamp').position).toEqual([1.7, 1.5]);
+    expect(piece(next, 'lamp').elevation).toBe(0.75);
+  });
+
+  it('lets a piece that already overlaps another be dragged free', () => {
+    const s = twoRooms();
+    s.furniture = [
+      { id: 'one', model: 'wardrobe', room: 'a', position: [1, 1], rotationDeg: 0, size: [1, 2, 1] },
+      { id: 'two', model: 'wardrobe', room: 'a', position: [1.2, 1], rotationDeg: 0, size: [1, 2, 1] },
+    ];
+    const next = moveFurniture(parseScene(s), 'two', [1.6, 1]);
+    expect(piece(next, 'two').position).toEqual([1.6, 1]);
+  });
+
+  it('adds a new piece clear of the others, or not at all', () => {
+    const scene = crowded();
+    const bed = CATALOGUE.find((c) => c.key === 'bed')!;
+    // no space left in room a, so the bed lands in the empty room next door
+    const withBed = addFurniture(scene, bed, [1.5, 1.5]);
+    expect(piece(withBed.scene, withBed.id!).room).toBe('b');
+    const plant = CATALOGUE.find((c) => c.key === 'plant')!;
+    const added = addFurniture(scene, plant, [1.5, 1.5]);
+    expect(added.id).toBeDefined();
+    expect(standingHeight(added.scene, piece(added.scene, added.id!))).toBe(0);
   });
 });
