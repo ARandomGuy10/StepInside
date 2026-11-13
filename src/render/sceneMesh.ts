@@ -104,7 +104,9 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     // Under another storey the roof is only a thin cover, for the parts
     // the floor above does not reach.
     const covered = options.roof === false;
-    const roof = new THREE.Mesh(prism(room.polygon.map(toVec), covered ? 0.03 : 0.2), matte('#d9d6d0', 1));
+    // The top roof is a dark slab that sticks out a little past the walls.
+    const outline = covered ? room.polygon.map(toVec) : spread(room.polygon.map(toVec), t + 0.25);
+    const roof = new THREE.Mesh(prism(outline, covered ? 0.03 : 0.22), matte(covered ? '#d9d6d0' : '#5f6368', 0.9));
     roof.name = 'roof';
     roof.position.y = roomHeight(scene, room) + (covered ? 0.001 : 0.01);
     roof.castShadow = true;
@@ -168,6 +170,13 @@ function floorMaterial(scene: Scene, room: Room | undefined): THREE.MeshStandard
 
 function matte(color: string, roughness: number): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, roughness });
+}
+
+/** Moves every corner of a polygon outwards from its middle by `by` metres along each axis. */
+function spread(points: readonly Vec2[], by: number): Vec2[] {
+  const box = new THREE.Box2().setFromPoints(points.map((p) => new THREE.Vector2(p.x, p.y)));
+  const mid = box.getCenter(new THREE.Vector2());
+  return points.map((p) => ({ x: p.x + Math.sign(p.x - mid.x) * by, y: p.y + Math.sign(p.y - mid.y) * by }));
 }
 
 /** A flat polygon at a given height, facing up (a floor) or down (a ceiling). */

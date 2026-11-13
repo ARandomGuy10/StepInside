@@ -35,6 +35,12 @@ the choice (`?home=villa`), so a home can be bookmarked.
 | Apartment | `scenes/home.json` | `scenes/home.md` |
 | New house | `scenes/villa-ground.json`, `scenes/villa-first.json` | `scenes/villa.md` |
 
+A home opens on a view of the whole building from outside. Drag to turn
+it, scroll to zoom, and use **Hide roof** to look inside. The bar at the
+bottom switches between **Whole house**, a **plan** of each floor and
+**Walk through**. Add `&view=walk` to the address to open straight in the
+walk.
+
 A home can have several storeys. Each storey is a scene file of its own,
 and `src/homes.ts` stacks them: the height of each floor, where the
 stairs are, and where the walk starts. The new house starts outside, at

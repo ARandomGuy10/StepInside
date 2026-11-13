@@ -15,6 +15,8 @@ import { FurnitureView } from './render/furnitureView';
 import { addLighting, buildLamps } from './render/lighting';
 import { applyShellColors, buildShell } from './render/sceneMesh';
 import { skyTexture } from './render/textures';
+import { OrbitView } from './render/orbitView';
+import { buildStreet } from './render/site';
 import { TopView } from './render/topView';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
@@ -95,9 +97,18 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   const topView = new TopView(bounds);
+  // The whole-house view circles the home from outside.
+  const top = levels[levels.length - 1];
+  const orbit = new OrbitView(bounds, top.elevation + scenes[scenes.length - 1].defaults.ceilingHeight);
+  let inOrbit = false;
+  // A home without an outside to show, such as a flat, opens with its lid off.
+  let roofHidden = !scenes[0].site;
+  if (scenes[0].site) {
+    world.add(buildStreet(bounds, scenes[0].defaults.exteriorWallThickness, scenes[0].site.margin, spawn.position[0]));
+  }
   world.add(topView.marker);
   let inTopView = false;
-  const activeCamera = (): THREE.Camera => (inTopView ? topView.camera : camera);
+  const activeCamera = (): THREE.Camera => (inOrbit ? orbit.camera : inTopView ? topView.camera : camera);
 
   // Adding ?fast to the address skips the post-processing below, for
   // slow machines.
@@ -328,14 +339,65 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   function setTopView(on: boolean): void {
     inTopView = on;
+    inOrbit = false;
     if (on) document.exitPointerLock();
     controls.enabled = !on;
     topView.setActive(on);
     showLevels();
     document.body.classList.toggle('top-view', on);
+    document.body.classList.remove('orbit-view', 'hint-gone');
     updateHint();
     refresh();
   }
+
+  /** The whole home seen from outside. Nothing is edited in this view. */
+  function setOrbit(): void {
+    setTopView(false);
+    inOrbit = true;
+    document.exitPointerLock();
+    controls.enabled = false;
+    selectedId = null;
+    paintTarget = null;
+    document.body.classList.add('orbit-view');
+    showLevels();
+    updateHint();
+    refresh();
+  }
+
+  // ---- The view bar: whole house, a plan per floor, walk through ----
+
+  const viewBar = document.getElementById('views')!;
+  const viewButton = (label: string, title: string, run: () => void): HTMLButtonElement => {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.title = title;
+    button.addEventListener('click', run);
+    return button;
+  };
+  const wholeButton = viewButton(scenes[0].site ? 'Whole house' : 'Whole home', 'See it from outside: drag to turn, scroll to zoom', setOrbit);
+  const planButtons = levels.map((l, i) =>
+    viewButton(levels.length > 1 ? `${l.name} plan` : 'Floor plan', 'Look straight down at this floor', () => {
+      if (i !== level) goTo(i);
+      setTopView(true);
+    }),
+  );
+  const walkButton = viewButton('Walk through', 'Walk it in first person', () => setTopView(false));
+  walkButton.classList.add('primary');
+  viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
+  const tools = document.getElementById('orbit-tools')!;
+  const roofButton = viewButton('', 'Take the roof off to look inside', () => {
+    roofHidden = !roofHidden;
+    showLevels();
+    updateHint();
+  });
+  tools.replaceChildren(
+    viewButton('⟲', 'Turn left', () => orbit.turn(-Math.PI / 4)),
+    viewButton('⟳', 'Turn right', () => orbit.turn(Math.PI / 4)),
+    viewButton('+', 'Zoom in', () => orbit.zoom(0.8)),
+    viewButton('−', 'Zoom out', () => orbit.zoom(1.25)),
+    viewButton('Reset view', 'Back to the first view', () => orbit.reset()),
+    roofButton,
+  );
 
   /**
    * The top view shows one storey: everything above it is hidden, and so
@@ -346,7 +408,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     levels.forEach((l, i) => {
       const shown = !inTopView || i <= level;
       l.shell.visible = l.furniture.group.visible = shown;
-      const lid = !(inTopView && i === level);
+      // In the whole-house view the roof of the top storey can come off.
+      const lid = !(inTopView && i === level) && !(inOrbit && roofHidden && l === top);
       l.lamps.visible = shown && lid;
       for (const o of l.shell.children) {
         if (o.name.startsWith('ceiling:') || o.name === 'roof') o.visible = lid;
@@ -389,6 +452,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     floorPlane.constant = -lv().elevation;
     levelButtons.forEach((b, j) => b.classList.toggle('active', j === i));
     showLevels();
+    updateHint();
     refresh();
   }
 
@@ -434,6 +498,16 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   function updateHint(): void {
     const painting = mode === 'paint';
+    wholeButton.classList.toggle('active', inOrbit);
+    planButtons.forEach((b, i) => b.classList.toggle('active', inTopView && i === level));
+    walkButton.classList.toggle('active', !inOrbit && !inTopView);
+    roofButton.textContent = roofHidden ? 'Show roof' : 'Hide roof';
+    if (inOrbit) {
+      document.getElementById('hint-title')!.textContent = home.title;
+      document.getElementById('hint-text')!.textContent =
+        'Drag to turn it · scroll to zoom · pick a floor plan, or Walk through to go inside';
+      return;
+    }
     document.getElementById('hint-title')!.textContent = inTopView
       ? 'Top view'
       : painting
@@ -541,7 +615,22 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let drag: { id: string; offset: [number, number]; lift?: number } | null = null;
   let press: { x: number; y: number } | null = null;
 
+  // In the whole-house view a drag turns the home and the wheel zooms.
+  let turning: { x: number; y: number } | null = null;
+  canvas.addEventListener('wheel', (e) => {
+    if (!inOrbit) return;
+    e.preventDefault();
+    orbit.zoom(Math.exp(e.deltaY * 0.0012));
+  }, { passive: false });
+
   canvas.addEventListener('pointerdown', (e) => {
+    // The hint has done its job once the view is touched.
+    document.body.classList.add('hint-gone');
+    if (inOrbit) {
+      turning = { x: e.clientX, y: e.clientY };
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
     if (e.button !== 0) return;
     if (controls.locked) {
       // While looking around, a click in paint mode picks what the dot is on.
@@ -573,6 +662,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   canvas.addEventListener('pointermove', (e) => {
+    if (turning) {
+      orbit.turn(-(e.clientX - turning.x) * 0.006, -(e.clientY - turning.y) * 0.005, true);
+      turning = { x: e.clientX, y: e.clientY };
+      return;
+    }
     if (!drag) return;
     if (drag.lift !== undefined) {
       const hit = wallPoint(e);
@@ -590,6 +684,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   canvas.addEventListener('pointerup', (e) => {
+    if (turning || inOrbit) {
+      turning = null;
+      return;
+    }
     if (e.button !== 0) return;
     const wasClick = press !== null && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5;
     press = null;
@@ -651,7 +749,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     } else if (command) {
       return;
     } else if (e.code === 'KeyT') {
-      setTopView(!inTopView);
+      setTopView(inOrbit || !inTopView);
     } else if (e.code === 'PageUp' || e.code === 'PageDown') {
       e.preventDefault();
       goTo(level + (e.code === 'PageUp' ? 1 : -1));
@@ -677,17 +775,22 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     topView.resize(w, h, PANEL_WIDTH);
+    orbit.resize(w, h);
   }
   window.addEventListener('resize', resize);
   resize();
   setLevel(0);
+  // Open on the whole home, unless the address asks for ?view=walk.
+  if (new URLSearchParams(window.location.search).get('view') !== 'walk') setOrbit();
 
   let lastRoom: string | undefined;
   const timer = new THREE.Timer();
   // The render loop: the browser calls this before every screen refresh.
   renderer.setAnimationLoop((time) => {
     timer.update(time);
-    controls.update(Math.min(timer.getDelta(), 0.1));
+    const dt = Math.min(timer.getDelta(), 0.1);
+    controls.update(dt);
+    if (inOrbit) orbit.update(dt);
     walkStairs();
     const pose = controls.pose;
     topView.placeMarker(pose.x, pose.y, pose.yaw, controls.baseHeight);
@@ -707,7 +810,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   // Handy in the browser console, and used by the automated screenshots.
-  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, goTo, topCamera: topView.camera } });
+  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, topCamera: topView.camera } });
 }
 
 // The address picks the home: ?home=apartment. Without it, the start
@@ -718,6 +821,7 @@ const chosen = HOMES.find((h) => h.id === params.get('home'));
 if (!chosen) {
   document.getElementById('panel')!.hidden = true;
   document.getElementById('hint')!.hidden = true;
+  document.getElementById('view-bar')!.hidden = true;
   document.getElementById('chooser')!.hidden = false;
   document.getElementById('chooser-list')!.replaceChildren(
     ...HOMES.map((h) => {

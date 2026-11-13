@@ -6,7 +6,7 @@
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
   "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee"},
   "start": {"position": [4.724, 11.887], "yawDeg": 0},
-  "site": {"margin": 30, "color": "#9aa08f"},
+  "site": {"margin": 30, "color": "#a4b48e"},
   "rooms": [
     {"id": "kitchen", "name": "Kitchen", "polygon": [[0.229, 0.229], [3.886, 0.229], [3.886, 4.801], [0.229, 4.801]], "floor": {"material": "tile", "color": "#e6e2da"}},
     {"id": "master", "name": "Master bedroom", "polygon": [[4.039, 0.229], [8.001, 0.229], [8.001, 4.801], [4.039, 4.801]]},

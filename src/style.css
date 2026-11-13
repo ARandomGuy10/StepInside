@@ -20,7 +20,7 @@ body {
 #hint {
   position: fixed;
   left: 50%;
-  bottom: 32px;
+  top: 22px;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -442,4 +442,101 @@ body.dragging #view {
   background: #2f2a25;
   border-color: #2f2a25;
   color: #fff;
+}
+
+/* The view bar at the bottom: whole house, floor plans, walk through. */
+#view-bar {
+  position: fixed;
+  left: calc(50% + 144px);
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+}
+
+#views,
+#orbit-tools {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 14px;
+  background: rgba(250, 248, 244, 0.92);
+  box-shadow: 0 8px 28px rgba(30, 24, 16, 0.18), 0 0 0 1px rgba(30, 24, 16, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+#orbit-tools {
+  display: none;
+}
+
+body.orbit-view #orbit-tools {
+  display: flex;
+}
+
+#view-bar button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 16px;
+  background: transparent;
+  color: #3b352e;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#orbit-tools button {
+  padding: 7px 12px;
+  font-weight: 500;
+}
+
+#view-bar button:hover {
+  background: rgba(47, 42, 37, 0.08);
+}
+
+#view-bar button.active {
+  background: #2f2a25;
+  color: #fff;
+}
+
+#view-bar button.primary:not(.active) {
+  background: #c8553d;
+  color: #fff;
+}
+
+body.walking #view-bar,
+body.dragging #view-bar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* In the whole-house view the editing panel steps aside. */
+body.orbit-view #panel > :not(#home-bar) {
+  display: none;
+}
+
+body.orbit-view #view-bar {
+  left: 50%;
+}
+
+body.orbit-view #view {
+  cursor: grab;
+}
+
+body.hint-gone #hint {
+  display: none;
+}
+
+#view-bar[hidden] {
+  display: none;
+}
+
+body.orbit-view #panel {
+  bottom: auto;
+  height: auto;
+  max-height: none;
 }

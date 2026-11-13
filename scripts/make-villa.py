@@ -102,7 +102,7 @@ SPLIT = L + 18                                      # right side of the dining/l
 
 # ---------------------------------------------------------------- ground floor
 g = Home("New house, ground floor", (15.5, 39), 0)
-g.site = {"margin": 30, "color": "#9aa08f"}
+g.site = {"margin": 30, "color": "#a4b48e"}
 g.room("kitchen", "Kitchen", (L, T, L + 12, ROW1), floor=TILE)
 g.room("master", "Master bedroom", (L + 12.5, T, L + 25.5, ROW1))
 g.room("bath", "Bath", (L + 26, T, R, T + 9), floor=BATH)
