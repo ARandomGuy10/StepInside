@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import type { Light, Scene } from '../core/scene';
 import { skyTexture } from './textures';
 
@@ -24,10 +25,32 @@ export function addLighting(
   // An environment map is a picture of the surroundings that every surface
   // reflects a little. It gives metal, glass and polished wood something
   // to reflect, and adds gentle light from all directions.
+  // It starts as a simple made-up room, then switches to a real panorama
+  // photographed outdoors (an "HDRI": a 360° photo that keeps the true
+  // brightness of the sky). Glass, tiles and metal then reflect a real sky
+  // and greenery, and the light from all around has real colour.
   const pmrem = new THREE.PMREMGenerator(renderer);
   world.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  world.environmentIntensity = 0.3;
-  pmrem.dispose();
+  let envStrength = 0.3;
+  let fillStrength = 0.73;
+  let lastSun: [number, number] = [scene.sun.azimuthDeg, scene.sun.elevationDeg];
+  new HDRLoader().load(
+    `${import.meta.env.BASE_URL}env/garden.hdr`,
+    (hdr) => {
+      hdr.mapping = THREE.EquirectangularReflectionMapping;
+      const old = world.environment;
+      world.environment = pmrem.fromEquirectangular(hdr).texture;
+      old?.dispose();
+      hdr.dispose();
+      pmrem.dispose();
+      // The panorama brings its own soft light, so the fake fill steps back.
+      envStrength = 0.55;
+      fillStrength = 0.55;
+      setSun(...lastSun);
+    },
+    undefined,
+    () => pmrem.dispose(),
+  );
 
   // Fill light: stands in for daylight bouncing around the rooms. Real
   // bounced light is expensive to compute, so real-time 3D fakes it.
@@ -72,6 +95,7 @@ export function addLighting(
   let skyKey = '';
 
   function setSun(azimuthDeg: number, elevationDeg: number): void {
+    lastSun = [azimuthDeg, elevationDeg];
     // The sun's compass bearing, turned into an angle on the plan:
     // 0 is "from the top of the page" and it grows clockwise.
     const az = THREE.MathUtils.degToRad(azimuthDeg + scene.northDeg);
@@ -87,10 +111,10 @@ export function addLighting(
     sun.color.copy(noon).lerp(lowSun, warm);
     sun.intensity = scene.sun.intensity * THREE.MathUtils.smoothstep(elevationDeg, -1, 10);
     sun.castShadow = elevationDeg > -1;
-    fill.intensity = 0.12 + 0.73 * day;
+    fill.intensity = 0.12 + fillStrength * day;
     fill.color.copy(nightFill).lerp(duskFill, THREE.MathUtils.smoothstep(elevationDeg, -6, 2)).lerp(dayFill, 1 - warm);
     for (const side of sides) side.intensity = side.userData.strength * (0.25 + 0.75 * day);
-    world.environmentIntensity = 0.08 + 0.22 * day;
+    world.environmentIntensity = 0.08 + (envStrength - 0.08) * day;
 
     const key = `${Math.round(elevationDeg)}`;
     if (key !== skyKey) {

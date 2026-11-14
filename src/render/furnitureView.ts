@@ -1,9 +1,27 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import type { Furniture } from '../core/scene';
 import { buildModel } from './models';
 
 const DEFAULT_COLOR = '#8a8f98';
+
+/**
+ * How each downloaded model sits in our size box. `turn` (degrees) turns
+ * the model so its front faces the way ours do; `stretch` lets a model be
+ * pulled to a different shape (fine for tables, wrong for chairs and plants,
+ * which are scaled evenly so they keep their real proportions).
+ */
+const MODEL_FIT: Record<string, { turn?: number; stretch?: number }> = {
+  armchair: { turn: 180 },
+  'coffee-table': { stretch: 0.3 },
+  'side-table': { stretch: 0.15 },
+  'dining-chair': { turn: 180 },
+  'round-table': {},
+  'floor-plant': {},
+  'table-plant': {},
+  vase: {},
+};
 
 interface Item {
   data: Furniture;
@@ -19,7 +37,7 @@ export class FurnitureView {
   readonly group = new THREE.Group();
   private readonly items = new Map<string, Item>();
   private readonly models = new Map<string, Promise<THREE.Object3D | null>>();
-  private readonly loader = new GLTFLoader();
+  private readonly loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
   constructor() {
     this.group.name = 'furniture';
@@ -85,16 +103,25 @@ export class FurnitureView {
 
     void this.loadModel(f.model).then((model) => {
       if (!model || this.items.get(f.id)?.object !== root) return;
-      const copy = model.clone(true);
-      fitToSize(copy, f.size);
+      const copy = new THREE.Group();
+      const inner = model.clone(true);
+      const fit = MODEL_FIT[f.model] ?? { stretch: 1 };
+      inner.rotation.y = THREE.MathUtils.degToRad(fit.turn ?? 0);
+      copy.add(inner);
+      fitToSize(copy, f.size, fit.stretch ?? 0);
       castShadows(copy);
-      copy.traverse((child) => {
-        if (!(child instanceof THREE.Mesh)) return;
-        if (f.color) {
-          child.material = (child.material as THREE.MeshStandardMaterial).clone();
-          (child.material as THREE.MeshStandardMaterial).color.set(f.color);
-        }
-      });
+      const paint = f.color;
+      if (paint) {
+        const tint = paintTint(paint);
+        copy.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return;
+          const material = (child.material as THREE.MeshStandardMaterial).clone();
+          // A photographed texture already has its colour, so paint only
+          // shifts its hue. A plain material takes the paint as it is.
+          material.color.copy(material.map ? tint : new THREE.Color(paint));
+          child.material = material;
+        });
+      }
       root.remove(placeholder);
       root.add(copy);
     });
@@ -138,11 +165,30 @@ function needsRebuild(a: Furniture, b: Furniture): boolean {
   return a.model !== b.model || a.color !== b.color || a.size.some((v, i) => v !== b.size[i]);
 }
 
-/** Scales a model to exactly `size` and stands it on the floor, centred. */
-function fitToSize(model: THREE.Object3D, size: readonly [number, number, number]): void {
+/**
+ * Turns a paint colour into a tint for a textured material: the paint's hue
+ * at full brightness, mixed half way with white, so the texture's own light
+ * and shade still show through.
+ */
+function paintTint(color: string): THREE.Color {
+  const c = new THREE.Color(color);
+  const top = Math.max(c.r, c.g, c.b) || 1;
+  return new THREE.Color(c.r / top, c.g / top, c.b / top).lerp(new THREE.Color(1, 1, 1), 0.5);
+}
+
+/**
+ * Scales a model into `size` and stands it on the floor, centred. The model
+ * is scaled evenly to fit inside the box; `stretch` (0 to 1) then lets each
+ * side grow by up to that fraction towards the box, for pieces that can
+ * change shape without looking wrong.
+ */
+function fitToSize(model: THREE.Object3D, size: readonly [number, number, number], stretch: number): void {
   const box = new THREE.Box3().setFromObject(model);
   const extent = box.getSize(new THREE.Vector3());
-  model.scale.set(size[0] / (extent.x || 1), size[1] / (extent.y || 1), size[2] / (extent.z || 1));
+  const ratios = [size[0] / (extent.x || 1), size[1] / (extent.y || 1), size[2] / (extent.z || 1)];
+  const even = Math.min(...ratios);
+  const [sx, sy, sz] = ratios.map((r) => Math.min(r, even * (1 + stretch)));
+  model.scale.set(sx, sy, sz);
   const scaled = new THREE.Box3().setFromObject(model);
   const center = scaled.getCenter(new THREE.Vector3());
   model.position.x -= center.x;

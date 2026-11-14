@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { roomHeight, toVec, wallColor, type Room, type Scene } from '../core/scene';
 import type { Vec2 } from '../core/collision';
 import type { Hole, WallModel, WallSlab } from '../core/walls';
-import { floorTexture, pattern } from './textures';
+import { applySurface, floorSurface, pattern } from './textures';
 
 const FRAME_COLOR = 0xfafafa;
 const FRONT_DOOR_COLOR = 0x3f5f85;
@@ -197,7 +197,8 @@ export function applyShellColors(shell: THREE.Object3D, scene: Scene): void {
 /** A floor's colour, with the pattern for its material (planks, tiles) on top. */
 function floorMaterial(scene: Scene, room: Room | undefined): THREE.MeshStandardMaterial {
   const material = matte(room?.floor?.color ?? scene.defaults.floorColor, 0.6);
-  material.map = floorTexture(room?.floor?.material);
+  const surface = floorSurface(room?.floor?.material);
+  if (surface) applySurface(material, surface[0], surface[1]);
   return material;
 }
 
@@ -354,7 +355,7 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     material.opacity = 0.22;
     material.depthWrite = false;
   } else if (slab.boundary) {
-    material.map = pattern('stone', 1 / 2.4);
+    applySurface(material, 'stone', 1 / 2.4);
   }
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `${slab.kind}:${slab.roomId}:${slab.edge}`;
@@ -375,7 +376,7 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     // The outside of an outside wall is a thin skin: stone cladding or render.
     const kind = slab.finish ?? scene.defaults.exteriorMaterial ?? 'render';
     const finish = matte(kind === 'stone' ? (scene.defaults.stoneColor ?? exteriorColor) : exteriorColor, 0.95);
-    if (kind === 'stone') finish.map = pattern('stone', 1 / 2.4);
+    if (kind === 'stone') applySurface(finish, 'stone', 1 / 2.4);
     const skin = new THREE.Mesh(
       new THREE.ExtrudeGeometry(pieces.map((x) => x.shape), { depth: 0.015, bevelEnabled: false }).translate(0, 0, -slab.thickness - 0.015),
       finish,

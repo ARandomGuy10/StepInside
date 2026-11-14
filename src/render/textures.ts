@@ -241,24 +241,114 @@ export function pattern(kind: Pattern, repeatU = 1, repeatV = repeatU): THREE.Te
   return texture;
 }
 
+/**
+ * Photographed surfaces (from Poly Haven, CC0) that replace some drawn
+ * patterns. Each has a colour map turned to light grey, so the material's
+ * own colour still paints it, plus a normal map (tiny bumps and grooves
+ * that catch the light) and a roughness map (where it shines).
+ * `span` is how many metres one copy of the drawn pattern usually covers,
+ * `real` how many the photo covers, so the photo keeps its true scale.
+ * The lawn keeps its drawn stripes and borrows only the photo's relief.
+ */
+const PHOTOS: Partial<Record<Pattern, { span: number; real: number; color: boolean }>> = {
+  planks: { span: 1.6, real: 1.7, color: true },
+  tiles: { span: 1, real: 1, color: true },
+  stone: { span: 2.4, real: 2.5, color: true },
+  setts: { span: 1.6, real: 2, color: true },
+  pebbles: { span: 0.7, real: 2, color: true },
+  lawn: { span: 1.5, real: 2, color: false },
+};
+type MapKind = 'color' | 'normal' | 'rough';
+const photos = new Map<string, HTMLImageElement>();
+
+/**
+ * Loads the photographed surfaces. Resolves when they are in, or after
+ * `timeoutMs`, whichever is first; anything not loaded by then keeps the
+ * drawn pattern.
+ */
+export function loadSurfaces(timeoutMs: number): Promise<void> {
+  if (new URLSearchParams(window.location.search).has('drawn')) return Promise.resolve();
+  const jobs: Promise<void>[] = [];
+  for (const [kind, photo] of Object.entries(PHOTOS)) {
+    const maps: MapKind[] = photo!.color ? ['color', 'normal', 'rough'] : ['normal', 'rough'];
+    for (const map of maps) {
+      jobs.push(
+        new Promise<void>((resolve) => {
+          const image = new Image();
+          image.onload = () => {
+            photos.set(`${kind}-${map}`, image);
+            resolve();
+          };
+          image.onerror = () => resolve();
+          image.src = `${import.meta.env.BASE_URL}textures/${kind}-${map}.jpg`;
+        }),
+      );
+    }
+  }
+  return Promise.race([
+    Promise.all(jobs).then(() => undefined),
+    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
+}
+
+function photoTexture(kind: Pattern, map: MapKind, repeatU: number, repeatV: number): THREE.Texture | null {
+  const photo = PHOTOS[kind];
+  const image = photos.get(`${kind}-${map}`);
+  if (!photo || !image) return null;
+  const base = cached(`photo:${kind}-${map}`, () => {
+    const texture = new THREE.Texture(image);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    // Only the colour map holds colours; the others hold measurements.
+    texture.colorSpace = map === 'color' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    texture.anisotropy = 8;
+    texture.needsUpdate = true;
+    return texture;
+  });
+  const texture = base.clone();
+  const scale = photo.span / photo.real;
+  texture.repeat.set(repeatU * scale, repeatV * scale);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * Puts a pattern on a material: the photographed version with its bumps
+ * and shine where there is one, otherwise the drawn pattern.
+ */
+export function applySurface(material: THREE.MeshStandardMaterial, kind: Pattern, repeatU = 1, repeatV = repeatU): void {
+  material.map = photoTexture(kind, 'color', repeatU, repeatV) ?? pattern(kind, repeatU, repeatV);
+  const normal = photoTexture(kind, 'normal', repeatU, repeatV);
+  if (normal) {
+    material.normalMap = normal;
+    material.normalScale.set(0.8, 0.8);
+  }
+  const rough = photoTexture(kind, 'rough', repeatU, repeatV);
+  if (rough) {
+    // The map gives the shine pattern; the material's roughness scales it.
+    material.roughnessMap = rough;
+    material.roughness = Math.min(1, material.roughness + 0.15);
+  }
+}
+
 /** The pattern and scale for a floor's `material` label in the scene file. */
-export function floorTexture(material: string | undefined): THREE.Texture | null {
+export function floorSurface(material: string | undefined): [Pattern, number] | null {
   // Floor UVs are in metres. A repeat of 1/1.6 makes the texture span 1.6 m.
   switch (material) {
     case 'laminate':
-      return pattern('planks', 1 / 1.6);
+      return ['planks', 1 / 1.6];
     case 'decking':
-      return pattern('planks', 1 / 1.2);
+      return ['planks', 1 / 1.2];
     case 'tile':
-      return pattern('tiles', 1 / 1.2);
+      return ['tiles', 1 / 1.2];
     case 'lawn':
-      return pattern('lawn', 1 / 1.5);
+      return ['lawn', 1 / 1.5];
     case 'setts':
-      // The setts pattern spans 1.6 m: courses 10 cm deep.
-      return pattern('setts', 1 / 1.6);
+      // The drawn setts pattern spans 1.6 m: courses 10 cm deep.
+      return ['setts', 1 / 1.6];
     case 'large-tile':
       // Four tiles across the pattern, so each tile is 80 cm.
-      return pattern('tiles', 1 / 3.2);
+      return ['tiles', 1 / 3.2];
     default:
       return null;
   }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { artTexture, pattern, type Pattern } from './textures';
+import { applySurface, artTexture, type Pattern } from './textures';
 
 /**
  * Furniture models built in code from simple rounded shapes.
@@ -36,7 +36,7 @@ function mat(color: THREE.ColorRepresentation, o: MatOptions = {}): THREE.MeshSt
     roughness: o.roughness ?? 0.8,
     metalness: o.metalness ?? 0,
   });
-  if (o.map) material.map = pattern(o.map, o.repeat ?? 1);
+  if (o.map) applySurface(material, o.map, o.repeat ?? 1);
   if (o.opacity !== undefined) {
     material.transparent = true;
     material.opacity = o.opacity;
@@ -888,7 +888,7 @@ const steppingPath: Builder = (k, [w, , d], color) => {
   for (const sx of [-1, 1]) k.box(lip, 0.06, d, sx * (w / 2 - lip / 2), 0.03, 0, edge);
   for (const sz of [-1, 1]) k.box(w - 2 * lip, 0.06, lip, 0, 0.03, sz * (d / 2 - lip / 2), edge);
   const gravel = mat('#f3f1ec', { roughness: 0.95 });
-  gravel.map = pattern('pebbles', (w - 2 * lip) / 0.7, (d - 2 * lip) / 0.7);
+  applySurface(gravel, 'pebbles', (w - 2 * lip) / 0.7, (d - 2 * lip) / 0.7);
   k.box(w - 2 * lip, 0.035, d - 2 * lip, 0, 0.0175, 0, gravel);
   const stones = [0, 0.08, -0.06, 0.14].map((t) => mat(t >= 0 ? lighter(color, t) : darker(color, -t), { roughness: 0.9 }));
   const along = d >= w; // the strip runs along z
@@ -947,7 +947,7 @@ const shrubBall: Builder = (k, [w, h, d], color) => {
 /** Paving of small stone setts: a thin slab with the setts pattern, for paths and terraces. */
 const paving: Builder = (k, [w, h, d], color) => {
   const stone = mat(color, { roughness: 0.85 });
-  stone.map = pattern('setts', w / 1.6, d / 1.6);
+  applySurface(stone, 'setts', w / 1.6, d / 1.6);
   k.box(w, Math.max(0.01, h), d, 0, Math.max(0.01, h) / 2, 0, stone);
 };
 

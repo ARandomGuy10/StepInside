@@ -16,6 +16,7 @@ import { FurnitureView } from './render/furnitureView';
 import { addLighting, buildLamps, type Daylight } from './render/lighting';
 import { clockText, sunPosition, sunTimes, type Place } from './core/sun';
 import { applyShellColors, buildShell } from './render/sceneMesh';
+import { loadSurfaces } from './render/textures';
 import { OrbitView } from './render/orbitView';
 import { buildStreet } from './render/site';
 import { TopView } from './render/topView';
@@ -1064,14 +1065,23 @@ if (!chosen) {
       next.set('home', picker.value);
       window.location.search = next.toString();
     });
-    start(chosen, chosen.levels.map((l) => parseScene(l.json)));
+    const scenes = chosen.levels.map((l) => parseScene(l.json));
+    // The photographed surfaces load first (a few seconds at most), so the
+    // floors and walls appear with them rather than switching over later.
+    void loadSurfaces(6000)
+      .then(() => start(chosen, scenes))
+      .catch(showStartError);
   } catch (error) {
-    const panel = document.querySelector<HTMLElement>('#error')!;
-    panel.hidden = false;
-    panel.textContent =
-      error instanceof SceneError ? error.message : `Could not start: ${String(error)}`;
-    if (!(error instanceof SceneError)) throw error;
+    showStartError(error);
   }
+}
+
+function showStartError(error: unknown): void {
+  const panel = document.querySelector<HTMLElement>('#error')!;
+  panel.hidden = false;
+  panel.textContent =
+    error instanceof SceneError ? error.message : `Could not start: ${String(error)}`;
+  if (!(error instanceof SceneError)) throw error;
 }
 
 /**

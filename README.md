@@ -203,12 +203,14 @@ src/core/     Scene logic with no Three.js imports. Unit tested.
               history.ts   undo and redo
 src/render/   Everything that draws: meshes, lights, camera controls.
               models.ts    furniture built from simple shapes in code
-              textures.ts  planks, tiles, fabric and paintings drawn in code
+              textures.ts  drawn patterns, and photographed surfaces where there are some
 src/ui/       The HTML panels.
 src/homes.ts  The list of homes on the start screen.
 src/main.ts   Wires it all together: state, mouse and keyboard.
 scripts/      make-villa.py writes the new house's scene files from feet.
-public/models glTF furniture models. See the README in that folder.
+public/models glTF furniture models (CC0, Poly Haven). See the README there.
+public/textures Photographed floor, stone and paving textures. README there.
+public/env    The outdoor panorama that lights and reflects the scene.
 tests/        Vitest unit tests for src/core.
 ```
 
