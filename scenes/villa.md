@@ -210,3 +210,11 @@ Differs from the model: the model's ground floor is set back behind a low
 front wall along its whole width; here the guest room stays at the front
 left, as in design A. Bedroom 3 is at the small end of a bedroom (about
 10 m²) so that the curl can sit in front of it.
+
+## Design E: the model, whole house (`?home=villa-e`)
+
+The architect's model laid out on our 35 x 55 ft plot, ground floor included.
+
+- **Ground floor:** kitchen at the rear-left; a pool court at the rear, open to the sky, that the living + dining room and the master bedroom both open onto. Master bedroom with its own bath on the right, a toilet and a stone-clad study at the front-right, the teak-clad guest room with three tall windows at the front-left, the main door between them. A 4 ft side passage on the right leads from the 7.5 ft front yard back to the pool. The first flight stands in the living room and climbs to the back.
+- **First floor:** bedroom 2 at the rear-left over the kitchen, bedroom 1 (with dressing and bath) on the right, bedroom 3 in the teak box at the front-left, and a shared bath off the landing. A corridor beside the stairwell leads to the lounge, glazed from floor to ceiling, with the balcony in front. In front of bedroom 3 the concrete curl rises from a planter ledge at the front-left corner to the roof slab, with a rooflight and glass under it and a planted garden behind the glass. There is a gap between the ledge and the balcony, as in the model.
+- **Roof:** the slab over the lounge carries on over the balcony and past the right-hand wall. The stair room (reached by a second flight from the lounge) has a teak panel at the front and a wide roof that sweeps down to the right to a planter. A terrace with a glass railing runs in front of it and round to the back.

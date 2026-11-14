@@ -9,6 +9,9 @@ import villaCRoof from '../scenes/villa-c-roof.json';
 import villaDFirst from '../scenes/villa-d-first.json';
 import villaDGround from '../scenes/villa-d-ground.json';
 import villaDRoof from '../scenes/villa-d-roof.json';
+import villaEFirst from '../scenes/villa-e-first.json';
+import villaEGround from '../scenes/villa-e-ground.json';
+import villaERoof from '../scenes/villa-e-roof.json';
 import type { Place } from './core/sun';
 
 /** One storey of a home: a scene file, and how high its floor is. */
@@ -37,6 +40,8 @@ export interface StairEntry {
   x1: number;
   yBottom: number;
   yTop: number;
+  /** True when the flight stands free on its x0 side too, so it can only be stepped onto at its ends. */
+  closedBothSides?: boolean;
 }
 
 /** A home the start screen offers. */
@@ -144,6 +149,45 @@ export const HOMES: readonly HomeEntry[] = [
       { lower: 1, upper: 2, x0: 4.25 * FT, x1: 7.55 * FT, yBottom: 24.25 * FT, yTop: 38.25 * FT },
     ],
     start: { position: [16.25 * FT, 67 * FT], yawDeg: 0 },
+    place: LUCKNOW,
+  },
+  {
+    id: 'villa-e',
+    units: 'ft',
+    design: { group: 'New house', name: 'Design E: the model, whole house' },
+    title: 'New house',
+    about: 'The architect\'s model on our plot, ground floor included: master and guest rooms, living, dining and kitchen around a rear pool court below; three bedrooms and a glass lounge under the concrete curl above; a stair room with a sweeping roof on top.',
+    levels: [
+      { name: 'Ground floor', json: villaEGround, elevation: 0, openCeilings: ['living'] },
+      // The garden under the curl and its planter ledge are not walked on.
+      {
+        name: 'First floor',
+        json: villaEFirst,
+        elevation: 3.05,
+        openCeilings: ['stair2'],
+        keepOut: [
+          [0.75 * FT, 35.25 * FT, 11.0 * FT, 42.75 * FT],
+          [0.75 * FT, 42.75 * FT, 4.75 * FT, 48.25 * FT],
+        ],
+      },
+      // The curved roof and the planter at its foot are not walked on.
+      {
+        name: 'Roof',
+        json: villaERoof,
+        elevation: 6.1,
+        roofTerrace: true,
+        keepOut: [
+          [22.25 * FT, 16.25 * FT, 29.25 * FT, 31.75 * FT],
+          [22.25 * FT, 32.5 * FT, 34.25 * FT, 34.25 * FT],
+        ],
+      },
+    ],
+    // The first flight stands free in the living room; both climb towards the back.
+    stairs: [
+      { lower: 0, upper: 1, x0: 15.5 * FT, x1: 18.5 * FT, yBottom: 34.25 * FT, yTop: 20.25 * FT, closedBothSides: true },
+      { lower: 1, upper: 2, x0: 12.0 * FT, x1: 15.0 * FT, yBottom: 34.25 * FT, yTop: 20.75 * FT },
+    ],
+    start: { position: [21.25 * FT, 64 * FT], yawDeg: 0 },
     place: LUCKNOW,
   },
 ];

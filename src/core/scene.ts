@@ -150,6 +150,11 @@ export interface Sweep {
   color?: string;
   /** A rooflight set into the curve, between these fractions of its length (0 to 1). */
   glazing?: [number, number];
+  /**
+   * A wall of glass under the curve, standing at plan y = `y` between
+   * x = `from` and `to`, from the floor up to the curve's underside.
+   */
+  curtain?: { y: number; from: number; to: number };
 }
 
 /** A lamp: a point of light, drawn with a simple fitting. */
@@ -475,7 +480,7 @@ export function parseScene(input: unknown): Scene {
   if (root.sweeps !== undefined) {
     (c.array(root.sweeps, 'scene.sweeps') ?? []).forEach((value, i) => {
       const path = `scene.sweeps[${i}]`;
-      const sweep = c.object(value, path, ['id', 'profile', 'from', 'to', 'thickness', 'solid', 'color', 'glazing']);
+      const sweep = c.object(value, path, ['id', 'profile', 'from', 'to', 'thickness', 'solid', 'color', 'glazing', 'curtain']);
       if (!sweep) return;
       c.uniqueId(sweep.id, `${path}.id`, ids);
       const profile = c.array(sweep.profile, `${path}.profile`) ?? [];
@@ -487,6 +492,14 @@ export function parseScene(input: unknown): Scene {
       c.positive(sweep.thickness, `${path}.thickness`);
       if (sweep.solid !== undefined && typeof sweep.solid !== 'boolean') c.fail(`${path}.solid`, 'must be true or false');
       if (sweep.color !== undefined) c.color(sweep.color, `${path}.color`);
+      if (sweep.curtain !== undefined) {
+        const curtain = c.object(sweep.curtain, `${path}.curtain`, ['y', 'from', 'to']);
+        if (curtain) {
+          c.number(curtain.y, `${path}.curtain.y`);
+          c.number(curtain.from, `${path}.curtain.from`);
+          c.number(curtain.to, `${path}.curtain.to`);
+        }
+      }
       if (sweep.glazing !== undefined) {
         const g = sweep.glazing;
         if (!Array.isArray(g) || g.length !== 2 || !g.every((x) => typeof x === 'number' && x >= 0 && x <= 1) || g[0] >= g[1]) {

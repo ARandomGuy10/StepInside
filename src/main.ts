@@ -75,6 +75,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     for (const s of stairs) {
       if (s.lower !== i) continue;
       collision.push({ a: { x: s.x1, y: s.yTop }, b: { x: s.x1, y: s.yBottom } });
+      // A flight standing free in a room is closed on its other side too.
+      if (s.closedBothSides) collision.push({ a: { x: s.x0, y: s.yTop }, b: { x: s.x0, y: s.yBottom } });
       collision.push({ a: { x: s.x0, y: s.yTop }, b: { x: s.x1, y: s.yTop } });
     }
     return {

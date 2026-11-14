@@ -520,6 +520,39 @@ function buildSweep(sweep: Sweep): THREE.Group {
       group.add(bar);
     }
   }
+  if (sweep.curtain) {
+    // Glass from the floor up to the underside of the curve, in dark
+    // frames about a metre apart.
+    const { y, from, to } = sweep.curtain;
+    const under = offset(top, -sweep.thickness).filter((p) => p.x >= from && p.x <= to && p.y > 0.05);
+    if (under.length > 1) {
+      const pane = new THREE.Shape();
+      pane.moveTo(under[0].x, 0);
+      under.forEach((p) => pane.lineTo(p.x, p.y));
+      pane.lineTo(under[under.length - 1].x, 0);
+      pane.closePath();
+      const glass = new THREE.Mesh(
+        new THREE.ShapeGeometry(pane),
+        new THREE.MeshStandardMaterial({ color: 0x6f6458, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+      );
+      glass.position.z = y;
+      group.add(glass);
+      const frame = new THREE.MeshStandardMaterial({ color: 0x3a332d, roughness: 0.6 });
+      const height = (x: number): number => {
+        const i = under.findIndex((p) => p.x >= x);
+        return i < 0 ? under[under.length - 1].y : under[i].y;
+      };
+      for (let x = under[0].x; x <= under[under.length - 1].x + 1e-6; x += Math.max(0.5, (under[under.length - 1].x - under[0].x) / Math.ceil((under[under.length - 1].x - under[0].x) / 1.0))) {
+        const h = height(x);
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.05, h, 0.06), frame);
+        bar.position.set(x, h / 2, y);
+        group.add(bar);
+      }
+      const sill = new THREE.Mesh(new THREE.BoxGeometry(under[under.length - 1].x - under[0].x, 0.05, 0.06), frame);
+      sill.position.set((under[0].x + under[under.length - 1].x) / 2, 0.025, y);
+      group.add(sill);
+    }
+  }
   group.traverse((o) => {
     if (o instanceof THREE.Mesh) {
       o.name = 'roof';
