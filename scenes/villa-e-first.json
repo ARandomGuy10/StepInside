@@ -16,7 +16,7 @@
     {"id": "bedroom1", "name": "Bedroom 1", "polygon": [[6.934, 4.953], [10.439, 4.953], [10.439, 8.306], [6.934, 8.306]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 1, "color": "#8a9a83"}]},
     {"id": "dressing", "name": "Dressing", "polygon": [[6.934, 8.458], [8.611, 8.458], [8.611, 10.287], [6.934, 10.287]]},
     {"id": "bath1", "name": "Bath", "polygon": [[8.763, 8.458], [10.439, 8.458], [10.439, 10.287], [8.763, 10.287]], "floor": {"material": "large-tile", "color": "#cfd8dc"}, "walls": [{"edge": 1, "color": "#dfe7e6"}]},
-    {"id": "lounge", "name": "Lounge", "polygon": [[3.505, 10.592], [6.782, 10.592], [6.782, 10.439], [10.439, 10.439], [10.439, 13.03], [3.505, 13.03]], "floor": {"material": "large-tile", "color": "#e6e2da"}, "walls": [{"edge": 0, "height": 3.0}, {"edge": 4, "outside": "wood"}, {"edge": 3, "outside": "stone"}]},
+    {"id": "lounge", "name": "Lounge", "polygon": [[3.505, 10.592], [6.782, 10.592], [6.782, 10.439], [10.439, 10.439], [10.439, 13.03], [3.505, 13.03]], "floor": {"material": "large-tile", "color": "#e6e2da"}, "ceilingHeight": 2.6, "walls": [{"edge": 0, "height": 3.0}, {"edge": 4, "outside": "wood"}, {"edge": 3, "outside": "stone"}]},
     {"id": "curl-garden", "name": "Garden under the curl", "polygon": [[0.229, 6.325], [0.61, 6.325], [0.61, 10.592], [3.353, 10.592], [3.353, 13.03], [1.448, 13.03], [1.448, 14.707], [0.229, 14.707]], "kind": "balcony", "floor": {"material": "tile", "color": "#b9b4ab"}, "walls": [{"edge": 5, "color": "#85817a", "height": 0.6}, {"edge": 6, "color": "#85817a", "height": 0.6}, {"edge": 7, "color": "#85817a", "height": 0.6}, {"edge": 0, "color": "#85817a", "height": 0.6}, {"edge": 4, "color": "#85817a", "height": 0.25}]},
     {"id": "balcony", "name": "Balcony", "polygon": [[2.057, 13.183], [10.439, 13.183], [10.439, 14.707], [2.057, 14.707]], "kind": "balcony", "floor": {"material": "tile", "color": "#b9b4ab"}}
   ],
@@ -30,7 +30,7 @@
     {"id": "door-dressing", "type": "door", "room": "dressing", "edge": 0, "offset": 0.381, "width": 0.762, "height": 2.1},
     {"id": "door-bath1", "type": "door", "room": "bath1", "edge": 0, "offset": 0.381, "width": 0.762, "height": 2.1},
     {"id": "door-lounge", "type": "door", "room": "landing", "edge": 2, "offset": 0.076, "width": 0.762, "height": 2.1},
-    {"id": "door-balcony", "type": "door", "room": "lounge", "edge": 4, "offset": 3.048, "width": 0.914, "height": 2.6},
+    {"id": "door-balcony", "type": "door", "room": "lounge", "edge": 4, "offset": 3.048, "width": 0.914, "height": 2.4},
     {"id": "win-bedroom2", "type": "window", "room": "bedroom2", "edge": 0, "offset": 0.991, "width": 1.829, "height": 1.4, "sill": 0.9},
     {"id": "win-bedroom2-pool", "type": "window", "room": "bedroom2", "edge": 1, "offset": 0.991, "width": 2.134, "height": 1.6, "sill": 0.6},
     {"id": "win-bedroom1-pool", "type": "window", "room": "bedroom1", "edge": 0, "offset": 0.533, "width": 2.438, "height": 1.6, "sill": 0.6},
@@ -39,9 +39,9 @@
     {"id": "win-bath3", "type": "window", "room": "bath3", "edge": 3, "offset": 0.533, "width": 0.61, "height": 0.6, "sill": 1.7},
     {"id": "win-bedroom3-side", "type": "window", "room": "bedroom3", "edge": 3, "offset": 0.686, "width": 1.219, "height": 1.2, "sill": 1.0},
     {"id": "win-bedroom3", "type": "window", "room": "bedroom3", "edge": 2, "offset": 0.61, "width": 1.676, "height": 1.2, "sill": 0.9},
-    {"id": "win-lounge-1", "type": "window", "room": "lounge", "edge": 4, "offset": 4.115, "width": 2.697, "height": 2.7, "sill": 0.1},
-    {"id": "win-lounge-2", "type": "window", "room": "lounge", "edge": 4, "offset": 1.219, "width": 1.676, "height": 2.7, "sill": 0.1},
-    {"id": "win-lounge-garden", "type": "window", "room": "lounge", "edge": 5, "offset": 0.122, "width": 2.195, "height": 2.7, "sill": 0.1},
+    {"id": "win-lounge-1", "type": "window", "room": "lounge", "edge": 4, "offset": 4.115, "width": 2.697, "height": 2.4, "sill": 0.1},
+    {"id": "win-lounge-2", "type": "window", "room": "lounge", "edge": 4, "offset": 1.219, "width": 1.676, "height": 2.4, "sill": 0.1},
+    {"id": "win-lounge-garden", "type": "window", "room": "lounge", "edge": 5, "offset": 0.122, "width": 2.195, "height": 2.4, "sill": 0.1},
     {"id": "win-lounge-side", "type": "window", "room": "lounge", "edge": 3, "offset": 0.61, "width": 1.219, "height": 1.4, "sill": 0.9}
   ],
   "sweeps": [

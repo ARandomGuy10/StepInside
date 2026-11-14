@@ -164,7 +164,7 @@ export const HOMES: readonly HomeEntry[] = [
         name: 'First floor',
         json: villaEFirst,
         elevation: 3.05,
-        openCeilings: ['stair2'],
+        openCeilings: ['stair2', 'lounge'],
         keepOut: [
           [0.75 * FT, 20.75 * FT, 2.0 * FT, 35.25 * FT],
           [0.75 * FT, 35.25 * FT, 11.0 * FT, 42.75 * FT],
