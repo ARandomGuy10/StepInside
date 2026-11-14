@@ -68,6 +68,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     // A flight of stairs is closed off along its open side and under its
     // top end, so the only way onto it from below is the first step.
     const collision: Segment[] = [...walls.collision];
+    for (const [x0, y0, x1, y1] of entry.keepOut ?? []) {
+      const corners = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+      corners.forEach((a, k) => collision.push({ a, b: corners[(k + 1) % 4] }));
+    }
     for (const s of stairs) {
       if (s.lower !== i) continue;
       collision.push({ a: { x: s.x1, y: s.yTop }, b: { x: s.x1, y: s.yBottom } });
@@ -105,6 +109,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const topView = new TopView(bounds);
   // The whole-house view circles the home from outside.
   const top = levels[levels.length - 1];
+  // The highest storey with rooms under a roof: a roof terrace above it
+  // comes off with the roof.
+  let roofed = levels.length - 1;
+  while (roofed > 0 && home.levels[roofed].roofTerrace) roofed--;
   const orbit = new OrbitView(bounds, top.elevation + scenes[scenes.length - 1].defaults.ceilingHeight);
   let inOrbit = false;
   // A floor plan is seen at an angle too, from nearly overhead, so the
@@ -543,10 +551,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
    */
   function showLevels(): void {
     levels.forEach((l, i) => {
-      const shown = !inTopView || i <= level;
+      // An open roof terrace comes off with the roof in the whole-house view.
+      const lifted = inOrbit && roofHidden && i > roofed;
+      const shown = (!inTopView || i <= level) && !lifted;
       l.shell.visible = l.furniture.group.visible = shown;
       // In the whole-house view the roof of the top storey can come off.
-      const lid = !(inTopView && i === level) && !(inOrbit && roofHidden && l === top);
+      const lid = !(inTopView && i === level) && !(inOrbit && roofHidden && i === roofed);
       l.lamps.visible = shown && lid;
       for (const o of l.shell.children) {
         if (o.name.startsWith('ceiling:') || o.name === 'roof') o.visible = lid;
@@ -610,7 +620,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     const p = controls.pose;
     if (!onStair) {
       const s = stairs.find(
-        (f) => (f.lower === level || f.upper === level) && p.x > f.x0 && p.x < f.x1 && p.y > f.yTop && p.y < f.yBottom,
+        (f) =>
+          (f.lower === level || f.upper === level) &&
+          p.x > f.x0 && p.x < f.x1 &&
+          p.y > Math.min(f.yTop, f.yBottom) && p.y < Math.max(f.yTop, f.yBottom),
       );
       if (!s) return;
       onStair = s;
@@ -1033,7 +1046,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (!startRoom) {
       // Upstairs, begin by the top of the stairs; elsewhere at the room nearest the start.
       const flight = stairs.find((s) => s.upper === i);
-      const near = flight ? { x: (flight.x0 + flight.x1) / 2, y: flight.yTop - 0.4 } : from ?? { x: spawn.position[0], y: spawn.position[1] };
+      const near = flight ? { x: (flight.x0 + flight.x1) / 2, y: flight.yTop + 0.4 * Math.sign(flight.yTop - flight.yBottom) } : from ?? { x: spawn.position[0], y: spawn.position[1] };
       const rooms = scene.rooms.filter((r) => r.kind !== 'void');
       const byDistance = rooms.map((r) => ({ r, p: openSpot(r, scene.furniture) }))
         .sort((a, b) => Math.hypot(a.p.x - near.x, a.p.y - near.y) - Math.hypot(b.p.x - near.x, b.p.y - near.y));

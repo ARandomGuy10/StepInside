@@ -42,16 +42,21 @@ describe.each(HOMES.map((home) => [home.id, home] as const))('%s', (_id, home) =
   it('has a staircase piece under every flight that can be walked', () => {
     for (const stair of home.stairs ?? []) {
       const lower = parseScene(home.levels[stair.lower].json);
-      const piece = lower.furniture.find((f) => f.model === 'stairs' && f.fixed);
+      // The piece under this flight: the one whose middle is inside it.
+      const piece = lower.furniture.find(
+        (f) => f.model === 'stairs' && f.fixed && f.position[0] > stair.x0 && f.position[0] < stair.x1,
+      );
       expect(piece).toBeDefined();
+      // A flight's first step is at the yBottom end: the piece turns round when that end is the smaller y.
+      expect(piece!.rotationDeg).toBe(stair.yBottom > stair.yTop ? 0 : 180);
       const corners = footprint(piece!);
       const xs = corners.map((c) => c.x);
       const ys = corners.map((c) => c.y);
       // The piece and the walkable rectangle agree to within 5 cm.
       expect(Math.min(...xs)).toBeCloseTo(stair.x0, 1);
       expect(Math.max(...xs)).toBeCloseTo(stair.x1, 1);
-      expect(Math.min(...ys)).toBeCloseTo(stair.yTop, 1);
-      expect(Math.max(...ys)).toBeCloseTo(stair.yBottom, 1);
+      expect(Math.min(...ys)).toBeCloseTo(Math.min(stair.yTop, stair.yBottom), 1);
+      expect(Math.max(...ys)).toBeCloseTo(Math.max(stair.yTop, stair.yBottom), 1);
       // It climbs exactly one storey.
       expect(piece!.size[1]).toBeCloseTo(home.levels[stair.upper].elevation - home.levels[stair.lower].elevation, 2);
     }

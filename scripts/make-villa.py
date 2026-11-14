@@ -6,7 +6,7 @@ written down here in feet (x to the right, y down the page, origin at the
 plot's rear-left corner) and converted to metres for the scene files.
 Run it again after changing a number:  python3 scripts/make-villa.py
 """
-import json, math, os
+import copy, json, math, os
 
 FT = 0.3048
 EXT = 0.75   # outside wall thickness, feet
@@ -90,6 +90,19 @@ class Home:
         if entry: entry["outside"] = finish
         else: walls.append({"edge": edge, "outside": finish})
 
+    def edge(self, room, p, q, **wall):
+        """Wall settings for the edge of `room` that runs from p to q (feet)."""
+        r = next(r for r in self.rooms if r["id"] == room)
+        poly = r["_ft"]
+        i = next(i for i, a in enumerate(poly) if a == p and poly[(i + 1) % len(poly)] == q)
+        r.setdefault("walls", []).append({"edge": i, **wall})
+
+    def sweep(self, id, profile, y0, y1, thickness, **extra):
+        """A curved roof: profile is [(x feet, height metres)], carried from y0 to y1 (feet)."""
+        self.sweeps = getattr(self, "sweeps", [])
+        self.sweeps.append({"id": id, "profile": [[m(x), h] for x, h in profile], "from": m(y0), "to": m(y1),
+                            "thickness": thickness, **extra})
+
     def write(self, path):
         for r in self.rooms: r.pop("_ft")
         scene = {
@@ -102,7 +115,9 @@ class Home:
                          **getattr(self, "facade", {})},
             "start": {"position": [m(self.start[0]), m(self.start[1])], "yawDeg": self.yaw},
             **({"site": self.site} if getattr(self, "site", None) else {}),
-            "rooms": self.rooms, "openings": self.openings, "lights": self.lights, "furniture": self.furniture,
+            "rooms": self.rooms, "openings": self.openings,
+            **({"sweeps": self.sweeps} if getattr(self, "sweeps", None) else {}),
+            "lights": self.lights, "furniture": self.furniture,
         }
         # One room, opening, light or piece per line, like scenes/home.json.
         lines = ["{"]
@@ -582,9 +597,195 @@ k.put("terrace-flowers-side", "Flower box", "flower-box", "terrace", TX + 0.62, 
 k.put("terrace-planter", "Planter", "planter", "terrace", 20.9, 43.2, 0, [0.4, 1.1, 0.75], "#4a4844")
 k.hang("art-bed2", "Painting", "painting-1", "bedroom2", "top", 13, 1.4, [1.0, 0.7, 0.04], "#2b2520")
 
+# =============================================================================
+# Design C: the curved-roof house, after a model Surya sent as a video.
+#
+# - The ground floor is design A's, inside and out of plan; only its
+#   outside changes: grey concrete, teak cladding and a stone panel.
+# - The first floor keeps A's rear row of bedrooms. In front, a teak-clad
+#   bedroom on the left, a glass lounge with a balcony on the right, and
+#   between them a sit-out under a concrete roof that curls down to a
+#   planter at floor level, with a rooflight in the curl.
+# - A second flight climbs to the roof, beside the first: up one, turn
+#   round on the landing, up the other. A stair room on the roof (the
+#   "mumty") has a curved roof that sweeps down to the terrace.
+# =============================================================================
+CONCRETE, C_TRIM, TEAK, C_STONE, C_BOUNDARY = "#8f8c86", "#a9a6a0", "#7a4f31", "#c2b49c", "#8c8881"
+C_FACADE = {"trimColor": C_TRIM, "stoneColor": C_STONE, "woodColor": TEAK, "boundaryMaterial": "render"}
+
+gc = copy.deepcopy(g)
+gc.name = "Curved-roof house, ground floor"
+gc.exterior, gc.finish, gc.facade = CONCRETE, "render", C_FACADE
+for r in gc.rooms:
+    for w in r.get("walls", []):
+        if w.get("color") == BOUNDARY: w["color"] = C_BOUNDARY
+gc.clad("guest", "bottom", "wood")
+gc.clad("guest", "left", "wood")
+gc.clad("living", "left", "wood")
+gc.clad("living", "bottom", "stone")
+
+# The second flight, from the first floor to the roof: beside the first one,
+# rising the other way, towards the front. 16 risers of 19 cm, treads of 27 cm.
+# src/homes.ts holds the same rectangle, for walking up it.
+F2X0, F2X1, F2Y0, F2Y1 = 4.25, 7.55, 24.25, 38.25   # first step at F2Y0, top step at F2Y1
+WALL2 = F2X1 + INT                                   # the double-height void starts past a full wall
+CORR = 38.25                                         # the corridor to the front rooms, CORR..MID1
+SIT0 = 13.25                                         # the sit-out under the curl, SIT0..LX - 0.5
+LX = 21.25                                           # the glass lounge's left wall
+LY0, LY1 = 34.75, 48.75                              # the glass lounge, rear to front
+BAL = LY1 + INT                                      # the balcony in front of it
+
+c1 = Home("Curved-roof house, first floor", (10, 21), 180)
+c1.exterior, c1.finish, c1.facade = CONCRETE, "render", C_FACADE
+c1.room("bedroom2", "Bedroom 2", (L, T, L + 13.5, ROW1), floor=OAK)
+c1.room("bedroom1", "Bedroom 1", (L + 14, T, L + 27.5, ROW1), floor=OAK)
+c1.room("bath1", "Bath", (L + 28, T, R, T + 10), floor=BATH)
+c1.room("dressing", "Dressing", (L + 28, T + 10.5, R, ROW1))
+# The landing wraps round the two flights and the void: a sitting area at the
+# back, the strip the second flight stands on, and a corridor at the front.
+c1.room("landing", "Landing", [(L, MID0), (SPLIT, MID0), (SPLIT, F2Y0), (F2X1, F2Y0), (F2X1, CORR), (SPLIT, CORR),
+                               (SPLIT, MID1), (L, MID1), (L, CORR), (F2X0, CORR), (F2X0, F2Y0), (L, F2Y0)], floor=OAK)
+# A full wall between the second flight and the double-height void.
+c1.edge("landing", (F2X1, F2Y0), (F2X1, CORR), height=3.0)
+c1.room("stairwell", "Stairwell", (L, F2Y0 + RAIL, F2X0 - RAIL, CORR - RAIL), kind="void")
+c1.room("void", "Double-height void", (WALL2, F2Y0 + RAIL, SPLIT, CORR - RAIL), kind="void",
+        walls=[{"edge": 3, "color": "#c9a58a"}])
+c1.room("bedroom3", "Bedroom 3", (L, ROW3, SIT0 - INT, B), floor=OAK)
+c1.room("sitout", "Sit-out + balcony", [(SIT0, ROW3), (LX - INT, ROW3), (LX - INT, BAL), (R, BAL), (R, B), (SIT0, B)],
+        kind="balcony", floor=DECK)
+c1.room("lounge", "Glass lounge", [(SPLIT + INT, LY0), (L + 27.5, LY0), (L + 27.5, LY0 + 6), (R, LY0 + 6), (R, LY1), (LX, LY1),
+                                  (LX, MID1), (SPLIT + INT, MID1)], floor=TILE)
+c1.room("bath3", "Bath", (L + 28, LY0, R, LY0 + 5.5), floor=BATH)
+c1.clad("bedroom3", "bottom", "wood")
+c1.clad("bedroom3", "left", "wood")
+c1.clad("bedroom2", "left", "wood")
+c1.edge("lounge", (R, LY0 + 6), (R, LY1), outside="stone")
+c1.paint("bedroom2", top="#6d7f9a")
+c1.paint("bedroom1", top="#8a9a83")
+c1.paint("bedroom3", left="#a7835f")
+c1.paint("bath1", top="#dfe7e6", right="#dfe7e6")
+c1.paint("bath3", top="#dfe7e6", right="#dfe7e6")
+
+c1.door("stair-head", "landing", (STAIR_X1 - 0.05, F2Y0), (L + 0.05, F2Y0))
+c1.door("door-bedroom2", "bedroom2", (2.5, ROW1), (5.5, ROW1))
+c1.door("door-bedroom1", "bedroom1", (15.25, ROW1), (18.25, ROW1))
+c1.door("door-dressing", "dressing", (L + 28, 12.25), (L + 28, 15))
+c1.door("door-bath1", "bath1", (30.5, T + 10), (33, T + 10))
+c1.door("door-bedroom3", "bedroom3", (8.75, ROW3), (11.5, ROW3))
+c1.door("door-lounge", "lounge", (SPLIT + INT, 38.6), (SPLIT + INT, 41.0))
+c1.door("door-bath3", "bath3", (L + 28, LY0 + 2.5), (L + 28, LY0 + 5))
+c1.door("door-sitout", "lounge", (LX, 42.5), (LX, 45.5))
+c1.door("door-balcony", "lounge", (27.25, LY1), (30.25, LY1))
+c1.window("win-bedroom2", "bedroom2", (4, T), (10.5, T))
+c1.window("win-bedroom1", "bedroom1", (18, T), (24.5, T))
+c1.window("win-bath1", "bath1", (30.5, T), (32.5, T), 0.6, 1.7)
+c1.window("win-landing", "landing", (L, 18), (L, 22.5))
+c1.window("win-bedroom3", "bedroom3", (3, B), (9.5, B))
+c1.window("win-bedroom3-side", "bedroom3", (L, 46.5), (L, 49.5), 0.6, 1.3)
+c1.window("win-bath3", "bath3", (L + 30, LY0), (L + 32, LY0), 0.6, 1.7)
+# The lounge is glass from floor to ceiling at the front and on the side.
+c1.window("win-lounge-1", "lounge", (LX + 0.4, LY1), (26.75, LY1), 2.7, 0.1)
+c1.window("win-lounge-2", "lounge", (30.75, LY1), (R - 0.4, LY1), 2.7, 0.1)
+c1.window("win-lounge-side", "lounge", (R, 41.5), (R, 47.5), 2.7, 0.1)
+c1.window("win-lounge-rear", "lounge", (21.5, LY0), (L + 26.5, LY0), 1.4, 0.9)
+
+# The curl: a concrete roof over the sit-out that comes down to a planter at
+# the floor next to bedroom 3 and climbs to the roof terrace over the lounge
+# wall, with a rooflight in its steep part. Profile in feet across, metres up.
+c1.sweep("curl", [(SIT0 - 0.3, 0.0), (14.25, 0.12), (15.5, 0.7), (16.75, 1.7), (18.0, 2.6), (19.25, 3.15), (20.5, 3.4), (LX + 0.6, 3.48)],
+         MID1, 55, 0.25, color="#a4a19b", glazing=[0.36, 0.66])
+c1.put("stairs-roof", "Staircase to the roof", "stairs", "landing", (F2X0 + F2X1) / 2, (F2Y0 + F2Y1) / 2, 180,
+       [m(F2X1 - F2X0), 3.05, m(F2Y1 - F2Y0)], "#c9c2b6", fixed=True)
+c1.put("landing-armchair-1", "Armchair", "armchair", "landing", 11, 18.4, 180, [0.85, 0.8, 0.85], GREEN)
+c1.put("landing-armchair-2", "Armchair", "armchair", "landing", 14, 18.4, 180, [0.85, 0.8, 0.85], FABRIC)
+c1.put("landing-table", "Side table", "side-table", "landing", 12.5, 18.2, 0, [0.5, 0.45, 0.5], DARK)
+c1.put("landing-plant", "Rubber plant", "floor-plant", "landing", 8, 17.2, 0, [0.5, 1.3, 0.5], "#d8d2c6")
+c1.put("landing-shelf", "Sideboard", "sideboard", "landing", 12.5, 23.3, 180, [1.8, 0.8, 0.4], WOOD)
+c1.put("bed2", "Bed", "bed", "bedroom2", 7.5, 4.6, 180, [1.8, 0.95, 2.1], "#5d7fa3")
+c1.put("bed2-table-1", "Bedside table", "side-table", "bedroom2", 3.4, 2, 0, [0.45, 0.5, 0.45], WOOD)
+c1.put("bed2-table-2", "Bedside table", "side-table", "bedroom2", 11.6, 2, 0, [0.45, 0.5, 0.45], WOOD)
+c1.put("bed2-wardrobe", "Wardrobe", "wardrobe", "bedroom2", 1.8, 10.5, 90, [1.5, 2.2, 0.6], "#e9e6df")
+c1.put("bed1", "Bed", "bed", "bedroom1", 21.5, 4.6, 180, [1.8, 0.95, 2.1], "#7d8a74")
+c1.put("bed1-table-1", "Bedside table", "side-table", "bedroom1", 17.4, 2, 0, [0.45, 0.5, 0.45], WOOD)
+c1.put("bed1-table-2", "Bedside table", "side-table", "bedroom1", 25.6, 2, 0, [0.45, 0.5, 0.45], WOOD)
+c1.put("bed1-armchair", "Armchair", "armchair", "bedroom1", 25.7, 11.6, 270, [0.8, 0.8, 0.8], FABRIC)
+c1.put("bath1-toilet", "Toilet", "toilet", "bath1", 30, 2.1, 180, [0.4, 0.78, 0.68], WHITE)
+c1.put("bath1-shower", "Shower", "shower", "bath1", 32.7, 2.4, 0, [0.9, 2.0, 0.9], "#cfe0e2")
+c1.put("bath1-basin", "Basin", "basin", "bath1", 33.3, 7.8, 270, [0.6, 0.85, 0.48], WOOD)
+c1.put("dressing-wardrobe", "Wardrobe", "wardrobe", "dressing", 31.5, 14.6, 0, [1.4, 2.2, 0.55], "#e9e6df")
+c1.put("bed3", "Bed", "bed", "bedroom3", 5.5, 50.2, 0, [1.6, 0.95, 2.0], "#5b6b84")
+c1.put("bed3-table", "Bedside table", "side-table", "bedroom3", 2.1, 53.2, 0, [0.45, 0.5, 0.45], WOOD)
+c1.put("bed3-wardrobe", "Wardrobe", "wardrobe", "bedroom3", 3.5, 42.8, 180, [1.5, 2.2, 0.6], "#e9e6df")
+c1.put("bed3-desk", "Desk", "desk", "bedroom3", 11.6, 49, 270, [1.3, 0.75, 0.65], "#b9a68c")
+c1.put("bath3-toilet", "Toilet", "toilet", "bath3", 30, 35.87, 180, [0.4, 0.78, 0.68], WHITE)
+c1.put("bath3-shower", "Shower", "shower", "bath3", 32.65, 38.65, 0, [0.9, 2.0, 0.9], "#cfe0e2")
+c1.put("bath3-basin", "Basin", "basin", "bath3", 32.8, 35.55, 180, [0.6, 0.85, 0.48], WOOD)
+c1.put("lounge-sofa", "Sofa", "sofa", "lounge", 27.75, 42.4, 0, [2.4, 0.8, 0.95], FABRIC)
+c1.put("lounge-rug", "Rug", "rug", "lounge", 27.75, 45, 0, [2.6, 0.02, 1.8], "#b8a98c")
+c1.put("lounge-coffee", "Coffee table", "coffee-table", "lounge", 27.75, 45.3, 0, [1.1, 0.42, 0.6], DARK)
+c1.put("lounge-armchair", "Armchair", "armchair", "lounge", 23.4, 46.1, 90, [0.85, 0.8, 0.85], WHITE)
+c1.put("lounge-tv", "TV unit", "tv-unit", "lounge", 24.2, 35.5, 0, [1.8, 0.55, 0.42], WOOD)
+c1.put("lounge-plant", "Rubber plant", "floor-plant", "lounge", 33.2, 47.6, 0, [0.6, 1.6, 0.6], "#d8d2c6")
+c1.put("lounge-plant-table", "Small plant", "table-plant", "lounge", 27.75, 45.3, 0, [0.22, 0.3, 0.22], "#e9e3d8", elevation=0.42)
+# The sit-out: a planter along the low end of the curl, two chairs where it is high.
+c1.put("sitout-planter", "Planter", "planting-bed", "sitout", (SIT0 + 16.5) / 2, (ROW3 + B) / 2, 0, [m(16.5 - SIT0) - 0.06, 0.55, m(B - ROW3) - 0.12], "#8f8c86")
+c1.put("sitout-chair-1", "Outdoor armchair", "armchair", "sitout", 19.25, 44, 270, [0.8, 0.75, 0.8], "#c9c2b4")
+c1.put("sitout-chair-2", "Outdoor armchair", "armchair", "sitout", 19.25, 47.4, 270, [0.8, 0.75, 0.8], "#c9c2b4")
+c1.put("sitout-table", "Side table", "side-table", "sitout", 19.4, 45.7, 0, [0.5, 0.45, 0.5], "#3a2a22")
+c1.put("balcony-chair-1", "Outdoor armchair", "armchair", "sitout", 24, 51.9, 0, [0.8, 0.75, 0.8], "#c9c2b4")
+c1.put("balcony-chair-2", "Outdoor armchair", "armchair", "sitout", 27, 51.9, 0, [0.8, 0.75, 0.8], "#c9c2b4")
+c1.put("balcony-table", "Coffee table", "coffee-table", "sitout", 25.5, 50.6, 0, [0.9, 0.4, 0.5], "#3a2a22")
+c1.put("balcony-pot-1", "Potted plant", "floor-plant", "sitout", 33.4, 50.4, 0, [0.5, 1.0, 0.5], "#f2efe9")
+c1.put("balcony-pot-2", "Potted plant", "floor-plant", "sitout", 21.9, 50.4, 0, [0.45, 0.9, 0.45], "#f2efe9")
+c1.hang("art-bed2", "Painting", "painting-1", "bedroom2", "left", 5, 1.3, [1.2, 0.8, 0.04], "#2b2520")
+c1.hang("art-bed1", "Painting", "painting-3", "bedroom1", "right", 6, 1.3, [0.8, 0.8, 0.04], "#f2f0ea")
+c1.hang("art-landing", "Painting", "painting-2", "landing", "top", 12.5, 1.3, [0.9, 0.7, 0.04], "#d8c7a6")
+
+# ---- The roof: a stair room, its curved roof, and two terraces.
+MUM0, MUM1 = F2Y0 - INT, 42.25        # the stair room, rear to front (its right wall stands on the one below)
+HUMP = 16.5                            # the curved roof comes down to the terrace here
+PARAPET = {"color": C_BOUNDARY, "height": 1.0}
+c2 = Home("Curved-roof house, roof", (2.5, 44.5), 0)
+c2.exterior, c2.finish, c2.facade = CONCRETE, "render", C_FACADE
+c2.room("mumty", "Stair room", [(L, MUM0), (F2X0, MUM0), (F2X0, F2Y1), (F2X1, F2Y1), (F2X1, MUM1), (L, MUM1)], floor=OAK)
+c2.room("stairwell", "Stairwell", (F2X0 + RAIL, MUM0, F2X1, F2Y1 - RAIL), kind="void")
+c2.room("terrace", "Roof terrace", [(L, T), (R, T), (R, ROW1), (SPLIT, ROW1), (SPLIT, LY0), (R, LY0), (R, B), (LX, B),
+                                    (LX, MID1), (HUMP, MID1), (HUMP, MUM0 - INT), (L, MUM0 - INT)],
+        kind="balcony", floor={"material": "tile", "color": "#c8c2b8"})
+for p, q in (((L, T), (R, T)), ((R, T), (R, ROW1)), ((R, ROW1), (SPLIT, ROW1)), ((SPLIT, ROW1), (SPLIT, LY0)),
+             ((SPLIT, LY0), (R, LY0)), ((R, LY0), (R, B)), ((LX, MID1), (HUMP, MID1)), ((HUMP, MID1), (HUMP, MUM0 - INT)),
+             ((HUMP, MUM0 - INT), (L, MUM0 - INT)), ((L, MUM0 - INT), (L, T))):
+    c2.edge("terrace", p, q, **PARAPET)
+c2.room("front-terrace", "Front terrace", (L, MUM1 + INT, SIT0 - INT, B), kind="balcony", floor={"material": "tile", "color": "#c8c2b8"})
+c2.edge("front-terrace", (L, B), (L, MUM1 + INT), **PARAPET)
+c2.edge("front-terrace", (L, MUM1 + INT), (SIT0 - INT, MUM1 + INT), color=C_BOUNDARY, height=0.5)
+c2.door("stair-top", "mumty", (F2X1 - 0.05, F2Y1), (F2X0 + 0.05, F2Y1))
+c2.door("door-front-terrace", "mumty", (4.6, MUM1), (7.2, MUM1))
+c2.door("door-terrace", "mumty", (1.1, MUM0), (3.9, MUM0))
+c2.window("win-mumty", "mumty", (L, 30), (L, 33), 0.9, 1.2)
+# The stair room's roof curls down over the roof terrace to a planter.
+c2.sweep("mumty-roof", [(F2X1, 3.28), (9.5, 3.22), (11.25, 2.85), (12.75, 2.0), (14.25, 1.05), (15.5, 0.62), (HUMP + 0.3, 0.55)],
+         MUM0 - INT, MUM1 + 0.6, 0.22, solid=True, color="#a4a19b")
+c2.put("front-planter", "Planter", "planter", "front-terrace", 6.75, MUM1 + 1.4, 0, [m(9.5), 0.6, 0.45], "#8f8c86")
+c2.put("front-chair-1", "Outdoor armchair", "armchair", "front-terrace", 4, 50.5, 0, [0.8, 0.75, 0.8], "#c9c2b4")
+c2.put("front-chair-2", "Outdoor armchair", "armchair", "front-terrace", 8.5, 50.5, 0, [0.8, 0.75, 0.8], "#c9c2b4")
+c2.put("front-table", "Side table", "side-table", "front-terrace", 6.25, 50.5, 0, [0.5, 0.45, 0.5], "#3a2a22")
+c2.put("terrace-planter-front", "Planter", "planter", "terrace", (LX + R) / 2, B - 0.75, 0, [m(R - LX) - 0.4, 0.6, 0.45], "#8f8c86")
+c2.put("terrace-planter-curl", "Planter", "planter", "terrace", LX + 0.75, (MID1 + B) / 2 - 1, 90, [m(B - MID1) - 1.2, 0.6, 0.45], "#8f8c86")
+c2.put("terrace-sofa", "Outdoor sofa", "sofa", "terrace", 27.75, 45.8, 0, [2.2, 0.75, 0.9], "#c9c2b4")
+c2.put("terrace-coffee", "Coffee table", "coffee-table", "terrace", 27.75, 43.0, 0, [1.1, 0.4, 0.6], "#3a2a22")
+for i, x in enumerate((8, 11)):
+    c2.put(f"terrace-lounger-{i+1}", "Sun lounger", "lounger", "terrace", x, 9, 0, [0.7, 0.4, 1.9], WHITE)
+c2.put("terrace-tank", "Water tank", "kitchen-tall", "terrace", 31.5, 4, 0, [1.2, 1.4, 1.2], "#3c3d3f")
+for i, (x, y) in enumerate(((2.2, 22), (17.5, 2.3), (17.5, 30))):
+    c2.put(f"terrace-pot-{i+1}", "Potted plant", "floor-plant", "terrace", x, y, 0, [0.5, 1.0, 0.5], "#f2efe9")
+
 here = os.path.dirname(os.path.abspath(__file__))
 g.write(os.path.join(here, "..", "scenes", "villa-ground.json"))
 f.write(os.path.join(here, "..", "scenes", "villa-first.json"))
 h.write(os.path.join(here, "..", "scenes", "villa-b-ground.json"))
 k.write(os.path.join(here, "..", "scenes", "villa-b-first.json"))
+gc.write(os.path.join(here, "..", "scenes", "villa-c-ground.json"))
+c1.write(os.path.join(here, "..", "scenes", "villa-c-first.json"))
+c2.write(os.path.join(here, "..", "scenes", "villa-c-roof.json"))
 print("wrote", len(g.rooms), "+", len(f.rooms), "and", len(h.rooms), "+", len(k.rooms), "rooms")

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { roomHeight, toVec, wallColor, type Room, type Scene } from '../core/scene';
+import { roomHeight, toVec, wallColor, type Room, type Scene, type Sweep } from '../core/scene';
 import type { Vec2 } from '../core/collision';
 import type { Hole, WallModel, WallSlab } from '../core/walls';
 import { applySurface, floorSurface, pattern, setSurface, wallSurface, type Pattern } from './textures';
@@ -92,6 +92,8 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     group.add(mesh);
   }
 
+  for (const sweep of scene.sweeps ?? []) group.add(buildSweep(sweep));
+
   // Roof slabs over the rooms and a ground slab under the home. Neither is
   // seen from inside; they stop sunlight leaking in from above and below.
   const t = scene.defaults.exteriorWallThickness;
@@ -139,7 +141,7 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     }
     // The top roof is a white slab that overhangs the walls.
     const outline = covered ? room.polygon.map(toVec) : spread(room.polygon.map(toVec), t + 0.45);
-    const roof = new THREE.Mesh(prism(outline, covered ? 0.03 : 0.26), matte(covered ? '#d9d6d0' : '#f1efea', 0.9));
+    const roof = new THREE.Mesh(prism(outline, covered ? 0.03 : 0.26), matte(covered ? '#d9d6d0' : (scene.defaults.trimColor ?? '#f1efea'), 0.9));
     roof.name = 'roof';
     roof.position.y = roomHeight(scene, room) + (covered ? 0.001 : 0.01);
     roof.castShadow = true;
@@ -383,7 +385,7 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     material.transparent = true;
     material.opacity = 0.22;
     material.depthWrite = false;
-  } else if (slab.boundary) {
+  } else if (slab.boundary && scene.defaults.boundaryMaterial !== 'render') {
     applySurface(material, 'stone', 1 / 2.4);
   }
   const mesh = new THREE.Mesh(geometry, material);
@@ -404,8 +406,13 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
   if (slab.kind === 'wall' && slab.outside && exteriorColor) {
     // The outside of an outside wall is a thin skin: stone cladding or render.
     const kind = slab.finish ?? scene.defaults.exteriorMaterial ?? 'render';
-    const finish = matte(kind === 'stone' ? (scene.defaults.stoneColor ?? exteriorColor) : exteriorColor, 0.95);
+    const finish = matte(
+      kind === 'stone' ? (scene.defaults.stoneColor ?? exteriorColor) : kind === 'wood' ? (scene.defaults.woodColor ?? '#7a5134') : exteriorColor,
+      kind === 'wood' ? 0.7 : 0.95,
+    );
     if (kind === 'stone') applySurface(finish, 'stone', 1 / 2.4);
+    // Timber cladding: horizontal boards, about 15 cm each.
+    if (kind === 'wood') applySurface(finish, 'planks', 1 / 1.6, 1 / 1.2);
     const skin = new THREE.Mesh(
       new THREE.ExtrudeGeometry(pieces.map((x) => x.shape), { depth: 0.015, bevelEnabled: false }).translate(0, 0, -slab.thickness - 0.015),
       finish,
@@ -431,6 +438,97 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     else if (!hole.passable && slab.kind === 'wall') mesh.add(buildClosedDoor(hole, slab.thickness));
   }
   return mesh;
+}
+
+/**
+ * A curved concrete roof: the scene's curve, made smooth, given a
+ * thickness and carried along the plan's y axis. A raised lip runs along
+ * both ends, and a rooflight can be set into it.
+ */
+function buildSweep(sweep: Sweep): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'roof';
+  const curve = new THREE.CatmullRomCurve3(
+    sweep.profile.map(([x, h]) => new THREE.Vector3(x, h, 0)),
+    false,
+    'centripetal',
+  );
+  const samples = 72;
+  const top = curve.getSpacedPoints(samples).map((p) => new THREE.Vector2(p.x, p.y));
+  // The underside: the curve moved down along its normal by the thickness.
+  const offset = (points: THREE.Vector2[], by: number): THREE.Vector2[] =>
+    points.map((p, i) => {
+      const a = points[Math.max(0, i - 1)];
+      const b = points[Math.min(points.length - 1, i + 1)];
+      const tangent = new THREE.Vector2(b.x - a.x, b.y - a.y).normalize();
+      // The normal that points up and away from the curve.
+      const normal = new THREE.Vector2(-tangent.y, tangent.x);
+      if (normal.y < 0) normal.negate();
+      return new THREE.Vector2(p.x + normal.x * by, p.y + normal.y * by);
+    });
+  const outline = (upper: THREE.Vector2[], lower: THREE.Vector2[] | null): THREE.Shape => {
+    const shape = new THREE.Shape();
+    upper.forEach((p, i) => (i ? shape.lineTo(p.x, p.y) : shape.moveTo(p.x, p.y)));
+    if (lower) [...lower].reverse().forEach((p) => shape.lineTo(p.x, p.y));
+    else {
+      shape.lineTo(upper[upper.length - 1].x, 0);
+      shape.lineTo(upper[0].x, 0);
+    }
+    shape.closePath();
+    return shape;
+  };
+  const length = sweep.to - sweep.from;
+  const concrete = matte(sweep.color ?? '#b9b6b0', 0.92);
+  const body = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(outline(top, sweep.solid ? null : offset(top, -sweep.thickness)), {
+      depth: length,
+      bevelEnabled: false,
+      curveSegments: 1,
+    }),
+    concrete,
+  );
+  body.position.z = sweep.from;
+  group.add(body);
+  // The lip: a slightly thicker edge at each end, standing proud of the top.
+  const lip = outline(offset(top, 0.06), offset(top, -sweep.thickness - 0.04));
+  const lipMaterial = matte(darker(sweep.color ?? '#b9b6b0', 0.06), 0.9);
+  for (const z of [sweep.from - 0.03, sweep.to - 0.12]) {
+    const edge = new THREE.Mesh(new THREE.ExtrudeGeometry(lip, { depth: 0.15, bevelEnabled: false }), lipMaterial);
+    edge.position.z = z;
+    group.add(edge);
+  }
+  if (sweep.glazing) {
+    // The rooflight: a dark glass panel in a slim frame, set into the
+    // middle half of the shell's length.
+    const [g0, g1] = sweep.glazing;
+    const span = top.slice(Math.round(g0 * samples), Math.round(g1 * samples) + 1);
+    const pane = outline(offset(span, 0.025), offset(span, 0.005));
+    const frame = outline(offset(span, 0.035), offset(span, 0));
+    const glass = new THREE.MeshStandardMaterial({ color: 0x3e5560, roughness: 0.08, metalness: 0.4 });
+    const metal = new THREE.MeshStandardMaterial({ color: 0x2f3133, roughness: 0.5, metalness: 0.5 });
+    const inset = length * 0.22;
+    const panel = new THREE.Mesh(new THREE.ExtrudeGeometry(pane, { depth: length - 2 * inset, bevelEnabled: false }), glass);
+    panel.position.z = sweep.from + inset;
+    group.add(panel);
+    for (const z of [sweep.from + inset - 0.05, sweep.to - inset]) {
+      const bar = new THREE.Mesh(new THREE.ExtrudeGeometry(frame, { depth: 0.05, bevelEnabled: false }), metal);
+      bar.position.z = z;
+      group.add(bar);
+    }
+  }
+  group.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      o.name = 'roof';
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
+  return group;
+}
+
+/** A colour made darker by `amount` (0 to 1). */
+function darker(color: string, amount: number): string {
+  return '#' + new THREE.Color(color).multiplyScalar(1 - amount).getHexString();
 }
 
 /**

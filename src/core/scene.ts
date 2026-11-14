@@ -28,7 +28,7 @@ export interface Defaults {
   /** Colour of the outside of the outside walls. Without it they show the room's wall colour. */
   exteriorColor?: string;
   /** `stone` draws the outside walls as stone cladding; `render` (the default) as smooth plaster. */
-  exteriorMaterial?: 'stone' | 'render';
+  exteriorMaterial?: 'stone' | 'render' | 'wood';
   /**
    * How far the roof of the top storey climbs from the front of the home
    * to the back, in metres (a single sloping roof). Without it the roof is flat.
@@ -38,6 +38,10 @@ export interface Defaults {
   trimColor?: string;
   /** Colour of stone cladding on walls marked `outside: "stone"`. Defaults to `exteriorColor`. */
   stoneColor?: string;
+  /** Colour of timber cladding on walls marked `outside: "wood"`. A warm teak when not given. */
+  woodColor?: string;
+  /** `render` draws the plot's boundary walls as smooth concrete instead of stone. */
+  boundaryMaterial?: 'stone' | 'render';
   floorColor: string;
   ceilingColor: string;
 }
@@ -52,7 +56,7 @@ export interface WallOverride {
    * `defaults.exteriorMaterial`: stone cladding, render, or render behind
    * a screen of vertical aluminium fins.
    */
-  outside?: 'stone' | 'render' | 'fins';
+  outside?: 'stone' | 'render' | 'fins' | 'wood';
   /** The inside finish of this wall, from WALL_MATERIALS. Plain paint when not set. */
   material?: string;
 }
@@ -122,6 +126,26 @@ export interface Furniture {
   elevation?: number;
 }
 
+/**
+ * A curved concrete roof or shell: a smooth curve drawn across the plan
+ * (x) and up (height above the storey's floor), carried along the plan's
+ * y axis from `from` to `to`. Only the outside is drawn; it is not walked on.
+ */
+export interface Sweep {
+  id: string;
+  /** Points of the curve as [x, height], in metres, left to right. */
+  profile: Point[];
+  from: number;
+  to: number;
+  /** Thickness of the shell. */
+  thickness: number;
+  /** True fills the space under the curve down to the floor, as a solid hump. */
+  solid?: boolean;
+  color?: string;
+  /** A rooflight set into the curve, between these fractions of its length (0 to 1). */
+  glazing?: [number, number];
+}
+
 /** A lamp: a point of light, drawn with a simple fitting. */
 export interface Light {
   id: string;
@@ -148,6 +172,7 @@ export interface Scene {
   rooms: Room[];
   openings: Opening[];
   solids?: Solid[];
+  sweeps?: Sweep[];
   lights?: Light[];
   furniture: Furniture[];
 }
@@ -297,7 +322,7 @@ export function parseScene(input: unknown): Scene {
   const c = new Checker();
   const root = c.object(input, 'scene', [
     'schemaVersion', 'name', 'units', 'northDeg', 'sun', 'defaults', 'start', 'site',
-    'rooms', 'openings', 'solids', 'lights', 'furniture',
+    'rooms', 'openings', 'solids', 'sweeps', 'lights', 'furniture',
   ]);
   if (!root) throw new SceneError(c.issues);
 
@@ -315,7 +340,7 @@ export function parseScene(input: unknown): Scene {
   }
 
   const defaults = c.object(root.defaults, 'scene.defaults', [
-    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial', 'roofRise', 'trimColor', 'stoneColor',
+    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial', 'roofRise', 'trimColor', 'stoneColor', 'woodColor', 'boundaryMaterial',
   ]);
   if (defaults) {
     c.positive(defaults.ceilingHeight, 'scene.defaults.ceilingHeight');
@@ -328,8 +353,12 @@ export function parseScene(input: unknown): Scene {
     if (defaults.trimColor !== undefined) c.color(defaults.trimColor, 'scene.defaults.trimColor');
     if (defaults.stoneColor !== undefined) c.color(defaults.stoneColor, 'scene.defaults.stoneColor');
     if (defaults.exteriorColor !== undefined) c.color(defaults.exteriorColor, 'scene.defaults.exteriorColor');
-    if (defaults.exteriorMaterial !== undefined && defaults.exteriorMaterial !== 'stone' && defaults.exteriorMaterial !== 'render') {
-      c.fail('scene.defaults.exteriorMaterial', 'must be "stone" or "render"');
+    if (defaults.woodColor !== undefined) c.color(defaults.woodColor, 'scene.defaults.woodColor');
+    if (defaults.exteriorMaterial !== undefined && !['stone', 'render', 'wood'].includes(defaults.exteriorMaterial as string)) {
+      c.fail('scene.defaults.exteriorMaterial', 'must be "stone", "render" or "wood"');
+    }
+    if (defaults.boundaryMaterial !== undefined && !['stone', 'render'].includes(defaults.boundaryMaterial as string)) {
+      c.fail('scene.defaults.boundaryMaterial', 'must be "stone" or "render"');
     }
   }
   const defaultHeight =
@@ -409,8 +438,8 @@ export function parseScene(input: unknown): Scene {
         }
         if (wall.color !== undefined) c.color(wall.color, `${wp}.color`);
         if (wall.height !== undefined) c.positive(wall.height, `${wp}.height`);
-        if (wall.outside !== undefined && !['stone', 'render', 'fins'].includes(wall.outside as string)) {
-          c.fail(`${wp}.outside`, 'must be "stone", "render" or "fins"');
+        if (wall.outside !== undefined && !['stone', 'render', 'fins', 'wood'].includes(wall.outside as string)) {
+          c.fail(`${wp}.outside`, 'must be "stone", "render", "fins" or "wood"');
         }
         if (wall.material !== undefined && !(WALL_MATERIALS as readonly string[]).includes(wall.material as string)) {
           c.fail(`${wp}.material`, `must be one of ${WALL_MATERIALS.join(', ')}`);
@@ -430,6 +459,31 @@ export function parseScene(input: unknown): Scene {
       if (solid.color !== undefined) c.color(solid.color, `${path}.color`);
       const polygon = c.polygon(solid.polygon, `${path}.polygon`);
       if (polygon) shapes.push({ path, points: polygon.map(toVec) });
+    });
+  }
+
+  // Sweeps: curved roofs. They are drawn only, so they may sit over rooms.
+  if (root.sweeps !== undefined) {
+    (c.array(root.sweeps, 'scene.sweeps') ?? []).forEach((value, i) => {
+      const path = `scene.sweeps[${i}]`;
+      const sweep = c.object(value, path, ['id', 'profile', 'from', 'to', 'thickness', 'solid', 'color', 'glazing']);
+      if (!sweep) return;
+      c.uniqueId(sweep.id, `${path}.id`, ids);
+      const profile = c.array(sweep.profile, `${path}.profile`) ?? [];
+      if (profile.length < 2) c.fail(`${path}.profile`, 'needs at least two points');
+      profile.forEach((p, k) => c.point(p, `${path}.profile[${k}]`));
+      c.number(sweep.from, `${path}.from`);
+      c.number(sweep.to, `${path}.to`);
+      if (typeof sweep.from === 'number' && typeof sweep.to === 'number' && sweep.to <= sweep.from) c.fail(`${path}.to`, 'must be more than from');
+      c.positive(sweep.thickness, `${path}.thickness`);
+      if (sweep.solid !== undefined && typeof sweep.solid !== 'boolean') c.fail(`${path}.solid`, 'must be true or false');
+      if (sweep.color !== undefined) c.color(sweep.color, `${path}.color`);
+      if (sweep.glazing !== undefined) {
+        const g = sweep.glazing;
+        if (!Array.isArray(g) || g.length !== 2 || !g.every((x) => typeof x === 'number' && x >= 0 && x <= 1) || g[0] >= g[1]) {
+          c.fail(`${path}.glazing`, 'must be [start, end] with 0 <= start < end <= 1');
+        }
+      }
     });
   }
 

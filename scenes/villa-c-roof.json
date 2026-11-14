@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "Curved-roof house, roof",
+  "units": "m",
+  "northDeg": 0,
+  "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
+  "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#8f8c86", "exteriorMaterial": "render", "trimColor": "#a9a6a0", "stoneColor": "#c2b49c", "woodColor": "#7a4f31", "boundaryMaterial": "render"},
+  "start": {"position": [0.762, 13.564], "yawDeg": 0},
+  "rooms": [
+    {"id": "mumty", "name": "Stair room", "polygon": [[0.229, 7.239], [1.295, 7.239], [1.295, 11.659], [2.301, 11.659], [2.301, 12.878], [0.229, 12.878]], "floor": {"material": "laminate", "color": "#c3a47c"}},
+    {"id": "stairwell", "name": "Stairwell", "polygon": [[1.345, 7.239], [2.301, 7.239], [2.301, 11.609], [1.345, 11.609]], "kind": "void"},
+    {"id": "terrace", "name": "Roof terrace", "polygon": [[0.229, 0.229], [10.439, 0.229], [10.439, 4.801], [5.715, 4.801], [5.715, 10.592], [10.439, 10.592], [10.439, 16.535], [6.477, 16.535], [6.477, 12.573], [5.029, 12.573], [5.029, 7.087], [0.229, 7.087]], "kind": "balcony", "floor": {"material": "tile", "color": "#c8c2b8"}, "walls": [{"edge": 0, "color": "#8c8881", "height": 1.0}, {"edge": 1, "color": "#8c8881", "height": 1.0}, {"edge": 2, "color": "#8c8881", "height": 1.0}, {"edge": 3, "color": "#8c8881", "height": 1.0}, {"edge": 4, "color": "#8c8881", "height": 1.0}, {"edge": 5, "color": "#8c8881", "height": 1.0}, {"edge": 8, "color": "#8c8881", "height": 1.0}, {"edge": 9, "color": "#8c8881", "height": 1.0}, {"edge": 10, "color": "#8c8881", "height": 1.0}, {"edge": 11, "color": "#8c8881", "height": 1.0}]},
+    {"id": "front-terrace", "name": "Front terrace", "polygon": [[0.229, 13.03], [3.886, 13.03], [3.886, 16.535], [0.229, 16.535]], "kind": "balcony", "floor": {"material": "tile", "color": "#c8c2b8"}, "walls": [{"edge": 3, "color": "#8c8881", "height": 1.0}, {"edge": 0, "color": "#8c8881", "height": 0.5}]}
+  ],
+  "openings": [
+    {"id": "stair-top", "type": "door", "room": "mumty", "edge": 2, "offset": 0.015, "width": 0.975, "height": 2.1},
+    {"id": "door-front-terrace", "type": "door", "room": "mumty", "edge": 4, "offset": 0.107, "width": 0.792, "height": 2.1},
+    {"id": "door-terrace", "type": "door", "room": "mumty", "edge": 0, "offset": 0.107, "width": 0.853, "height": 2.1},
+    {"id": "win-mumty", "type": "window", "room": "mumty", "edge": 5, "offset": 2.819, "width": 0.914, "height": 0.9, "sill": 1.2}
+  ],
+  "sweeps": [
+    {"id": "mumty-roof", "profile": [[2.301, 3.28], [2.896, 3.22], [3.429, 2.85], [3.886, 2.0], [4.343, 1.05], [4.724, 0.62], [5.121, 0.55]], "from": 7.087, "to": 13.061, "thickness": 0.22, "solid": true, "color": "#a4a19b"}
+  ],
+  "lights": [
+    {"id": "lamp-mumty", "position": [1.265, 10.058], "height": 2.85, "color": "#ffe3bd", "intensity": 7, "style": "spot"}
+  ],
+  "furniture": [
+    {"id": "front-planter", "name": "Planter", "model": "planter", "room": "front-terrace", "position": [2.057, 13.305], "rotationDeg": 0, "size": [2.896, 0.6, 0.45], "color": "#8f8c86"},
+    {"id": "front-chair-1", "name": "Outdoor armchair", "model": "armchair", "room": "front-terrace", "position": [1.219, 15.392], "rotationDeg": 0, "size": [0.8, 0.75, 0.8], "color": "#c9c2b4"},
+    {"id": "front-chair-2", "name": "Outdoor armchair", "model": "armchair", "room": "front-terrace", "position": [2.591, 15.392], "rotationDeg": 0, "size": [0.8, 0.75, 0.8], "color": "#c9c2b4"},
+    {"id": "front-table", "name": "Side table", "model": "side-table", "room": "front-terrace", "position": [1.905, 15.392], "rotationDeg": 0, "size": [0.5, 0.45, 0.5], "color": "#3a2a22"},
+    {"id": "terrace-planter-front", "name": "Planter", "model": "planter", "room": "terrace", "position": [8.458, 16.307], "rotationDeg": 0, "size": [3.5620000000000003, 0.6, 0.45], "color": "#8f8c86"},
+    {"id": "terrace-planter-curl", "name": "Planter", "model": "planter", "room": "terrace", "position": [6.706, 14.249], "rotationDeg": 90, "size": [2.7620000000000005, 0.6, 0.45], "color": "#8f8c86"},
+    {"id": "terrace-sofa", "name": "Outdoor sofa", "model": "sofa", "room": "terrace", "position": [8.458, 13.96], "rotationDeg": 0, "size": [2.2, 0.75, 0.9], "color": "#c9c2b4"},
+    {"id": "terrace-coffee", "name": "Coffee table", "model": "coffee-table", "room": "terrace", "position": [8.458, 13.106], "rotationDeg": 0, "size": [1.1, 0.4, 0.6], "color": "#3a2a22"},
+    {"id": "terrace-lounger-1", "name": "Sun lounger", "model": "lounger", "room": "terrace", "position": [2.438, 2.743], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
+    {"id": "terrace-lounger-2", "name": "Sun lounger", "model": "lounger", "room": "terrace", "position": [3.353, 2.743], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
+    {"id": "terrace-tank", "name": "Water tank", "model": "kitchen-tall", "room": "terrace", "position": [9.601, 1.219], "rotationDeg": 0, "size": [1.2, 1.4, 1.2], "color": "#3c3d3f"},
+    {"id": "terrace-pot-1", "name": "Potted plant", "model": "floor-plant", "room": "terrace", "position": [0.671, 6.706], "rotationDeg": 0, "size": [0.5, 1.0, 0.5], "color": "#f2efe9"},
+    {"id": "terrace-pot-2", "name": "Potted plant", "model": "floor-plant", "room": "terrace", "position": [5.334, 0.701], "rotationDeg": 0, "size": [0.5, 1.0, 0.5], "color": "#f2efe9"},
+    {"id": "terrace-pot-3", "name": "Potted plant", "model": "floor-plant", "room": "terrace", "position": [5.334, 9.144], "rotationDeg": 0, "size": [0.5, 1.0, 0.5], "color": "#f2efe9"}
+  ]
+}

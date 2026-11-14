@@ -63,7 +63,7 @@ export interface WallSlab {
   extendEnd: number;
   color: string;
   /** The outside finish of an outside wall, when the room asks for its own. */
-  finish?: 'stone' | 'render' | 'fins';
+  finish?: 'stone' | 'render' | 'fins' | 'wood';
   holes: Hole[];
 }
 

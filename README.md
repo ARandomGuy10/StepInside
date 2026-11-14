@@ -42,6 +42,7 @@ the choice (`?home=villa`), so a home can be bookmarked.
 | Apartment | `scenes/home.json` | `scenes/home.md` |
 | New house, design A | `scenes/villa-ground.json`, `scenes/villa-first.json` | `scenes/villa.md` |
 | New house, design B | `scenes/villa-b-ground.json`, `scenes/villa-b-first.json` | `scenes/villa.md` |
+| New house, design C | `scenes/villa-c-ground.json`, `scenes/villa-c-first.json`, `scenes/villa-c-roof.json` | `scenes/villa.md` |
 
 A home opens on a view of the whole building from outside. Drag to turn
 it, scroll to zoom, and use **Hide roof** to look inside. The bar at the

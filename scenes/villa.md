@@ -143,3 +143,39 @@ Things to check with an architect before relying on it: structure
 (the first floor spans the 33.5 ft living space, so it needs beams or
 columns), setbacks and side windows allowed on your plot, plumbing stacks,
 and which way the plot faces.
+
+## Design C: curved roof (`?home=villa-c`)
+
+Built from a short video of an architect's model that Surya sent: the
+outside and the curved roofs follow the model; the ground floor inside is
+design A's, unchanged.
+
+- **Outside.** Grey concrete render, teak cladding on the left-hand rooms
+  (guest room below, Bedroom 3 above, and the left side), a stone panel on
+  the living room's front wall and on the glass lounge's side, grey
+  concrete boundary walls, glass railings.
+- **The curl.** Between Bedroom 3 and the glass lounge, a concrete roof
+  comes down to a planter at first-floor level and sweeps up to the roof
+  terrace over the lounge wall, with a rooflight in its steep part. Under
+  its high end is a sit-out (about 3.5 ft of it has standing height); the
+  low end is planted and cannot be walked into. The model's curve is
+  steeper than a real slab would be built; ours keeps the same S shape.
+- **First floor.** A's rear row unchanged (Bedrooms 1 and 2, bath,
+  dressing). A landing with a sitting corner; the double-height void over
+  the living room is now 10.7 x 14 ft. In front: Bedroom 3, 12 x 12.5 ft,
+  with a door from the front corridor; the glass lounge, 13 x 14 ft, glass
+  from floor to ceiling at the front and side, with a 5 ft balcony in front
+  of it; a 5.5 x 5.5 ft bath off the lounge, over the ground floor toilet.
+  A's 18 ft open balcony is gone.
+- **Roof.** A second flight beside the first goes up to the roof: arrive
+  on the landing, turn round, climb the other way (16 risers of 19 cm,
+  treads of 27 cm, 1 m wide, with a full wall to the void). It ends in a
+  stair room ("mumty") whose roof curls down over the terrace to a
+  planter, as in the model. Doors from it open onto a front terrace over
+  Bedroom 3 (glass railing, as in the model) and onto the main roof
+  terrace (parapets, planters, loungers, the water tank).
+
+Assumed, since the video does not show it: everything at the back and the
+sides that the camera never sees, all window positions, and where the
+second flight goes. Check with an architect: the curl and the stair room's
+curved roof are shell structures that need a structural engineer.
