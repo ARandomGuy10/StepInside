@@ -21,6 +21,11 @@ export class OrbitView {
   private shift = new THREE.Vector2();
   private goalShift = new THREE.Vector2();
   private readonly reach: number;
+  // A flat plan looks straight down through a long lens, so it reads as a
+  // drawing: `lens` glides from 0 (normal) to 1 (flat).
+  private flatOn = false;
+  private lens = 0;
+  private tilt: number | null = null;
 
   /** `bounds` is the home's outline on the plan, `height` its total height. */
   constructor(bounds: THREE.Box2, height: number, start = { azimuth: 0.45, polar: 1.0, reach: 1.25 }) {
@@ -36,6 +41,11 @@ export class OrbitView {
 
   reset(jump = false): void {
     this.goal = { ...this.home };
+    if (this.flatOn) {
+      this.tilt = this.goal.polar;
+      this.goal.polar = 0.0005;
+      this.goal.azimuth = 0;
+    }
     this.goalShift.set(0, 0);
     if (jump) {
       ({ azimuth: this.azimuth, polar: this.polar, distance: this.distance } = this.home);
@@ -47,7 +57,7 @@ export class OrbitView {
   /** Turns by angles in radians: `around` the home, and `over` the top of it. */
   turn(around: number, over = 0, jump = false): void {
     this.goal.azimuth += around;
-    this.goal.polar = Math.max(0.02, Math.min(1.5, this.goal.polar + over));
+    if (!this.flatOn) this.goal.polar = Math.max(0.02, Math.min(1.5, this.goal.polar + over));
     if (jump) {
       this.azimuth = this.goal.azimuth;
       this.polar = this.goal.polar;
@@ -83,15 +93,46 @@ export class OrbitView {
   /** Goes back to angles, distance and slide from `state`, jumping straight there. */
   restore([azimuth, polar, distance, x = 0, z = 0]: readonly number[]): void {
     if (![azimuth, polar, distance, x, z].every(Number.isFinite)) return;
+    if (this.flatOn) polar = 0.0005;
     this.goalShift.set(x, z);
     if (this.goalShift.length() > this.reach) this.goalShift.setLength(this.reach);
     this.shift.copy(this.goalShift);
     this.goal = {
       azimuth,
-      polar: Math.max(0.02, Math.min(1.5, polar)),
+      polar: this.flatOn ? polar : Math.max(0.02, Math.min(1.5, polar)),
       distance: Math.max(this.home.distance * 0.25, Math.min(this.home.distance * 2, distance)),
     };
     ({ azimuth: this.azimuth, polar: this.polar, distance: this.distance } = this.goal);
+    this.place();
+  }
+
+  /** True while the view is a flat, straight-down plan. */
+  get flat(): boolean {
+    return this.flatOn;
+  }
+
+  /**
+   * Flat: looks straight down with almost no perspective, the plan's front
+   * at the bottom, like a drawing. Turning still works; tilting does not.
+   */
+  setFlat(on: boolean): void {
+    if (on === this.flatOn) return;
+    this.flatOn = on;
+    if (on) {
+      this.tilt = this.goal.polar;
+      this.goal.polar = 0.0005;
+      // Square to the page: the nearest quarter turn.
+      this.goal.azimuth = Math.round(this.goal.azimuth / (Math.PI / 2)) * (Math.PI / 2);
+    } else {
+      this.goal.polar = this.tilt ?? this.home.polar;
+    }
+  }
+
+  /** Jumps straight to where the view is gliding to, lens included. */
+  snap(): void {
+    ({ azimuth: this.azimuth, polar: this.polar, distance: this.distance } = this.goal);
+    this.shift.copy(this.goalShift);
+    this.lens = this.flatOn ? 1 : 0;
     this.place();
   }
 
@@ -112,6 +153,8 @@ export class OrbitView {
     this.polar += (this.goal.polar - this.polar) * k;
     this.distance += (this.goal.distance - this.distance) * k;
     this.shift.lerp(this.goalShift, k);
+    this.lens += ((this.flatOn ? 1 : 0) - this.lens) * k;
+    if (Math.abs(this.lens - (this.flatOn ? 1 : 0)) < 0.001) this.lens = this.flatOn ? 1 : 0;
     this.place();
   }
 
@@ -135,7 +178,16 @@ export class OrbitView {
     // `polar` is the angle down from straight above; azimuth 0 looks from the front.
     this.target.x = this.centre.x + this.shift.x;
     this.target.z = this.centre.y + this.shift.y;
-    const distance = this.distance * this.fit;
+    // The long lens stands further back by as much as it narrows the view.
+    const fov = 40 + (6 - 40) * this.lens;
+    const distance = ((this.distance * this.fit) * Math.tan(THREE.MathUtils.degToRad(20))) / Math.tan(THREE.MathUtils.degToRad(fov / 2));
+    const near = this.lens > 0.5 ? distance * 0.5 : 0.1;
+    if (this.camera.fov !== fov || this.camera.near !== near) {
+      this.camera.fov = fov;
+      this.camera.near = near;
+      this.camera.far = distance + 400;
+      this.camera.updateProjectionMatrix();
+    }
     const flat = Math.sin(this.polar) * distance;
     this.camera.position.set(
       this.target.x + Math.sin(this.azimuth) * flat,

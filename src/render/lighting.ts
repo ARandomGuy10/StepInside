@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { setNight } from './glow';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import type { Light, Scene } from '../core/scene';
@@ -107,6 +108,8 @@ export function addLighting(
 
     // 0 at night, 1 in full day; the sun warms and dims as it gets low.
     const day = THREE.MathUtils.smoothstep(elevationDeg, -6, 12);
+    // Outdoor lamps come up as the light goes.
+    setNight(1 - THREE.MathUtils.smoothstep(elevationDeg, -4, 8));
     const warm = 1 - THREE.MathUtils.smoothstep(elevationDeg, 2, 25);
     sun.color.copy(noon).lerp(lowSun, warm);
     sun.intensity = scene.sun.intensity * THREE.MathUtils.smoothstep(elevationDeg, -1, 10);

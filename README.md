@@ -63,7 +63,22 @@ A floor plan is 3D too: the floor is seen from nearly overhead with its
 ceiling off. Drag the background to turn or tilt it (tilt it all the way
 up for a flat plan). **Hide labels** switches the room names and sizes off
 and on; **Hide sizes** takes off just the sizes and keeps the names. Sizes show in feet and inches
-or in metres, set per home in `src/homes.ts`.
+or in metres, set per home in `src/homes.ts`. **2D** draws the plan flat, straight down
+with no perspective, like a drawing (`&flat=1` in the address); **3D** brings the angle back.
+
+**Areas** lists each floor's carpet area (inside the rooms) and built-up area
+(with the walls), the open balconies, terraces and courts, the plot's ground
+coverage and the floor area ratio (`src/core/areas.ts`). **PDF** opens the
+print dialog with a document to save as PDF: the area statement, then each
+floor drawn flat with its room names and sizes.
+
+**Compare designs side by side** (under the design picker, or
+`?compare=villa-d,villa-e`) shows two designs next to each other. Turning,
+zooming, switching to a plan or walking on one side shows the same view of
+the other; untick **Same view on both sides** to look around them separately.
+
+Outdoor lights (wall lights, bollards, uplights, soffit downlights, LED strips)
+glow faintly by day and come up as the sun panel goes past sunset.
 
 Furniture is solid. A piece cannot be put where another one stands; while
 a drag is blocked the highlight turns red and the piece slides along

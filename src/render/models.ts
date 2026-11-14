@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { bulb, lightBeam, lightPool } from './glow';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { applySurface, artTexture, type Pattern } from './textures';
 
@@ -909,6 +910,64 @@ const tvWall: Builder = (k, [w, h, d], color) => {
   k.box(0.22, 0.05, 0.16, -cab / 2 + 0.3, 0.635, -0.05, mat('#b8a98c'));
 };
 
+// ---- Outdoor lights ----
+
+/**
+ * A wall light that throws light up and down the wall: a small matt black
+ * box with a soft wash above and below it. Its back is against the wall (+z).
+ */
+const wallLight: Builder = (k, [w, h, d]) => {
+  const body = mat('#1d1d1f', { roughness: 0.55, metalness: 0.3 });
+  k.box(w, h, d, 0, h / 2, 0, body, 0.006);
+  k.box(w * 0.7, 0.008, d * 0.6, 0, h + 0.002, -0.005, bulb());
+  k.box(w * 0.7, 0.008, d * 0.6, 0, -0.002, -0.005, bulb());
+  const up = k.add(lightBeam(1.5, 1.1), 0, h, d / 2 - 0.01);
+  up.renderOrder = 2;
+  const down = k.add(lightBeam(1.3, 1.0), 0, 0, d / 2 - 0.01);
+  down.rotation.z = Math.PI;
+  down.renderOrder = 2;
+};
+
+/** A low garden bollard: a slim black post with a glowing band near the top and a pool of light round its foot. */
+const bollard: Builder = (k, [w, h, d]) => {
+  const body = mat('#1d1d1f', { roughness: 0.6, metalness: 0.3 });
+  const r = Math.min(w, d) / 2;
+  k.cyl(r, r, h - 0.08, 0, (h - 0.08) / 2, 0, body, 20);
+  k.cyl(r * 0.92, r * 0.92, 0.06, 0, h - 0.05, 0, bulb(), 20);
+  k.cyl(r, r, 0.02, 0, h - 0.01, 0, body, 20);
+  k.add(lightPool(0.9), 0, 0.015, 0);
+};
+
+/** A spike uplight in a bed: a short glowing stub and a beam up into the plant or wall above it. */
+const uplight: Builder = (k, [w, h, d]) => {
+  const r = Math.min(w, d) / 2;
+  k.cyl(r, r * 0.8, h, 0, h / 2, 0, mat('#1d1d1f', { roughness: 0.6 }), 16);
+  k.cyl(r * 0.8, r * 0.8, 0.008, 0, h + 0.004, 0, bulb(), 16);
+  for (const turn of [0, Math.PI / 2]) {
+    const beamUp = k.add(lightBeam(2.4, 1.4), 0, h, 0);
+    beamUp.rotation.y = turn;
+  }
+  k.add(lightPool(0.6), 0, 0.015, 0);
+};
+
+/** A downlight set into a soffit: a glowing disc facing down and a cone of light under it. */
+const downlight: Builder = (k, [w, h, d]) => {
+  const r = Math.min(w, d) / 2;
+  k.cyl(r, r, h, 0, h / 2, 0, mat('#2a2a2c', { roughness: 0.5 }), 20);
+  k.cyl(r * 0.75, r * 0.75, 0.005, 0, -0.002, 0, bulb(), 20);
+  for (const turn of [0, Math.PI / 2]) {
+    const cone = k.add(lightBeam(2.3, 1.3, '#9c7a4c'), 0, 0, 0);
+    cone.rotation.set(Math.PI, turn, 0);
+  }
+};
+
+/** A strip of LED light: a thin glowing line with a soft wash on the surface beside it. */
+const ledStrip: Builder = (k, [w, h, d]) => {
+  k.box(w, h, d, 0, h / 2, 0, bulb('#fff4e0'));
+  const glow = k.add(lightPool(0.5), 0, 0.01, 0);
+  glow.scale.set(w / 1.0, 0.6, 1);
+};
+
 // ---- Garden and terrace pieces ----
 
 /** An irregular flat stone: a rounded outline with a wobble, lying on y = 0. */
@@ -1174,6 +1233,11 @@ const builders: Record<string, Builder> = {
   pool,
   lounger,
   stairs,
+  'wall-light': wallLight,
+  bollard,
+  uplight,
+  downlight,
+  'led-strip': ledStrip,
   'stairs-floating': stairsFloating,
   'tv-wall': tvWall,
   paving,

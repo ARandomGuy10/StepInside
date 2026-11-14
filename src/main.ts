@@ -7,6 +7,7 @@ import {
 import { applyStyle, STYLES } from './core/styles';
 import { openSpot, tourRoute } from './core/tour';
 import { viewFromParams, viewToParams, type ViewState } from './core/viewLink';
+import { formatArea, summarizeAreas, type AreaSummary } from './core/areas';
 import { TourPlayer } from './render/tourPlayer';
 import { History } from './core/history';
 import { HOMES, type HomeEntry, type StairEntry } from './homes';
@@ -32,6 +33,8 @@ import { DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePan
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 const PANEL_WIDTH = 288;
+/** True inside one side of the compare page: no panel, the views kept in step. */
+const EMBED = window.parent !== window && new URLSearchParams(window.location.search).has('embed');
 
 function start(home: HomeEntry, scenes: readonly Scene[]): void {
   document.getElementById('home-name')!.textContent = home.title;
@@ -477,9 +480,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const tourButton = viewButton('▶ Tour', 'A walk through every room, hands free', () => (tour ? stopTour() : startTour()));
   const shareButton = viewButton('Share', 'Copy a link that opens exactly this view', () => void shareView());
   const savedButton = viewButton('Saved views ▾', 'Keep this view, or go back to one you kept', () => toggleSaved());
+  const areasButton = viewButton('Areas', 'Carpet and built-up area of each floor, plot coverage', () => toggleAreas());
+  const pdfButton = viewButton('PDF', 'Print or save the floor plans, with sizes and areas, as a PDF', () => exportPdf());
   tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
-  document.getElementById('view-extras')!.replaceChildren(tourButton, savedButton, shareButton);
+  document.getElementById('view-extras')!.replaceChildren(tourButton, savedButton, shareButton, areasButton, pdfButton);
   const tools = document.getElementById('orbit-tools')!;
   const roofButton = viewButton('', 'Take the roof off to look inside', () => {
     roofHidden = !roofHidden;
@@ -497,9 +502,15 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   roofButton.id = 'btn-roof';
   dimensionsButton.id = 'btn-dimensions';
   sizesButton.id = 'btn-sizes';
+  const flatButton = viewButton('', 'Switch the plan between a flat 2D drawing and 3D', () => {
+    plan.setFlat(!plan.flat);
+    updateHint();
+  });
+  flatButton.id = 'btn-flat';
   /** The camera that drags, the wheel and these buttons act on. */
   const turnable = (): OrbitView => (inOrbit ? orbit : plan);
   tools.replaceChildren(
+    flatButton,
     viewButton('⟲', 'Turn left', () => turnable().turn(-Math.PI / 4)),
     viewButton('⟳', 'Turn right', () => turnable().turn(Math.PI / 4)),
     viewButton('+', 'Zoom in', () => turnable().zoom(0.8)),
@@ -678,6 +689,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     dimensionsButton.textContent = dimensions ? 'Hide labels' : 'Show labels';
     dimensionsButton.classList.toggle('active', dimensions);
     sizesButton.textContent = sizes ? 'Hide sizes' : 'Show sizes';
+    flatButton.textContent = plan.flat ? '3D' : '2D';
+    flatButton.classList.toggle('active', plan.flat);
     sizesButton.classList.toggle('active', sizes && dimensions);
     sizesButton.disabled = !dimensions;
     if (inOrbit) {
@@ -1169,7 +1182,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   /** The view on screen now, as it goes into a link. */
   function currentView(): ViewState {
     if (inOrbit) return { view: 'whole', floor: level, cam: orbit.state };
-    if (inTopView) return { view: 'plan', floor: level, cam: plan.state };
+    if (inTopView) return { view: 'plan', floor: level, cam: plan.state, ...(plan.flat ? { flat: true } : {}) };
     const p = controls.pose;
     return { view: 'walk', floor: level, at: [p.x, p.y, THREE.MathUtils.radToDeg(p.yaw), controls.pitchDeg] };
   }
@@ -1183,7 +1196,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     } else if (v.view === 'plan') {
       if (v.floor !== level) goTo(v.floor);
       setTopView(true);
+      plan.setFlat(!!v.flat);
       if (v.cam) plan.restore(v.cam);
+      updateHint();
     } else {
       setTopView(false);
       if (v.at) {
@@ -1319,9 +1334,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     camera.updateProjectionMatrix();
     // On a phone the panel sits across the top, so nothing moves aside for it,
     // and the sun panel joins the view bar at the bottom.
-    const phone = w <= 700;
-    const side = phone ? 0 : PANEL_WIDTH;
-    const bottom = phone ? 210 : 130;
+    const phone = w <= 700 && !EMBED;
+    const side = phone || EMBED ? 0 : PANEL_WIDTH;
+    const bottom = EMBED ? 100 : phone ? 210 : 130;
     topView.resize(w, h, side);
     // Keep the home clear of the view bar, and in a plan of the panel too.
     orbit.resize(w, h, 0, bottom);
@@ -1333,6 +1348,199 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // Open on the whole home, unless the address asks for another view.
   showView(viewFromParams(new URLSearchParams(window.location.search), levels.length));
 
+  // ---- Areas and the PDF of the plans ----
+
+  const designName = home.design ? `${home.title}, ${home.design.name}` : home.title;
+  const areas = (): AreaSummary => summarizeAreas(levels.map((l, i) => ({ name: l.name, scene: history.current[i] })));
+
+  /** The area statement as an HTML table. */
+  function areaTable(summary: AreaSummary): HTMLTableElement {
+    const table = document.createElement('table');
+    const row = (cells: string[], head = false): void => {
+      const tr = table.insertRow();
+      for (const text of cells) {
+        const cell = document.createElement(head ? 'th' : 'td');
+        cell.textContent = text;
+        tr.append(cell);
+      }
+    };
+    const a = (v: number): string => formatArea(v, units);
+    row(['', 'Carpet', 'Built-up', 'Open (balconies, terraces, courts)'], true);
+    for (const f of summary.floors) row([f.name, a(f.carpet), a(f.builtUp), a(f.outdoor)]);
+    row(['Total', a(summary.carpet), a(summary.builtUp), a(summary.floors.reduce((s, f) => s + f.outdoor, 0))], true);
+    return table;
+  }
+
+  function areaFacts(summary: AreaSummary): HTMLElement {
+    const facts = document.createElement('dl');
+    for (const [term, value] of [
+      ['Plot', formatArea(summary.plot, units)],
+      ['Ground coverage', `${Math.round(summary.coverage * 100)}%`],
+      ['Floor area ratio', summary.far.toFixed(2)],
+      ['Ground not built on', formatArea(summary.openGround, units)],
+    ]) {
+      const dt = document.createElement('dt');
+      dt.textContent = term;
+      const dd = document.createElement('dd');
+      dd.textContent = value;
+      facts.append(dt, dd);
+    }
+    return facts;
+  }
+
+  const areasPanel = document.createElement('section');
+  areasPanel.id = 'areas';
+  areasPanel.hidden = true;
+  document.body.append(areasPanel);
+  function toggleAreas(): void {
+    areasPanel.hidden = !areasPanel.hidden;
+    areasButton.classList.toggle('active', !areasPanel.hidden);
+    if (areasPanel.hidden) return;
+    const summary = areas();
+    const head = document.createElement('header');
+    const title = document.createElement('strong');
+    title.textContent = 'Areas';
+    const close = viewButton('×', 'Close', () => toggleAreas());
+    head.append(title, close);
+    const note = document.createElement('p');
+    note.textContent =
+      'Carpet: floor inside the rooms. Built-up: rooms with their walls, to the outside face. Open areas such as a covered court count as open. Floor area ratio is all built-up area over the plot.';
+    const rooms = document.createElement('details');
+    const summaryLine = document.createElement('summary');
+    summaryLine.textContent = 'Room by room';
+    rooms.append(summaryLine);
+    for (const f of summary.floors) {
+      const list = document.createElement('table');
+      const caption = list.createCaption();
+      caption.textContent = f.name;
+      for (const r of f.rooms) {
+        const tr = list.insertRow();
+        tr.insertCell().textContent = r.name;
+        tr.insertCell().textContent = formatArea(r.area, units);
+      }
+      rooms.append(list);
+    }
+    areasPanel.replaceChildren(head, areaFacts(summary), areaTable(summary), note, rooms);
+  }
+
+  /**
+   * The plans as a printable document: the area statement, then each floor
+   * drawn flat with its room names and sizes. The browser's print dialog
+   * saves it as a PDF.
+   */
+  function exportPdf(): void {
+    const before = currentView();
+    const wasFlat = plan.flat;
+    const wasDimensions = dimensions;
+    const [w, h] = [1200, 1600];
+    renderer.setSize(w, h, false);
+    plan.resize(w, h, 0, 0);
+    const images = levels.map((l, i) => {
+      if (i !== level) setLevel(i);
+      if (!inTopView) setTopView(true);
+      plan.setFlat(true);
+      plan.reset();
+      plan.snap();
+      renderer.render(world, plan.camera);
+      const shot = document.createElement('canvas');
+      shot.width = w;
+      shot.height = h;
+      const g = shot.getContext('2d')!;
+      g.drawImage(renderer.domElement, 0, 0, w, h);
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      for (const room of history.current[i].rooms) {
+        if (room.kind === 'void') continue;
+        const size = roomSize(room);
+        spot.set(size.center[0], l.elevation + 0.05, size.center[1]).project(plan.camera);
+        const x = ((spot.x + 1) / 2) * w;
+        const y = ((1 - spot.y) / 2) * h;
+        const name = room.name ?? room.id;
+        const sub = formatSize(size.width, size.depth, units);
+        g.font = '600 20px system-ui, sans-serif';
+        const width = Math.max(g.measureText(name).width, (g.font = '17px system-ui, sans-serif', g.measureText(sub).width)) + 18;
+        g.fillStyle = 'rgba(255,255,255,0.88)';
+        g.beginPath();
+        g.roundRect(x - width / 2, y - 25, width, 50, 8);
+        g.fill();
+        g.fillStyle = '#22201d';
+        g.font = '600 20px system-ui, sans-serif';
+        g.fillText(name, x, y - 10);
+        g.fillStyle = '#5d564d';
+        g.font = '17px system-ui, sans-serif';
+        g.fillText(sub, x, y + 12);
+      }
+      return { name: l.name, src: shot.toDataURL('image/jpeg', 0.92) };
+    });
+    plan.setFlat(wasFlat);
+    dimensions = wasDimensions;
+    resize();
+    showView(before);
+
+    const doc = document.getElementById('print') ?? document.createElement('div');
+    doc.id = 'print';
+    const cover = document.createElement('section');
+    const title = document.createElement('h1');
+    title.textContent = designName;
+    const date = document.createElement('p');
+    date.textContent = `Floor plans and areas · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    const summary = areas();
+    cover.append(title, date, areaFacts(summary), areaTable(summary));
+    const pages = images.map(({ name, src }) => {
+      const page = document.createElement('section');
+      const heading = document.createElement('h2');
+      heading.textContent = `${name} plan`;
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = `${name} plan`;
+      page.append(heading, img);
+      return page;
+    });
+    doc.replaceChildren(cover, ...pages);
+    document.body.append(doc);
+    setTimeout(() => window.print(), 300);
+  }
+
+  // ---- Compare mode: this home is one side of a side-by-side page ----
+  // The page passes views between its two sides, so turning, zooming or
+  // walking on one side shows the same view of the other design.
+  const embedded = EMBED;
+  let lastSync = '';
+  let lastSyncAt = 0;
+  const viewKey = (v: ViewState): string => viewToParams(v, new URLSearchParams()).toString();
+  if (embedded) {
+    document.body.classList.add('embed');
+    window.addEventListener('message', (e) => {
+      if (e.source !== window.parent || e.data?.type !== 'stepinside-view') return;
+      const v = e.data.state as ViewState;
+      if (v.view === 'whole') {
+        if (!inOrbit) setOrbit();
+        if (v.cam) orbit.restore(v.cam);
+      } else if (v.view === 'plan' && inTopView && v.floor === level) {
+        if (plan.flat !== !!v.flat) {
+          plan.setFlat(!!v.flat);
+          updateHint();
+        }
+        if (v.cam) plan.restore(v.cam);
+      } else if (v.view === 'walk' && !inOrbit && !inTopView && v.floor === level && v.at) {
+        controls.teleport(v.at[0], v.at[1], v.at[2], v.at[3]);
+      } else {
+        showView(v);
+      }
+      lastSync = viewKey(currentView());
+    });
+  }
+  /** Tells the compare page when the view here changes, a few times a second at most. */
+  function syncView(time: number): void {
+    if (!embedded || time - lastSyncAt < 60) return;
+    const v = currentView();
+    const key = viewKey(v);
+    if (key === lastSync) return;
+    lastSync = key;
+    lastSyncAt = time;
+    window.parent.postMessage({ type: 'stepinside-view', state: v }, '*');
+  }
+
   let lastRoom: string | undefined;
   const timer = new THREE.Timer();
   // The render loop: the browser calls this before every screen refresh.
@@ -1343,6 +1551,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (inOrbit) orbit.update(dt);
     if (inTopView) plan.update(dt);
     placeLabels();
+    syncView(time);
     if (tour) playTour(dt);
     else walkStairs();
     const pose = controls.pose;
@@ -1358,6 +1567,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       renderer.render(world, activeCamera());
     } else {
       renderPass.camera = occlusion.camera = activeCamera();
+      // A flat plan is a drawing: no shading in the corners.
+      occlusion.enabled = !(inTopView && plan.flat);
       composer.render();
     }
   });
@@ -1371,7 +1582,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 const params = new URLSearchParams(window.location.search);
 const chosen = HOMES.find((h) => h.id === params.get('home'));
 
-if (!chosen) {
+if (params.has('compare')) {
+  startCompare(params);
+} else if (!chosen) {
   document.getElementById('panel')!.hidden = true;
   document.getElementById('hint')!.hidden = true;
   document.getElementById('view-bar')!.hidden = true;
@@ -1410,6 +1623,15 @@ if (!chosen) {
         return option;
       }),
     );
+    const compare = document.querySelector<HTMLAnchorElement>('#compare-link')!;
+    const other = designs.find((h) => h !== chosen);
+    compare.hidden = !other;
+    if (other) {
+      const query = new URLSearchParams(params);
+      query.delete('home');
+      query.set('compare', `${chosen.id},${other.id}`);
+      compare.href = `?${query}`;
+    }
     picker.addEventListener('change', () => {
       const next = new URLSearchParams(params);
       next.set('home', picker.value);
@@ -1424,6 +1646,95 @@ if (!chosen) {
   } catch (error) {
     showStartError(error);
   }
+}
+
+/**
+ * Compare mode: two designs side by side, each a full copy of the app in a
+ * frame. Views pass between them, so both always show the same angle.
+ * ?compare=villa-d,villa-e
+ */
+function startCompare(params: URLSearchParams): void {
+  for (const id of ['panel', 'hint', 'view-bar', 'chooser']) document.getElementById(id)!.hidden = true;
+  canvas.hidden = true;
+  document.body.classList.add('compare');
+  const ids = (params.get('compare') ?? '').split(',');
+  const first = HOMES.find((h) => h.id === ids[0]) ?? HOMES.find((h) => h.design) ?? HOMES[0];
+  const choices = HOMES.filter((h) => !first.design || h.design?.group === first.design.group);
+  const second = HOMES.find((h) => h.id === ids[1]) ?? choices.find((h) => h !== first) ?? first;
+
+  const page = document.createElement('div');
+  page.id = 'compare';
+  const bar = document.createElement('header');
+  const title = document.createElement('strong');
+  title.textContent = 'Compare designs';
+  const sync = document.createElement('label');
+  sync.innerHTML = '<input type="checkbox" checked /> Same view on both sides';
+  const syncBox = sync.querySelector('input')!;
+  const back = document.createElement('a');
+  back.textContent = 'Back to one design';
+  bar.append(title, sync, back);
+  const sides = document.createElement('div');
+  sides.className = 'sides';
+  page.append(bar, sides);
+  document.body.append(page);
+
+  // The view to open on: from the address, or the whole house.
+  const view = new URLSearchParams();
+  for (const key of ['view', 'floor', 'at', 'cam', 'flat', 'fast', 'date', 'time']) {
+    const value = params.get(key);
+    if (value !== null) view.set(key, value);
+  }
+  const picked = [first, second];
+  const frames = picked.map((home, i) => {
+    const side = document.createElement('section');
+    const picker = document.createElement('select');
+    picker.title = 'Pick the design for this side';
+    picker.replaceChildren(
+      ...choices.map((h) => {
+        const option = document.createElement('option');
+        option.value = h.id;
+        option.textContent = h.design?.name ?? h.title;
+        option.selected = h === home;
+        return option;
+      }),
+    );
+    const frame = document.createElement('iframe');
+    frame.title = home.design?.name ?? home.title;
+    const load = (id: string): void => {
+      const query = new URLSearchParams(view);
+      query.set('home', id);
+      query.set('embed', '1');
+      frame.src = `?${query}`;
+    };
+    load(home.id);
+    picker.addEventListener('change', () => {
+      picked[i] = HOMES.find((h) => h.id === picker.value) ?? picked[i];
+      load(picker.value);
+      updateAddress();
+    });
+    side.append(picker, frame);
+    sides.append(side);
+    return frame;
+  });
+
+  function updateAddress(): void {
+    const next = new URLSearchParams(params);
+    next.set('compare', picked.map((h) => h.id).join(','));
+    history.replaceState(null, '', `?${next}`);
+    const single = new URLSearchParams(params);
+    single.delete('compare');
+    single.set('home', picked[0].id);
+    back.href = `?${single}`;
+  }
+  updateAddress();
+
+  // Whatever one side shows, the other follows.
+  window.addEventListener('message', (e) => {
+    if (!syncBox.checked || e.data?.type !== 'stepinside-view') return;
+    const from = frames.findIndex((f) => f.contentWindow === e.source);
+    if (from < 0) return;
+    frames[1 - from].contentWindow?.postMessage(e.data, '*');
+  });
 }
 
 function showStartError(error: unknown): void {

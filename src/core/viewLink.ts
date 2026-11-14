@@ -16,6 +16,8 @@ export interface ViewState {
   floor: number;
   at?: [number, number, number, number];
   cam?: number[];
+  /** A floor plan drawn flat, in 2D. */
+  flat?: boolean;
 }
 
 const VIEWS = ['whole', 'plan', 'walk'] as const;
@@ -37,13 +39,14 @@ export function viewFromParams(params: URLSearchParams, floors: number): ViewSta
   if (at) state.at = at as ViewState['at'];
   const cam = numbers(params.get('cam'), 3) ?? numbers(params.get('cam'), 5);
   if (cam) state.cam = cam;
+  if (view === 'plan' && params.get('flat') === '1') state.flat = true;
   return state;
 }
 
 /** Writes a view into a copy of `base`, replacing any view already in it. */
 export function viewToParams(state: ViewState, base: URLSearchParams): URLSearchParams {
   const params = new URLSearchParams(base);
-  for (const key of ['view', 'floor', 'at', 'cam']) params.delete(key);
+  for (const key of ['view', 'floor', 'at', 'cam', 'flat']) params.delete(key);
   params.set('view', state.view);
   if (state.floor > 0) params.set('floor', String(state.floor));
   if (state.view === 'walk' && state.at) {
@@ -56,5 +59,6 @@ export function viewToParams(state: ViewState, base: URLSearchParams): URLSearch
     if (slide.length === 2) parts.push(...slide.map((v) => round(v, 2)));
     params.set('cam', parts.join(','));
   }
+  if (state.view === 'plan' && state.flat) params.set('flat', '1');
   return params;
 }

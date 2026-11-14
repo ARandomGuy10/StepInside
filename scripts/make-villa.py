@@ -1300,6 +1300,30 @@ d2.put("terrace-table", "Round table", "round-table", "terrace", 27.5, 7.5, 0, [
 for i, x in enumerate((26.0, 29.0)):
     d2.put(f"terrace-chair-{i+1}", "Outdoor armchair", "armchair", "terrace", x, 9.6, 0, [0.7, 0.75, 0.7], "#e8e2d6")
 
+# ---- Design D's outside lighting: modern, warm and low. Wall lights that
+# wash up and down the facade, downlights in the balcony's soffit, bollards
+# along the garden path, uplights into the tree and the curl, and LED strips
+# along the balcony and the roof terrace's glass railing. They glow brighter
+# as the sun goes down.
+WL = [0.1, 0.22, 0.1]
+for i, (x, z) in enumerate(((13.5, 1.95), (18.5, 1.95), (4.875, 1.6), (7.875, 1.6), (21.0, 1.6), (30.0, 1.6))):
+    d0.hang(f"wall-light-{i+1}", "Wall light", "wall-light", "garden", "top", x, z, WL, "#1d1d1f")
+for i, x in enumerate((9.0, 13.0, 21.0, 25.0, 29.0, 33.0)):
+    d0.put(f"soffit-light-{i+1}", "Downlight", "downlight", "garden", x, 47.5, 0, [0.12, 0.03, 0.12], "#2a2a2c", elevation=2.4)
+for i, (x, y) in enumerate(((13.4, 49.3), (13.4, 52.6), (18.6, 49.3), (18.6, 52.6))):
+    d0.put(f"path-bollard-{i+1}", "Bollard light", "bollard", "garden", x, y, 0, [0.14, 0.6, 0.14], "#1d1d1f")
+d0.put("tree-uplight", "Uplight", "uplight", "garden", 5.9, 51.0, 0, [0.1, 0.12, 0.1], "#1d1d1f")
+d1.put("balcony-led", "LED strip", "led-strip", "balcony", (EGAP + R) / 2, EBAL - 0.2, 0, [m(R - EGAP) - 0.3, 0.02, 0.03], "#fff4e0")
+d1.hang("balcony-wall-light", "Wall light", "wall-light", "balcony", "top", 32.3, 1.7, WL, "#1d1d1f")
+for i, (x, y) in enumerate(((8.0, 39.3), (4.0, 38.5))):
+    d1.put(f"curl-uplight-{i+1}", "Uplight", "uplight", "curl-garden", x, y, 0, [0.1, 0.12, 0.1], "#1d1d1f")
+d2.put("railing-led", "LED strip", "led-strip", "terrace", (L + ERAIL) / 2, ETF - 0.25, 0, [m(ERAIL - L) - 0.3, 0.02, 0.03], "#fff4e0")
+for i, x in enumerate((10.9, 14.6)):
+    d2.put(f"mumty-light-{i+1}", "Wall light", "wall-light", "terrace", x, EMY1 + INT + (WL[2] / 2 + 0.004) / FT, 180, WL, "#1d1d1f",
+           mount="wall", elevation=1.9)
+for i, x in enumerate((24.0, 31.5)):
+    d2.put(f"terrace-bollard-{i+1}", "Bollard light", "bollard", "terrace", x, 13.5, 0, [0.14, 0.6, 0.14], "#1d1d1f")
+
 here = os.path.dirname(os.path.abspath(__file__))
 g.write(os.path.join(here, "..", "scenes", "villa-ground.json"))
 f.write(os.path.join(here, "..", "scenes", "villa-first.json"))
