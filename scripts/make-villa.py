@@ -974,8 +974,8 @@ d2.put("terrace-tank", "Water tank", "kitchen-tall", "terrace", 31.5, 4, 0, [1.2
 #
 # - Ground floor: one block across the plot with a 7.5 ft front yard behind a
 #   low wall and a 14 ft gate. Front, left to right: the guest room in teak
-#   with three tall windows, the main door, a stone-clad study, and an open
-#   side passage on the right that leads back to the pool. The pool is in a
+#   with three tall windows, the main door, the stone-clad master bath, and an
+#   open side passage on the right that leads back to the pool. The pool is in a
 #   court at the rear, open to the sky; the living room and the master
 #   bedroom both open onto it. Kitchen at the rear-left.
 # - First floor: a teak box (bedroom 3) at the front-left, set back. In front
@@ -988,8 +988,9 @@ d2.put("terrace-tank", "Water tank", "kitchen-tall", "terrace", 31.5, 4, 0, [1.2
 #   right-hand wall. On the roof: a wide stair room with a teak panel, its
 #   roof sweeping down to the right to a planter, and a terrace with a glass
 #   railing in front.
-# - Stairs: the first flight stands in the living room, against the master
-#   bedroom wall, and climbs to the back. The second climbs to the back too,
+# - Stairs: the first flight climbs to the back from the entrance hall, in its
+#   own shaft between the living room and the master suite, so it does not
+#   open into the living room. The second climbs to the back too,
 #   from the lounge, in its own shaft beside it.
 # =============================================================================
 E1X0, E1X1, EY0, EY1 = 15.5, 18.5, 20.25, 34.25    # flight 1: first step at EY1, top at EY0
@@ -1019,12 +1020,21 @@ e0 = Home("Design E, ground floor", (21, 51), 0)
 e0.site = {"margin": 30, "color": "#8fb070"}
 e0.exterior, e0.finish, e0.facade = D_CONCRETE, "render", D_FACADE
 e0.room("kitchen", "Kitchen", (L, T, 12.75, ROW1), floor=TILE)
-e0.room("living", "Living + dining", [(L, MID0), (SPLIT, MID0), (SPLIT, EG), (13.25, EG), (13.25, 33.25), (L, 33.25)], floor=TILE)
+# The front door opens into an entrance hall; the stairs climb from its back
+# in their own shaft, walled off from the living room. The living room is
+# through a doorway on the left, beside the guest room.
+EHW = 15.25        # the stair shaft's left wall (inside face); the living room stops at EHW - INT
+EGR = 11.25        # the guest room's right wall (inside face)
+e0.room("living", "Living + dining", [(L, MID0), (SPLIT, MID0), (SPLIT, EY0 - INT), (EHW - INT, EY0 - INT), (EHW - INT, 33.75),
+                                      (EGR + INT, 33.75), (EGR + INT, 33.25), (L, 33.25)], floor=TILE)
+e0.room("hall", "Entrance hall", [(EHW, EY0), (SPLIT, EY0), (SPLIT, EG), (EGR + INT, EG), (EGR + INT, EY1), (EHW, EY1)], floor=TILE)
+# The master suite fills the right-hand side: bedroom on the pool, a walk-in
+# wardrobe, then a large bath at the front where the study was.
 e0.room("master", "Master bedroom", (SPLIT + INT, MID0, ESIDE, 30.25), floor=OAK)
-e0.room("master-bath", "Bath", (SPLIT + INT, 30.75, ESIDE, 36.75), floor=BATH)
+e0.room("dressing", "Walk-in wardrobe", (SPLIT + INT, 30.75, ESIDE, 36.75), floor=OAK)
 e0.room("powder", "Toilet", (SPLIT + INT, 37.25, 24.25, 41.25), floor=BATH)
-e0.room("study", "Study", [(24.75, 37.25), (ESIDE, 37.25), (ESIDE, EG), (SPLIT + INT, EG), (SPLIT + INT, 41.75), (24.75, 41.75)], floor=OAK)
-e0.room("guest", "Guest room", (L, 33.75, 12.75, EG), floor=OAK)
+e0.room("master-bath", "Master bath", [(24.75, 37.25), (ESIDE, 37.25), (ESIDE, EG), (SPLIT + INT, EG), (SPLIT + INT, 41.75), (24.75, 41.75)], floor=BATH)
+e0.room("guest", "Guest room", (L, 33.75, EGR, EG), floor=OAK)
 # The pool court at the rear, the side passage and the front yard are one
 # open space inside the boundary wall.
 e0.room("garden", "Pool court + garden", [(13.25, T), (R, T), (R, B), (L, B), (L, EYARD), (ESIDE + INT, EYARD), (ESIDE + INT, ROW1), (13.25, ROW1)],
@@ -1036,22 +1046,24 @@ e0.edge("garden", (L, B), (L, EYARD), color=D_BOUNDARY, height=1.2)
 e0.clad("guest", "bottom", "wood")
 e0.clad("guest", "left", "wood")
 e0.edge("living", (L, 33.25), (L, MID0), outside="wood")
-e0.edge("living", (SPLIT, EG), (13.25, EG), outside="wood")
-e0.edge("study", (ESIDE, EG), (SPLIT + INT, EG), outside="stone")
-e0.paint("kitchen", top="#5f7464")
+e0.edge("hall", (SPLIT, EG), (EGR + INT, EG), outside="wood")
+e0.edge("master-bath", (ESIDE, EG), (SPLIT + INT, EG), outside="stone")
+e0.paint("kitchen", top="#d4cbbd")
 e0.paint("master", right="#44616b")
 e0.paint("guest", left="#b98d7a")
-e0.paint("master-bath", right="#dfe7e6")
+e0.paint("master-bath", right="#d9d4cc")
+e0.paint("living", left="#e4ddd2")
 
 e0.door("door-kitchen", "kitchen", (7, ROW1), (10, ROW1))
 e0.door("door-pool", "living", (6, MID0), (9.5, MID0))
-e0.door("door-master", "master", (SPLIT + INT, 26.5), (SPLIT + INT, 29.25))
+e0.door("door-master", "master", (SPLIT + INT, 19.5), (SPLIT + INT, 16.75))
 e0.door("door-master-pool", "master", (21, MID0), (24, MID0))
-e0.door("door-master-bath", "master-bath", (25.5, 30.75), (28, 30.75))
+e0.door("door-dressing", "dressing", (20.0, 30.75), (22.5, 30.75))
+e0.door("door-master-bath", "master-bath", (25.25, 37.25), (27.75, 37.25))
 e0.door("door-powder", "powder", (SPLIT + INT, 38), (SPLIT + INT, 40.5))
-e0.door("door-study", "study", (SPLIT + INT, 42.5), (SPLIT + INT, 45.25))
-e0.door("door-guest", "guest", (12.75, 35), (12.75, 37.75))
-e0.opening("door-main", "door", "living", (17.75, EG), (14.25, EG), height=2.4)
+e0.door("door-guest", "guest", (EGR, 38.0), (EGR, 40.75))
+e0.opening("door-living", "door", "living", (EHW - INT - 0.1, 33.75), (EGR + INT + 0.1, 33.75), height=2.4)
+e0.opening("door-main", "door", "hall", (17.75, EG), (14.25, EG), height=2.4)
 e0.door("gate", "garden", (28.25, B), (14.25, B))
 e0.window("win-kitchen", "kitchen", (4, T), (9.5, T), 1.1, 1.1)
 e0.window("win-kitchen-pool", "kitchen", (12.75, 5), (12.75, 10.5), 1.1, 1.1)
@@ -1059,46 +1071,58 @@ e0.window("win-living-pool", "living", (10.5, MID0), (16.5, MID0), 2.1, 0.3)
 e0.window("win-living-side-1", "living", (L, 19), (L, 24))
 e0.window("win-living-side-2", "living", (L, 27), (L, 31))
 e0.window("win-master-side", "master", (ESIDE, 20), (ESIDE, 25.5))
-e0.window("win-master-bath", "master-bath", (ESIDE, 32.5), (ESIDE, 34.5), 0.6, 1.7)
-e0.window("win-study", "study", (27.25, EG), (23.25, EG), 1.4, 0.9)
-e0.window("win-study-side", "study", (ESIDE, 39), (ESIDE, 43))
+# The bath keeps the front window's top line but starts higher up.
+e0.window("win-bath-front", "master-bath", (27.25, EG), (23.25, EG), 0.8, 1.5)
+e0.window("win-bath-side", "master-bath", (ESIDE, 39), (ESIDE, 43), 0.6, 1.7)
 # Three tall windows in the teak front, as in the model.
-for i, x in enumerate((3.25, 6.25, 9.25)):
+for i, x in enumerate((2.25, 5.25, 8.25)):
     e0.window(f"win-guest-{i+1}", "guest", (x + 2.25, EG), (x, EG), 2.1, 0.4)
 e0.window("win-guest-side", "guest", (L, 38), (L, 42))
 
-e0.put("stairs", "Staircase", "stairs", "living", (E1X0 + E1X1) / 2, (EY0 + EY1) / 2, 0,
-       [m(E1X1 - E1X0), 3.05, m(EY1 - EY0)], "#c9c2b6", fixed=True)
+e0.put("stairs", "Staircase", "stairs-floating", "hall", (E1X0 + E1X1) / 2, (EY0 + EY1) / 2, 0,
+       [m(E1X1 - E1X0), 3.05, m(EY1 - EY0)], "#c8a57a", fixed=True)
 e0.put("counter-left", "Kitchen counter with sink", "kitchen-counter-sink", "kitchen", 1.75, 7.5, 90, [2.74, 0.9, 0.6], "#ecebe6")
 e0.put("counter-rear", "Kitchen counter with hob", "kitchen-counter-hob", "kitchen", 6.5, 1.75, 180, [2.4, 0.9, 0.6], "#ecebe6")
 e0.put("fridge", "Fridge cabinet", "kitchen-tall", "kitchen", 11.6, 1.8, 180, [0.6, 2.1, 0.6], "#ecebe6")
 e0.put("island", "Kitchen island", "kitchen-island", "kitchen", 7, 8.5, 0, [1.6, 0.9, 0.8], WHITE)
-e0.put("dining-table", "Dining table", "dining-table", "living", 7.5, 21.5, 0, [1.9, 0.75, 0.95], WOOD)
-for i, x in enumerate((5.5, 7.5, 9.5)):
-    e0.put(f"chair-rear-{i+1}", "Dining chair", "dining-chair", "living", x, 19.3, 180, [0.5, 0.9, 0.5], "#7a4a35")
-    e0.put(f"chair-front-{i+1}", "Dining chair", "dining-chair", "living", x, 23.7, 0, [0.5, 0.9, 0.5], "#7a4a35")
-e0.put("sofa", "Sofa", "sofa", "living", 3.0, 29.0, 90, [2.4, 0.8, 0.95], FABRIC)
-e0.put("rug", "Rug", "rug", "living", 7.0, 29.0, 0, [2.2, 0.02, 2.2], "#b8a98c")
-e0.put("coffee-table", "Coffee table", "coffee-table", "living", 6.75, 29.0, 90, [1.1, 0.42, 0.6], DARK)
-e0.put("armchair", "Armchair", "armchair", "living", 10.5, 26.9, 270, [0.85, 0.8, 0.85], GREEN)
-e0.put("tv-unit", "TV unit", "tv-unit", "living", 12.0, 32.55, 0, [1.8, 0.55, 0.42], WOOD)
-e0.put("floor-lamp-living", "Floor lamp", "floor-lamp", "living", 1.8, 23.8, 0, [0.4, 1.6, 0.4], "#2b2b2b")
-e0.put("plant-living", "Rubber plant", "floor-plant", "living", 14.4, 44.8, 0, [0.6, 1.5, 0.6], "#d8d2c6")
-e0.put("console", "Sideboard", "sideboard", "living", 14.0, 39.5, 90, [1.6, 0.8, 0.4], WOOD)
-e0.put("master-bed", "Master bed", "bed", "master", 24.5, 25.4, 0, [1.8, 0.95, 2.1], "#8f97a3")
-e0.put("master-table-1", "Bedside table", "side-table", "master", 20.6, 28.9, 0, [0.45, 0.5, 0.45], WOOD)
-e0.put("master-table-2", "Bedside table", "side-table", "master", 28.4, 28.9, 0, [0.45, 0.5, 0.45], WOOD)
-e0.put("master-wardrobe", "Wardrobe", "wardrobe", "master", 20.3, 21.0, 90, [1.8, 2.2, 0.6], "#e9e6df")
-e0.put("mb-shower", "Shower", "shower", "master-bath", 28.0, 35.0, 0, [1.0, 2.0, 1.0], "#cfe0e2")
-e0.put("mb-toilet", "Toilet", "toilet", "master-bath", 20.6, 35.0, 90, [0.4, 0.78, 0.68], WHITE)
-e0.put("mb-basin", "Basin", "basin", "master-bath", 22.5, 31.6, 180, [0.6, 0.85, 0.48], WOOD)
+# Modern and light: pale oak, warm white, greige fabric, matt black.
+LOAK, GREIGE, CHAR = "#c8a57a", "#cfc8bc", "#2f2f30"
+# Dining at the back, by the pool doors, under two pendants.
+e0.put("dining-table", "Dining table", "dining-table", "living", 9.0, 20.6, 0, [2.0, 0.75, 0.95], LOAK)
+for i, x in enumerate((6.5, 9.0, 11.5)):
+    e0.put(f"chair-rear-{i+1}", "Dining chair", "dining-chair", "living", x, 18.5, 180, [0.5, 0.85, 0.5], CHAR)
+    e0.put(f"chair-front-{i+1}", "Dining chair", "dining-chair", "living", x, 22.7, 0, [0.5, 0.85, 0.5], CHAR)
+for i, x in enumerate((7.25, 10.75)):
+    e0.lights.append({"id": f"pendant-dining-{i+1}", "position": [m(x), m(20.6)], "height": 2.2, "color": "#ffe3bd", "intensity": 5, "style": "pendant"})
+# The sitting area: an L sofa facing a slatted oak media wall on the stair shaft's wall.
+e0.put("tv-wall", "Media wall", "tv-wall", "living", EHW - INT - 0.6, 28.0, 270, [2.6, 3.0, 0.36], LOAK)
+e0.put("sofa", "Corner sofa", "sofa-l", "living", 3.7, 28.4, 90, [2.8, 0.78, 1.7], GREIGE)
+e0.put("rug", "Rug", "rug", "living", 7.6, 28.0, 0, [2.0, 0.02, 2.6], "#d6cfc2")
+e0.put("coffee-table", "Coffee table", "coffee-table", "living", 7.6, 28.0, 90, [1.2, 0.36, 0.7], CHAR)
+e0.put("armchair", "Armchair", "armchair", "living", 10.0, 31.6, 180, [0.8, 0.75, 0.8], "#e8e3da")
+e0.put("floor-lamp-living", "Floor lamp", "floor-lamp", "living", 12.6, 32.6, 0, [0.4, 1.6, 0.4], "#2b2b2b")
+e0.put("plant-living", "Rubber plant", "floor-plant", "living", 13.7, 21.9, 0, [0.6, 1.5, 0.6], "#e6e2da")
+# The entrance hall: a shoe cabinet and mirror, a plant by the stairs.
+e0.put("console", "Shoe cabinet", "sideboard", "hall", EGR + INT + 0.75, 43.0, 90, [1.4, 0.8, 0.4], LOAK)
+e0.hang("hall-mirror", "Mirror", "wall-mirror", "hall", "left", 43.0, 1.25, [0.6, 0.9, 0.03], "#1b1b1d")
+e0.put("plant-hall", "Rubber plant", "floor-plant", "hall", 17.85, 45.0, 0, [0.5, 1.4, 0.5], "#e6e2da")
+# The master suite.
+e0.put("master-bed", "Master bed", "bed", "master", 24.5, 25.4, 0, [1.8, 0.95, 2.1], GREIGE)
+e0.put("master-table-1", "Bedside table", "side-table", "master", 20.6, 28.9, 0, [0.45, 0.5, 0.45], LOAK)
+e0.put("master-table-2", "Bedside table", "side-table", "master", 28.4, 28.9, 0, [0.45, 0.5, 0.45], LOAK)
+e0.put("master-bench", "Bench", "ottoman", "master", 24.5, 20.9, 0, [1.2, 0.45, 0.45], "#e8e3da")
+e0.put("dress-wardrobe-1", "Wardrobe", "wardrobe", "dressing", 24.0, 35.7, 0, [2.4, 2.4, 0.6], "#e9e6df")
+e0.put("dress-wardrobe-2", "Wardrobe", "wardrobe", "dressing", 28.8, 32.6, 270, [1.0, 2.4, 0.55], "#e9e6df")
+e0.put("dress-mirror", "Standing mirror", "standing-mirror", "dressing", 26.0, 31.45, 180, [0.6, 1.7, 0.4], LOAK)
+e0.put("mb-shower", "Shower", "shower", "master-bath", 28.3, 44.3, 0, [0.85, 2.0, 1.0], "#cfe0e2")
+e0.put("mb-toilet", "Toilet", "toilet", "master-bath", 20.5, 43.5, 90, [0.4, 0.78, 0.68], WHITE)
+e0.put("mb-basin-1", "Basin", "basin", "master-bath", 28.9, 38.75, 270, [0.6, 0.85, 0.48], LOAK)
+e0.put("mb-basin-2", "Basin", "basin", "master-bath", 28.9, 40.9, 270, [0.6, 0.85, 0.48], LOAK)
 e0.put("powder-wc", "Toilet", "toilet", "powder", 20.5, 40.1, 0, [0.4, 0.78, 0.68], WHITE)
-e0.put("powder-basin", "Basin", "basin", "powder", 23.4, 38.3, 270, [0.6, 0.85, 0.48], WOOD)
-e0.put("study-desk", "Desk", "desk", "study", 27.2, 44.9, 0, [1.4, 0.75, 0.65], "#b9a68c")
-e0.put("study-shelf", "Bookcase", "bookcase", "study", 29.1, 39.5, 270, [1.0, 2.0, 0.35], WOOD)
-e0.put("guest-bed", "Guest bed", "bed", "guest", 4.2, 39.5, 90, [1.6, 0.9, 2.0], GREEN)
+e0.put("powder-basin", "Basin", "basin", "powder", 23.4, 38.3, 270, [0.6, 0.85, 0.48], LOAK)
+e0.put("guest-bed", "Guest bed", "bed", "guest", 4.2, 39.5, 90, [1.6, 0.9, 2.0], "#b9b2a5")
 e0.put("guest-table", "Bedside table", "side-table", "guest", 1.8, 35.3, 0, [0.45, 0.5, 0.45], WOOD)
-e0.put("guest-wardrobe", "Wardrobe", "wardrobe", "guest", 9.5, 34.8, 180, [1.2, 2.2, 0.55], "#e9e6df")
+e0.put("guest-wardrobe", "Wardrobe", "wardrobe", "guest", 8.5, 34.8, 180, [1.2, 2.2, 0.55], "#e9e6df")
 e0.put("pool", "Swimming pool", "pool", "garden", 23.75, 7.5, 0, [m(16), 0.06, m(9)], "#3fa9d6")
 # Stone paving round the pool and down the side passage; the rest is lawn.
 for i, (x0, y0, x1, y1) in enumerate(((13.25, T, R, 3.0), (13.25, 12.0, R, ROW1), (13.25, 3.0, 15.75, 12.0), (31.75, 3.0, R, 12.0),
@@ -1119,7 +1143,7 @@ for i, (x, y, sz) in enumerate(((20.5, 50.5, 0.6), (23.5, 51.5, 0.75), (26.5, 50
 for i, (x, y) in enumerate(((30.0, 49.0), (32.5, 53.4))):
     e0.put(f"yard-pot-{i+1}", "Potted plant", "floor-plant", "garden", x, y, 0, [0.4, 0.7, 0.4], "#a87a4f")
 e0.put("passage-pot", "Rubber plant", "floor-plant", "garden", 33.2, 30.0, 0, [0.6, 1.3, 0.6], "#3d3a36")
-e0.hang("art-living", "Painting", "painting-2", "living", "top", 4.0, 1.3, [0.7, 1.0, 0.04], "#d8c7a6")
+e0.hang("art-living", "Painting", "painting-2", "living", "top", 3.0, 1.3, [0.7, 1.0, 0.04], "#d8c7a6")
 
 # ---- First floor.
 e1 = Home("Design E, first floor", (10, 18), 90)

@@ -855,6 +855,60 @@ const stairs: Builder = (k, [w, h, d], color) => {
   for (let i = 1; i < steps; i += 3) k.box(0.02, 0.012, going * 0.7, -w / 2 + 0.012, rise * (i + 1) - 0.06, d / 2 - going * (i + 0.5), light);
 };
 
+/**
+ * A straight flight between two walls, built the modern way: thick oak
+ * treads that seem to float out of the wall, open between the steps, a
+ * slim black handrail on the wall and a strip of light under each tread.
+ * The first step is at the back (+z), the top at the front.
+ */
+const stairsFloating: Builder = (k, [w, h, d], color) => {
+  const oak = mat(color, { roughness: 0.5, map: 'wood', repeat: 1 });
+  const steps = Math.max(3, Math.round(h / 0.19));
+  const rise = h / steps;
+  const going = d / steps;
+  const light = mat('#fff1d6', { emissive: '#ffd9a0' });
+  for (let i = 0; i < steps; i++) {
+    const z = d / 2 - going * (i + 0.5);
+    const top = rise * (i + 1);
+    k.box(w - 0.02, 0.06, going + 0.04, 0, top - 0.03, z, oak, 0.008);
+    k.box(w * 0.7, 0.008, 0.02, 0, top - 0.064, z + going / 2 - 0.03, light);
+  }
+  // The handrail runs along the +x wall on short black brackets.
+  const slope = Math.atan2(h, d);
+  const run = Math.hypot(d, h);
+  const rail = k.cyl(0.02, 0.02, run, w / 2 - 0.07, h / 2 + 0.9, 0, BLACK(), 12);
+  rail.rotation.x = slope - Math.PI / 2;
+  for (let i = 1; i < 4; i++) {
+    const t = i / 4;
+    k.box(0.06, 0.02, 0.02, w / 2 - 0.035, h * t + 0.86, d / 2 - d * t, BLACK());
+  }
+};
+
+/**
+ * A media wall: fluted oak slats from floor to ceiling, a long floating
+ * cabinet in matt charcoal and a TV hung on the slats. Faces -z, like a
+ * piece standing against a wall.
+ */
+const tvWall: Builder = (k, [w, h, d], color) => {
+  const oak = mat(color, { roughness: 0.55, map: 'wood', repeat: 1 });
+  const backing = mat(darker(color, 0.45), { roughness: 0.8 });
+  k.box(w, h, 0.015, 0, h / 2, d / 2 - 0.0075, backing);
+  const slats = Math.round(w / 0.06);
+  for (let i = 0; i < slats; i++) {
+    k.box(0.035, h, 0.03, -w / 2 + (w / slats) * (i + 0.5), h / 2, d / 2 - 0.03, oak);
+  }
+  const charcoal = mat('#2f2f30', { roughness: 0.7 });
+  const cab = Math.min(w * 0.85, 2.6);
+  k.box(cab, 0.38, d - 0.05, 0, 0.42, -0.025, charcoal, 0.01);
+  k.box(cab - 0.1, 0.008, 0.01, 0, 0.23, -d / 2 + 0.02, mat('#fff1d6', { emissive: '#ffd9a0' }));
+  const tv = Math.min(w * 0.6, 1.65);
+  k.box(tv, tv * 0.57, 0.03, 0, 1.25, d / 2 - 0.06, BLACK(), 0.006);
+  k.box(tv - 0.025, tv * 0.57 - 0.025, 0.005, 0, 1.25, d / 2 - 0.078, mat('#0c1016', { roughness: 0.08, metalness: 0.4 }));
+  // A vase and books on the cabinet.
+  k.cyl(0.06, 0.045, 0.28, cab / 2 - 0.25, 0.75, -0.05, mat('#e9e4da', { roughness: 0.4 }));
+  k.box(0.22, 0.05, 0.16, -cab / 2 + 0.3, 0.635, -0.05, mat('#b8a98c'));
+};
+
 // ---- Garden and terrace pieces ----
 
 /** An irregular flat stone: a rounded outline with a wobble, lying on y = 0. */
@@ -1120,6 +1174,8 @@ const builders: Record<string, Builder> = {
   pool,
   lounger,
   stairs,
+  'stairs-floating': stairsFloating,
+  'tv-wall': tvWall,
   paving,
   'stepping-path': steppingPath,
   'shrub-ball': shrubBall,

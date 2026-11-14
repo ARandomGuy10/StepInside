@@ -158,7 +158,7 @@ export const HOMES: readonly HomeEntry[] = [
     title: 'New house',
     about: 'The architect\'s model on our plot, ground floor included: master and guest rooms, living, dining and kitchen around a rear pool court below; three bedrooms and a glass lounge under the concrete curl above; a stair room with a sweeping roof on top.',
     levels: [
-      { name: 'Ground floor', json: villaEGround, elevation: 0, openCeilings: ['living'] },
+      { name: 'Ground floor', json: villaEGround, elevation: 0, openCeilings: ['hall'] },
       // The garden under the curl and its planter ledge are not walked on.
       {
         name: 'First floor',
@@ -185,7 +185,7 @@ export const HOMES: readonly HomeEntry[] = [
         ],
       },
     ],
-    // The first flight stands free in the living room; both climb towards the back.
+    // The first flight climbs from the entrance hall in its own shaft; both climb towards the back.
     stairs: [
       { lower: 0, upper: 1, x0: 15.5 * FT, x1: 18.5 * FT, yBottom: 34.25 * FT, yTop: 20.25 * FT, closedBothSides: true },
       { lower: 1, upper: 2, x0: 12.0 * FT, x1: 15.0 * FT, yBottom: 34.25 * FT, yTop: 20.75 * FT },

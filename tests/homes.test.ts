@@ -44,7 +44,7 @@ describe.each(HOMES.map((home) => [home.id, home] as const))('%s', (_id, home) =
       const lower = parseScene(home.levels[stair.lower].json);
       // The piece under this flight: the one whose middle is inside it.
       const piece = lower.furniture.find(
-        (f) => f.model === 'stairs' && f.fixed && f.position[0] > stair.x0 && f.position[0] < stair.x1,
+        (f) => (f.model === 'stairs' || f.model === 'stairs-floating') && f.fixed && f.position[0] > stair.x0 && f.position[0] < stair.x1,
       );
       expect(piece).toBeDefined();
       // A flight's first step is at the yBottom end: the piece turns round when that end is the smaller y.
