@@ -795,7 +795,7 @@ for i, (x, y) in enumerate(((2.2, 22), (17.5, 2.3), (17.5, 30))):
 # guest room included); only the front gate is wider, as in the model.
 # =============================================================================
 D_CONCRETE, D_TRIM, D_SHELL, D_BOUNDARY = "#7f7b75", "#96928b", "#8e8a84", "#85817a"
-D_FACADE = {"trimColor": D_TRIM, "stoneColor": "#bcae96", "woodColor": "#6e4529", "boundaryMaterial": "render",
+D_FACADE = {"trimColor": D_TRIM, "stoneColor": "#bcae96", "woodColor": "#a3836a", "boundaryMaterial": "render",
             "frameColor": "#3a332d", "doorColor": "#5a3a24", "railColor": "#7a5236"}
 
 d0 = copy.deepcopy(gc)
@@ -831,7 +831,12 @@ d1.room("bedroom3", "Bedroom 3", (L, ROW3, DBX, DFRONT), floor=OAK)
 d1.room("living", "Living room", [(SPLIT + INT, LY0), (R, LY0), (R, MID1), (DB3 - INT, MID1), (DB3 - INT, DGL), (DLX, DGL),
                                   (DLX, ROW3), (SPLIT + INT, ROW3)], floor=TILE)
 d1.room("bath3", "Bath", (DB3, ROW3, R, DGL), floor=BATH)
-d1.room("balcony", "Balcony", [(L, DFRONT + INT), (DLX, DFRONT + INT), (DLX, DGL + INT), (R, DGL + INT), (R, B), (L, B)],
+# A gap in front of bedroom 3: the balcony starts under the high part of the
+# curl, and the curl's low end comes down on a small planter of its own.
+DBAL = 10.75
+d1.room("ledge", "Planter at the end of the curl", (L, DFRONT + INT, 4.75, B), kind="balcony", floor={"material": "tile", "color": "#b9b4ab"},
+        walls=[{"edge": e, "color": D_BOUNDARY, "height": 0.6} for e in (1, 2, 3)])
+d1.room("balcony", "Balcony", [(DBAL, DFRONT + INT), (DLX, DFRONT + INT), (DLX, DGL + INT), (R, DGL + INT), (R, B), (DBAL, B)],
         kind="balcony", floor={"material": "tile", "color": "#b9b4ab"})
 d1.clad("bedroom3", "bottom", "wood")
 d1.clad("bedroom3", "left", "wood")
@@ -869,8 +874,8 @@ d1.window("win-living-rear", "living", (21.5, LY0), (L + 26.5, LY0), 1.4, 0.9)
 
 # The curl: from a planter at the front-left corner up across bedroom 3's
 # front to the roof over the living room. Profile in feet across, metres up.
-d1.sweep("curl", [(0.0, 0.0), (1.5, 0.08), (3.5, 0.5), (5.5, 1.3), (7.5, 2.25), (9.5, 2.95), (11.5, 3.35), (DLX, 3.6)],
-         DFRONT + INT - 0.25, 55, 0.28, color=D_SHELL, glazing=[0.32, 0.6])
+d1.sweep("curl", [(0.6, 0.62), (2.25, 0.7), (4.0, 1.05), (5.75, 1.7), (7.5, 2.45), (9.25, 3.0), (11.25, 3.4), (DLX, 3.6)],
+         DFRONT + INT - 0.25, 55, 0.36, color=D_SHELL, glazing=[0.32, 0.6])
 # The balcony's thick slab edge, standing below the floor.
 d1.sweep("balcony-edge", [(DLX - 0.4, -0.32), (35.1, -0.32)], DGL + INT - 0.2, 55.1, 0.3, solid=True, color=D_TRIM)
 d1.put("stairs-roof", "Staircase to the roof", "stairs", "landing", (F2X0 + F2X1) / 2, (F2Y0 + F2Y1) / 2, 180,
@@ -910,7 +915,7 @@ for i, x in enumerate((26, 29)):
     d1.put(f"living-chair-front-{i+1}", "Dining chair", "dining-chair", "living", x, 39.8, 0, [0.5, 0.9, 0.5], "#7a4a35")
 d1.put("living-sideboard", "Sideboard", "sideboard", "living", 33.5, 38, 270, [1.6, 0.8, 0.4], WOOD)
 # The balcony: a planter under the low end of the curl, chairs and a table in front of the glass.
-d1.put("curl-planter", "Planter", "planter", "balcony", 4.9, (DFRONT + INT + B) / 2, 0, [m(8.1), 0.55, m(B - DFRONT - INT) - 0.12], "#8f8c86")
+d1.put("curl-planter", "Planter", "planter", "ledge", (L + 4.75) / 2, (DFRONT + INT + B) / 2, 90, [m(B - DFRONT - INT) - 0.12, 0.62, m(4.75 - L) - 0.12], "#8f8c86")
 d1.put("balcony-chair-1", "Outdoor armchair", "armchair", "balcony", 19, 52, 90, [0.75, 0.75, 0.75], "#e8e2d6")
 d1.put("balcony-chair-2", "Outdoor armchair", "armchair", "balcony", 25, 52, 270, [0.75, 0.75, 0.75], "#e8e2d6")
 d1.put("balcony-table", "Coffee table", "coffee-table", "balcony", 22, 52, 0, [0.9, 0.4, 0.5], "#6e4529")
@@ -923,17 +928,17 @@ d1.hang("art-landing", "Painting", "painting-2", "landing", "top", 12.5, 1.3, [0
 # ---- The roof: a wide stair room in the middle-left, its roof curving down
 # to the right, a front terrace with a glass railing and a planter along the front.
 DMX = 13.25        # right wall of the stair room
-DHUMP = 21.5       # the curved roof reaches the terrace here
+DHUMP = 20.0       # the curved roof reaches the terrace here
 DH0 = LY0          # the curved roof runs from here to the front of the stair room
 d2 = Home("Curved-roof house D, roof", (3, 46), 0)
 d2.exterior, d2.finish, d2.facade = D_CONCRETE, "render", D_FACADE
 d2.room("mumty", "Stair room", [(L, MUM0), (F2X0, MUM0), (F2X0, F2Y1), (F2X1, F2Y1), (F2X1, MUM0), (DMX, MUM0), (DMX, MUM1), (L, MUM1)], floor=OAK)
 d2.room("stairwell", "Stairwell", (F2X0 + RAIL, MUM0, F2X1 - RAIL, F2Y1 - RAIL), kind="void")
-d2.room("terrace", "Rear terrace", [(L, T), (R, T), (R, ROW1), (SPLIT, ROW1), (SPLIT, DH0), (DMX + INT, DH0), (DMX + INT, MUM0 - INT), (L, MUM0 - INT)],
+d2.room("terrace", "Rear terrace", [(L, T), (R, T), (R, ROW1), (SPLIT, ROW1), (SPLIT, MUM0 - INT), (L, MUM0 - INT)],
         kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
-for p, q in (((L, T), (R, T)), ((R, T), (R, ROW1)), ((R, ROW1), (SPLIT, ROW1)), ((SPLIT, ROW1), (SPLIT, DH0)),
-             ((SPLIT, DH0), (DMX + INT, DH0)), ((L, MUM0 - INT), (L, T))):
-    d2.edge("terrace", p, q, color=D_BOUNDARY, height=1.0)
+for p, q, height in (((L, T), (R, T), 1.0), ((R, T), (R, ROW1), 1.0), ((R, ROW1), (SPLIT, ROW1), 1.0),
+                     ((SPLIT, ROW1), (SPLIT, MUM0 - INT), 1.0), ((SPLIT, MUM0 - INT), (L, MUM0 - INT), 0.5), ((L, MUM0 - INT), (L, T), 1.0)):
+    d2.edge("terrace", p, q, color=D_BOUNDARY, height=height)
 d2.room("front-terrace", "Front terrace", [(L, MUM1 + INT), (DHUMP, MUM1 + INT), (DHUMP, DH0), (R, DH0), (R, B), (DLX, B), (DLX, DFRONT), (L, DFRONT)],
         kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
 for p, q, height in (((L, MUM1 + INT), (DHUMP, MUM1 + INT), 0.5), ((DHUMP, MUM1 + INT), (DHUMP, DH0), 0.5), ((DHUMP, DH0), (R, DH0), 1.0),
@@ -946,8 +951,9 @@ d2.door("stair-top", "mumty", (F2X1 - 0.05, F2Y1), (F2X0 + 0.05, F2Y1))
 d2.opening("door-front-terrace", "door", "mumty", (3.0, MUM1), (6.0, MUM1), height=2.3)
 d2.door("door-terrace", "mumty", (1.1, MUM0), (3.9, MUM0))
 d2.window("win-mumty", "mumty", (8.75, MUM1), (11.75, MUM1), 1.2, 0.9)
-d2.sweep("mumty-roof", [(DMX - 0.4, 3.3), (14.75, 3.22), (16.25, 2.85), (17.75, 2.05), (19.25, 1.15), (20.5, 0.72), (DHUMP + 0.3, 0.62)],
-         DH0, MUM1 + 0.75, 0.24, solid=True, color=D_SHELL)
+# It runs the full depth of the stair room, as wide as in the model.
+d2.sweep("mumty-roof", [(DMX - 0.4, 3.3), (14.5, 3.22), (15.75, 2.85), (17.0, 2.05), (18.25, 1.2), (19.25, 0.8), (DHUMP + 0.3, 0.65)],
+         MUM0 - INT, MUM1 + 0.75, 0.3, solid=True, color=D_SHELL)
 # The thick edge of the roof slab over the balcony.
 d2.sweep("roof-edge", [(DLX - 0.2, -0.3), (35.1, -0.3)], 53.6, 55.1, 0.3, solid=True, color=D_TRIM)
 d2.put("front-planter", "Planter", "planter", "front-terrace", (DLX + R) / 2, B - 1.0, 0, [m(R - DLX) - 0.2, 0.7, 0.55], "#8a867f")

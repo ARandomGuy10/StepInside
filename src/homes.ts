@@ -135,7 +135,7 @@ export const HOMES: readonly HomeEntry[] = [
     levels: [
       { name: 'Ground floor', json: villaDGround, elevation: 0, openCeilings: ['living'] },
       // The planter under the low end of the curl is not walked on.
-      { name: 'First floor', json: villaDFirst, elevation: 3.05, keepOut: [[0.75 * FT, 50.75 * FT, 9.1 * FT, 54.25 * FT]] },
+      { name: 'First floor', json: villaDFirst, elevation: 3.05, keepOut: [[0.75 * FT, 50.75 * FT, 4.75 * FT, 54.25 * FT]] },
       { name: 'Roof', json: villaDRoof, elevation: 6.1, roofTerrace: true },
     ],
     // The same two flights as design C.

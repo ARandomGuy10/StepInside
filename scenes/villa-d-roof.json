@@ -4,13 +4,13 @@
   "units": "m",
   "northDeg": 0,
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
-  "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#7f7b75", "exteriorMaterial": "render", "trimColor": "#96928b", "stoneColor": "#bcae96", "woodColor": "#6e4529", "boundaryMaterial": "render", "frameColor": "#3a332d", "doorColor": "#5a3a24", "railColor": "#7a5236"},
+  "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#7f7b75", "exteriorMaterial": "render", "trimColor": "#96928b", "stoneColor": "#bcae96", "woodColor": "#a3836a", "boundaryMaterial": "render", "frameColor": "#3a332d", "doorColor": "#5a3a24", "railColor": "#7a5236"},
   "start": {"position": [0.914, 14.021], "yawDeg": 0},
   "rooms": [
     {"id": "mumty", "name": "Stair room", "polygon": [[0.229, 7.239], [1.295, 7.239], [1.295, 11.659], [2.301, 11.659], [2.301, 7.239], [4.039, 7.239], [4.039, 12.878], [0.229, 12.878]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 6, "outside": "render"}, {"edge": 5, "outside": "render"}, {"edge": 0, "outside": "render"}]},
     {"id": "stairwell", "name": "Stairwell", "polygon": [[1.345, 7.239], [2.251, 7.239], [2.251, 11.609], [1.345, 11.609]], "kind": "void"},
-    {"id": "terrace", "name": "Rear terrace", "polygon": [[0.229, 0.229], [10.439, 0.229], [10.439, 4.801], [5.715, 4.801], [5.715, 10.592], [4.191, 10.592], [4.191, 7.087], [0.229, 7.087]], "kind": "balcony", "floor": {"material": "tile", "color": "#bdb7ad"}, "walls": [{"edge": 0, "color": "#85817a", "height": 1.0}, {"edge": 1, "color": "#85817a", "height": 1.0}, {"edge": 2, "color": "#85817a", "height": 1.0}, {"edge": 3, "color": "#85817a", "height": 1.0}, {"edge": 4, "color": "#85817a", "height": 1.0}, {"edge": 7, "color": "#85817a", "height": 1.0}]},
-    {"id": "front-terrace", "name": "Front terrace", "polygon": [[0.229, 13.03], [6.553, 13.03], [6.553, 10.592], [10.439, 10.592], [10.439, 16.535], [4.343, 16.535], [4.343, 15.316], [0.229, 15.316]], "kind": "balcony", "floor": {"material": "tile", "color": "#bdb7ad"}, "walls": [{"edge": 0, "color": "#85817a", "height": 0.5}, {"edge": 1, "color": "#85817a", "height": 0.5}, {"edge": 2, "color": "#85817a", "height": 1.0}, {"edge": 3, "color": "#85817a", "height": 1.0}, {"edge": 4, "color": "#85817a", "height": 0.75}, {"edge": 5, "color": "#85817a", "height": 0.75}]}
+    {"id": "terrace", "name": "Rear terrace", "polygon": [[0.229, 0.229], [10.439, 0.229], [10.439, 4.801], [5.715, 4.801], [5.715, 7.087], [0.229, 7.087]], "kind": "balcony", "floor": {"material": "tile", "color": "#bdb7ad"}, "walls": [{"edge": 0, "color": "#85817a", "height": 1.0}, {"edge": 1, "color": "#85817a", "height": 1.0}, {"edge": 2, "color": "#85817a", "height": 1.0}, {"edge": 3, "color": "#85817a", "height": 1.0}, {"edge": 4, "color": "#85817a", "height": 0.5}, {"edge": 5, "color": "#85817a", "height": 1.0}]},
+    {"id": "front-terrace", "name": "Front terrace", "polygon": [[0.229, 13.03], [6.096, 13.03], [6.096, 10.592], [10.439, 10.592], [10.439, 16.535], [4.343, 16.535], [4.343, 15.316], [0.229, 15.316]], "kind": "balcony", "floor": {"material": "tile", "color": "#bdb7ad"}, "walls": [{"edge": 0, "color": "#85817a", "height": 0.5}, {"edge": 1, "color": "#85817a", "height": 0.5}, {"edge": 2, "color": "#85817a", "height": 1.0}, {"edge": 3, "color": "#85817a", "height": 1.0}, {"edge": 4, "color": "#85817a", "height": 0.75}, {"edge": 5, "color": "#85817a", "height": 0.75}]}
   ],
   "openings": [
     {"id": "stair-top", "type": "door", "room": "mumty", "edge": 2, "offset": 0.015, "width": 0.975, "height": 2.1},
@@ -19,7 +19,7 @@
     {"id": "win-mumty", "type": "window", "room": "mumty", "edge": 6, "offset": 0.457, "width": 0.914, "height": 1.2, "sill": 0.9}
   ],
   "sweeps": [
-    {"id": "mumty-roof", "profile": [[3.917, 3.3], [4.496, 3.22], [4.953, 2.85], [5.41, 2.05], [5.867, 1.15], [6.248, 0.72], [6.645, 0.62]], "from": 10.592, "to": 13.106, "thickness": 0.24, "solid": true, "color": "#8e8a84"},
+    {"id": "mumty-roof", "profile": [[3.917, 3.3], [4.42, 3.22], [4.801, 2.85], [5.182, 2.05], [5.563, 1.2], [5.867, 0.8], [6.187, 0.65]], "from": 7.087, "to": 13.106, "thickness": 0.3, "solid": true, "color": "#8e8a84"},
     {"id": "roof-edge", "profile": [[4.282, -0.3], [10.698, -0.3]], "from": 16.337, "to": 16.794, "thickness": 0.3, "solid": true, "color": "#96928b"}
   ],
   "lights": [
@@ -27,7 +27,7 @@
   ],
   "furniture": [
     {"id": "front-planter", "name": "Planter", "model": "planter", "room": "front-terrace", "position": [7.391, 16.231], "rotationDeg": 0, "size": [5.896, 0.7, 0.55], "color": "#8a867f"},
-    {"id": "hump-planter", "name": "Planter", "model": "planter", "room": "front-terrace", "position": [5.387, 13.365], "rotationDeg": 0, "size": [2.2150000000000003, 0.55, 0.6], "color": "#8a867f"},
+    {"id": "hump-planter", "name": "Planter", "model": "planter", "room": "front-terrace", "position": [5.159, 13.365], "rotationDeg": 0, "size": [1.757, 0.55, 0.6], "color": "#8a867f"},
     {"id": "front-chair-1", "name": "Outdoor armchair", "model": "armchair", "room": "front-terrace", "position": [1.067, 14.63], "rotationDeg": 0, "size": [0.75, 0.75, 0.75], "color": "#e8e2d6"},
     {"id": "front-chair-2", "name": "Outdoor armchair", "model": "armchair", "room": "front-terrace", "position": [2.438, 14.63], "rotationDeg": 0, "size": [0.75, 0.75, 0.75], "color": "#e8e2d6"},
     {"id": "front-table", "name": "Side table", "model": "side-table", "room": "front-terrace", "position": [1.753, 14.63], "rotationDeg": 0, "size": [0.5, 0.45, 0.5], "color": "#3a2a22"},

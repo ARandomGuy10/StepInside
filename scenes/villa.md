@@ -198,8 +198,13 @@ may differ, to keep design A's guest room).
   a planter; a planter along the front; the rear terrace behind it.
 - **Ground floor:** design A's rooms. A wider gate (10 ft) between lamp
   posts; stone and teak on the walls behind the garden.
-- **Colours:** darker warm concrete, teak, beige stone, dark bronze window
-  frames, timber handrails and front door.
+- **Colours,** measured from Surya's photos of the model: warm grey
+  concrete, light teak (the rendered wood is matched to the model's
+  lit boards, about #80685a), beige stone, dark bronze window frames,
+  timber handrails and front door.
+- **The curl's low end** comes down on a small planter of its own at the
+  front-left corner, with a gap before the balcony, which starts under the
+  curl's high part. The stair room's curved roof runs its full depth.
 
 Differs from the model: the model's ground floor is set back behind a low
 front wall along its whole width; here the guest room stays at the front
