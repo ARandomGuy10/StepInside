@@ -465,7 +465,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     button.addEventListener('click', run);
     return button;
   };
-  const wholeButton = viewButton(scenes[0].site ? 'Whole house' : 'Whole home', 'See it from outside: drag to turn, scroll to zoom', setOrbit);
+  const wholeButton = viewButton(scenes[0].site ? 'Whole house' : 'Whole home', 'See it from outside: drag to turn, right-drag to move, scroll to zoom', setOrbit);
   const planButtons = levels.map((l, i) =>
     viewButton(levels.length > 1 ? `${l.name} plan` : 'Floor plan', 'This floor as a 3D plan with its sizes', () => {
       if (i !== level) goTo(i);
@@ -683,7 +683,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (inOrbit) {
       document.getElementById('hint-title')!.textContent = home.title;
       document.getElementById('hint-text')!.textContent =
-        'Drag to turn it · scroll to zoom · pick a floor plan, or Walk through to go inside';
+        'Drag to turn it · right-drag or Shift-drag to move it · scroll to zoom · pick a floor plan, or Walk through to go inside';
       return;
     }
     document.getElementById('hint-title')!.textContent = inTopView
@@ -693,8 +693,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         : 'Click the room to look around';
     document.getElementById('hint-text')!.textContent = inTopView
       ? painting
-        ? 'Click a floor, wall or piece, then choose a colour · drag the background to turn the plan'
-        : 'Click a piece to select it · drag to move · R to turn · drag the background to turn the plan'
+        ? 'Click a floor, wall or piece, then choose a colour · drag the background to turn the plan · right-drag to move it'
+        : 'Click a piece to select it · drag to move · R to turn · drag the background to turn the plan · right-drag to move it'
       : painting
         ? 'W A S D to walk · right-drag or double-click to look around · while looking, click picks what the dot is on'
         : `W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view${levels.length > 1 ? ' · Page Up / Page Down to change floor' : ''}`;
@@ -793,8 +793,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let drag: { id: string; offset: [number, number]; lift?: number } | null = null;
   let press: { x: number; y: number } | null = null;
 
-  // In the whole-house view a drag turns the home and the wheel zooms.
+  // In the whole-house view a drag turns the home and the wheel zooms. A
+  // right-drag, Shift-drag or two fingers slide it across the screen instead.
   let turning: { x: number; y: number } | null = null;
+  let panning: { x: number; y: number } | null = null;
+  canvas.addEventListener('contextmenu', (e) => {
+    if (inOrbit || inTopView) e.preventDefault();
+  });
   canvas.addEventListener('wheel', (e) => {
     if (!inOrbit && !inTopView) return;
     e.preventDefault();
@@ -808,6 +813,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     // The hint has done its job once the view is touched.
     document.body.classList.add('hint-gone');
+    if ((inOrbit || inTopView) && (e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey))) {
+      panning = { x: e.clientX, y: e.clientY };
+      canvas.setPointerCapture(e.pointerId);
+      canvas.style.cursor = 'move';
+      return;
+    }
     if (inOrbit) {
       turning = { x: e.clientX, y: e.clientY };
       canvas.setPointerCapture(e.pointerId);
@@ -849,6 +860,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   canvas.addEventListener('pointermove', (e) => {
+    if (panning) {
+      turnable().pan(e.clientX - panning.x, e.clientY - panning.y);
+      panning = { x: e.clientX, y: e.clientY };
+      return;
+    }
     if (turning) {
       turnable().turn(-(e.clientX - turning.x) * 0.006, -(e.clientY - turning.y) * 0.005, true);
       turning = { x: e.clientX, y: e.clientY };
@@ -880,6 +896,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   canvas.addEventListener('pointerup', (e) => {
     turning = null;
+    if (panning) {
+      panning = null;
+      canvas.style.cursor = '';
+    }
     if (inOrbit || e.button !== 0) return;
     const wasClick = press !== null && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5;
     press = null;
@@ -968,6 +988,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   const touches = new Map<number, { x: number; y: number }>();
   let pinch = 0;
+  let pinchMid: { x: number; y: number } | null = null;
   canvas.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
   });
@@ -977,13 +998,22 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (touches.size !== 2 || (!inOrbit && !inTopView)) return;
     const [a, b] = [...touches.values()];
     const d = Math.hypot(a.x - b.x, a.y - b.y);
-    if (pinch > 0) turnable().zoom(pinch / d);
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    if (pinch > 0) {
+      turnable().zoom(pinch / d);
+      // Moving both fingers together slides the home.
+      if (pinchMid) turnable().pan(mid.x - pinchMid.x, mid.y - pinchMid.y);
+    }
     pinch = d;
-    turning = null; // two fingers zoom; they do not also turn
+    pinchMid = mid;
+    turning = null; // two fingers zoom and slide; they do not also turn
   });
   const lift = (e: PointerEvent): void => {
     touches.delete(e.pointerId);
-    if (touches.size < 2) pinch = 0;
+    if (touches.size < 2) {
+      pinch = 0;
+      pinchMid = null;
+    }
   };
   canvas.addEventListener('pointerup', lift);
   canvas.addEventListener('pointercancel', lift);

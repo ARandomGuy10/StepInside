@@ -47,7 +47,8 @@ the choice (`?home=villa`), so a home can be bookmarked.
 | New house, design E | `scenes/villa-e-ground.json`, `scenes/villa-e-first.json`, `scenes/villa-e-roof.json` | `scenes/villa.md` |
 
 A home opens on a view of the whole building from outside. Drag to turn
-it, scroll to zoom, and use **Hide roof** to look inside. The bar at the
+it, right-drag or Shift-drag to move it around (two fingers on a phone),
+scroll to zoom, and use **Hide roof** to look inside. The bar at the
 bottom switches between **Whole house**, a **plan** of each floor and
 **Walk through**. Add `&view=walk` to the address to open straight in the
 walk.

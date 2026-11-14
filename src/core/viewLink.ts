@@ -8,13 +8,14 @@
  *
  * `at` is the walker's x, y (metres on the plan), facing and up/down look
  * (degrees). `cam` is the turntable camera's two angles (radians) and
- * distance (metres).
+ * distance (metres), then optionally how far the view is slid across the
+ * ground (x, y in metres).
  */
 export interface ViewState {
   view: 'whole' | 'plan' | 'walk';
   floor: number;
   at?: [number, number, number, number];
-  cam?: [number, number, number];
+  cam?: number[];
 }
 
 const VIEWS = ['whole', 'plan', 'walk'] as const;
@@ -34,8 +35,8 @@ export function viewFromParams(params: URLSearchParams, floors: number): ViewSta
   const state: ViewState = { view, floor: Number.isInteger(floor) && floor >= 0 && floor < floors ? floor : 0 };
   const at = numbers(params.get('at'), 4);
   if (at) state.at = at as ViewState['at'];
-  const cam = numbers(params.get('cam'), 3);
-  if (cam) state.cam = cam as ViewState['cam'];
+  const cam = numbers(params.get('cam'), 3) ?? numbers(params.get('cam'), 5);
+  if (cam) state.cam = cam;
   return state;
 }
 
@@ -50,8 +51,10 @@ export function viewToParams(state: ViewState, base: URLSearchParams): URLSearch
     params.set('at', [round(x, 2), round(y, 2), round(yaw, 0), round(pitch, 0)].join(','));
   }
   if (state.view !== 'walk' && state.cam) {
-    const [azimuth, polar, distance] = state.cam;
-    params.set('cam', [round(azimuth, 3), round(polar, 3), round(distance, 2)].join(','));
+    const [azimuth, polar, distance, ...slide] = state.cam;
+    const parts = [round(azimuth, 3), round(polar, 3), round(distance, 2)];
+    if (slide.length === 2) parts.push(...slide.map((v) => round(v, 2)));
+    params.set('cam', parts.join(','));
   }
   return params;
 }

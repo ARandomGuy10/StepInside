@@ -84,6 +84,13 @@ describe('view links', () => {
     expect(viewFromParams(params, 2)).toEqual({ view: 'walk', floor: 1, at: [4.23, 7.9, 90, -5] });
   });
 
+  it('keeps a slid whole-house view, and leaves the slide out when there is none', () => {
+    const slid = viewToParams({ view: 'whole', floor: 0, cam: [0.4, 1, 30, 2.345, -1] }, new URLSearchParams());
+    expect(slid.get('cam')).toBe('0.4,1,30,2.35,-1');
+    expect(viewFromParams(slid, 1).cam).toEqual([0.4, 1, 30, 2.35, -1]);
+    expect(viewToParams({ view: 'plan', floor: 0, cam: [0.4, 1, 30] }, new URLSearchParams()).get('cam')).toBe('0.4,1,30');
+  });
+
   it('falls back to the whole house on a broken link', () => {
     expect(viewFromParams(new URLSearchParams('view=nope&floor=7&at=1,2'), 2)).toEqual({ view: 'whole', floor: 0 });
   });
