@@ -134,21 +134,42 @@ export const HOMES: readonly HomeEntry[] = [
   {
     id: 'villa-d',
     units: 'ft',
-    design: { group: 'New house', name: 'Design D: the architect\'s model' },
+    design: { group: 'New house', name: 'Design D: the model, pool covered' },
     title: 'New house',
-    about: 'The curved-roof house copied from the architect\'s model: a concrete curl over the first floor, a glass living room behind a balcony, teak and stone, and a roof terrace. Design A\'s ground floor.',
+    about: 'Design E\'s front, stairs and curved roof on design A\'s plan: the master suite at the back, a covered pool in the middle, a gym and guest room at the front; four bedrooms and a glass lounge above, the pool roofed over; the roof\'s curve runs to the edge over a wide theater.',
     levels: [
-      { name: 'Ground floor', json: villaDGround, elevation: 0, openCeilings: ['living'] },
-      // The planter under the low end of the curl is not walked on.
-      { name: 'First floor', json: villaDFirst, elevation: 3.05, keepOut: [[0.75 * FT, 50.75 * FT, 4.75 * FT, 54.25 * FT]] },
-      { name: 'Roof', json: villaDRoof, elevation: 6.1, roofTerrace: true },
+      { name: 'Ground floor', json: villaDGround, elevation: 0, openCeilings: ['hall'] },
+      // The garden under the curl and its planter ledge are not walked on.
+      {
+        name: 'First floor',
+        json: villaDFirst,
+        elevation: 3.05,
+        openCeilings: ['stair2', 'lounge'],
+        keepOut: [
+          [0.75 * FT, 20.75 * FT, 2.0 * FT, 35.25 * FT],
+          [0.75 * FT, 35.25 * FT, 11.0 * FT, 42.75 * FT],
+          [0.75 * FT, 42.75 * FT, 4.75 * FT, 48.25 * FT],
+        ],
+      },
+      // The low end of the curved roof and the planter on the slab are not walked on.
+      {
+        name: 'Roof',
+        json: villaDRoof,
+        elevation: 6.1,
+        roofTerrace: true,
+        openCeilings: ['theater'],
+        keepOut: [
+          [29.5 * FT, 16.25 * FT, 34.25 * FT, 34.0 * FT],
+          [18.75 * FT, 37.75 * FT, 34.25 * FT, 41.75 * FT],
+        ],
+      },
     ],
-    // The same two flights as design C.
+    // E's two flights: the first from the entrance hall, beside the covered pool.
     stairs: [
-      { lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.05 * FT, yBottom: 38.25 * FT, yTop: 24.25 * FT },
-      { lower: 1, upper: 2, x0: 4.25 * FT, x1: 7.55 * FT, yBottom: 24.25 * FT, yTop: 38.25 * FT },
+      { lower: 0, upper: 1, x0: 15.5 * FT, x1: 18.5 * FT, yBottom: 34.25 * FT, yTop: 20.25 * FT, closedBothSides: true },
+      { lower: 1, upper: 2, x0: 12.0 * FT, x1: 15.0 * FT, yBottom: 34.25 * FT, yTop: 20.75 * FT },
     ],
-    start: { position: [16.25 * FT, 67 * FT], yawDeg: 0 },
+    start: { position: [21.25 * FT, 64 * FT], yawDeg: 0 },
     place: LUCKNOW,
   },
   {
