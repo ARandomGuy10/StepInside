@@ -32,7 +32,8 @@ backend replaces, and nothing else needs to change:
 
 The pictures on the landing page are rendered from Design D by
 `node scripts/site-shots.cjs http://localhost:5173 <folder> fast` (with
-`npm run dev` running), then converted to WebP into `public/site/`. The look
+`npm run dev` running) and `node scripts/site-shots-more.cjs` (the sun,
+style, plan and compare pictures), then converted to WebP into `public/site/`. The look
 (colours, type) is in `src/site/tokens.css`, shared with the viewer.
 
 ## Run it
