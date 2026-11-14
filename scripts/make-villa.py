@@ -1268,6 +1268,47 @@ d1.put("bath4-shower", "Shower", "shower", "bath4", 32.7, 2.4, 0, [0.9, 2.0, 0.9
 d1.put("bath4-basin", "Basin", "basin", "bath4", 33.3, 7.8, 270, [0.6, 0.85, 0.48], LOAK_D)
 d1.put("dressing4-wardrobe", "Wardrobe", "wardrobe", "dressing4", 31.5, 14.6, 0, [1.4, 2.2, 0.55], "#e9e6df")
 d1.hang("art-bed2", "Painting", "painting-1", "bedroom2", "left", 5, 1.3, [1.2, 0.8, 0.04], "#2b2520")
+# The lounge takes in the garden under the curl, out to the teak box's wall:
+# one long room behind the glass. Its left end sits under the low part of
+# the curl, where a low bench fits under the curve. The planter strip and the
+# ledge at the curl's foot stay outside.
+lounge = next(r for r in d1.rooms if r["id"] == "lounge")
+d1.rooms.remove(lounge)
+d1.openings = [o for o in d1.openings if o["room"] != "lounge" and o["id"] != "win-bedroom3"]
+d1.lights = [x for x in d1.lights if x["id"] != "lamp-lounge"]
+drop(d1, rooms=("curl-garden",))
+d1.room("lounge", "Lounge", [(EBX, EB3F + INT), (22.25, EB3F + INT), (22.25, 33.75 + INT), (R, 33.75 + INT), (R, EGL), (EB3, EGL), (EBX, EGL)],
+        floor=TILE, lamp=False)
+next(r for r in d1.rooms if r["id"] == "lounge")["ceilingHeight"] = 2.6
+d1.lights.append({"id": "lamp-lounge", "position": [m(20.0), m(38.75)], "height": 2.5, "color": "#ffe3bd", "intensity": 7, "style": "spot"})
+d1.edge("lounge", (EBX, EB3F + INT), (22.25, EB3F + INT), height=3.0)
+d1.edge("lounge", (R, EGL), (EB3, EGL), outside="wood")
+d1.edge("lounge", (R, 33.75 + INT), (R, EGL), outside="stone")
+# Under the curl the glass runs from the floor to the shell, so the walls there stay low.
+d1.edge("lounge", (EB3, EGL), (EBX, EGL), height=0.05)
+d1.edge("lounge", (EBX, EGL), (EBX, EB3F + INT), height=0.3, outside="wood")
+# Bedroom 3's front wall is now inside the house.
+b3 = next(r for r in d1.rooms if r["id"] == "bedroom3")
+b3["walls"] = [w for w in b3.get("walls", []) if w["edge"] != 2]
+d1.opening("door-balcony", "door", "lounge", (24.25, EGL), (21.25, EGL), height=2.4)
+d1.window("win-lounge-1", "lounge", (20.75, EGL), (EB3 + 0.4, EGL), 2.4, 0.1)
+d1.window("win-lounge-2", "lounge", (30.25, EGL), (24.75, EGL), 2.4, 0.1)
+d1.window("win-lounge-side", "lounge", (R, 36.25), (R, 40.25), 1.4, 0.9)
+next(sw for sw in d1.sweeps if sw["id"] == "curl")["curtain"] = {"y": m(EGL), "from": m(EBX), "to": m(EB3)}
+d1.room("curl-garden", "Planter ledge", [(L, E2Y0), (ESTRIP, E2Y0), (ESTRIP, EGL), (ELEDGE, EGL), (ELEDGE, EBAL), (L, EBAL)],
+        kind="balcony", floor=PAVING)
+d1.edge("curl-garden", (ELEDGE, EGL), (ELEDGE, EBAL), **KERB)
+d1.edge("curl-garden", (ELEDGE, EBAL), (L, EBAL), **KERB)
+d1.edge("curl-garden", (L, EBAL), (L, E2Y0), **KERB)
+d1.edge("curl-garden", (L, E2Y0), (ESTRIP, E2Y0), **KERB)
+d1.edge("curl-garden", (ESTRIP, EGL), (ELEDGE, EGL), color=D_BOUNDARY, height=0.25)
+d1.put("ledge-planter", "Planter", "planter", "curl-garden", (L + ESTRIP) / 2, (E2Y0 + EBAL) / 2, 90, [m(EBAL - E2Y0) - 0.1, 0.62, m(ESTRIP - L) - 0.04], "#8f8c86")
+# The nook under the curl: a low bench along the curve, a rug, a reading lamp.
+d1.put("nook-daybed", "Low bench", "bench", "lounge", 6.0, 38.75, 90, [m(6.5), 0.4, 0.85], "#d9d1c3")
+d1.put("nook-rug", "Rug", "rug", "lounge", 7.5, 38.75, 90, [2.2, 0.02, 1.6], "#c9bba0")
+d1.put("nook-ottoman", "Ottoman", "ottoman", "lounge", 8.9, 40.2, 0, [0.5, 0.42, 0.5], GREEN)
+d1.put("nook-lamp", "Floor lamp", "floor-lamp", "lounge", 10.5, 41.6, 0, [0.4, 1.6, 0.4], "#1d1d1f")
+d1.put("nook-plant", "Rubber plant", "floor-plant", "lounge", 10.4, 35.6, 0, [0.5, 1.3, 0.5], "#d8d2c6")
 
 # ---- Roof: E's, with the curve running on to the right-hand edge.
 DHUMP = R + 0.5    # the curved roof comes down to the terrace at the house's edge
@@ -1315,7 +1356,7 @@ for i, (x, y) in enumerate(((13.4, 49.3), (13.4, 52.6), (18.6, 49.3), (18.6, 52.
 d0.put("tree-uplight", "Uplight", "uplight", "garden", 5.9, 51.0, 0, [0.1, 0.12, 0.1], "#1d1d1f")
 d1.put("balcony-led", "LED strip", "led-strip", "balcony", (EGAP + R) / 2, EBAL - 0.2, 0, [m(R - EGAP) - 0.3, 0.02, 0.03], "#fff4e0")
 d1.hang("balcony-wall-light", "Wall light", "wall-light", "balcony", "top", 32.3, 1.7, WL, "#1d1d1f")
-for i, (x, y) in enumerate(((8.0, 39.3), (4.0, 38.5))):
+for i, (x, y) in enumerate(((3.3, 44.0), (3.3, 47.0))):
     d1.put(f"curl-uplight-{i+1}", "Uplight", "uplight", "curl-garden", x, y, 0, [0.1, 0.12, 0.1], "#1d1d1f")
 d2.put("railing-led", "LED strip", "led-strip", "terrace", (L + ERAIL) / 2, ETF - 0.25, 0, [m(ERAIL - L) - 0.3, 0.02, 0.03], "#fff4e0")
 for i, x in enumerate((10.9, 14.6)):
@@ -1323,6 +1364,82 @@ for i, x in enumerate((10.9, 14.6)):
            mount="wall", elevation=1.9)
 for i, x in enumerate((24.0, 31.5)):
     d2.put(f"terrace-bollard-{i+1}", "Bollard light", "bollard", "terrace", x, 13.5, 0, [0.14, 0.6, 0.14], "#1d1d1f")
+
+# ---- D: walkability fixes. Every door has a clear step on both sides,
+# every fixture has room to stand at it, and paths are at least 50 cm wide
+# (tests/walkable.test.ts checks this).
+def move(home, id, x=None, y=None, rot=None, size=None, room=None):
+    piece = next(p for p in home.furniture if p["id"] == id)
+    if x is not None: piece["position"][0] = m(x)
+    if y is not None: piece["position"][1] = m(y)
+    if rot is not None: piece["rotationDeg"] = rot
+    if size is not None: piece["size"] = size
+    if room is not None: piece["room"] = room
+
+# Ground floor.
+# The kitchen door moves left, clear of the dining chairs.
+drop(d0, ids=("door-kitchen", "master-chair"))
+d0.door("door-kitchen", "kitchen", (3, ROW1), (6, ROW1))
+# The dining table moves towards the kitchen wall and the corner sofa gets
+# shorter, leaving a passage between them; a shorter media wall leaves the
+# way in from the hall clear, and the lamp stands beside the sofa.
+move(d0, "dining-table", y=20.0)
+for i in range(3):
+    move(d0, f"chair-rear-{i+1}", y=17.9)
+    move(d0, f"chair-front-{i+1}", y=22.1)
+for light in d0.lights:
+    if light["id"].startswith("pendant-dining"): light["position"][1] = m(20.0)
+move(d0, "sofa", y=28.9, size=[2.5, 0.78, 1.7])
+move(d0, "coffee-table", y=28.9)
+move(d0, "tv-wall", y=28.4, size=[2.0, 3.0, 0.36])
+move(d0, "floor-lamp-living", x=7.3, y=32.4)
+move(d0, "plant-living", x=1.75, y=23.4)
+# The hall plant stood in front of the gym door: it goes outside the front door.
+move(d0, "plant-hall", x=13.0, y=47.6, room="garden")
+move(d0, "yard-ball-4", x=11.0)
+# The covered pool leaves a deck at least 50 cm wide all round.
+move(d0, "pool", x=25.75, y=25.25, size=[m(9), 0.06, m(13.5)])
+for i, y in enumerate((21.0, 29.0)):
+    move(d0, f"lounger-{i+1}", x=33.25)
+# The powder room: basin opposite the door, WC against the far wall.
+move(d0, "powder-basin", x=21.6, y=36.06, rot=180)
+move(d0, "powder-wc", x=23.1, y=38.2, rot=270)
+
+# First floor.
+# The landing is a passage: no armchair, and the plant out of the doorways.
+drop(d1, ids=("landing-armchair-1", "win-bedroom1-pool"))
+move(d1, "landing-plant", x=1.6, y=18.5)
+# Bedroom 1: the bed's head against the back wall, so the dressing room and
+# bath doors are clear. (The pool window went with the pool: the wall now backs onto bedroom 4.)
+move(d1, "bed1", x=29.6, y=19.7, rot=180, size=[1.6, 0.95, 2.1])
+move(d1, "bed1-table-1", x=26.2, y=17.0)
+move(d1, "bed1-table-2", x=33.0, y=17.0)
+# Bedroom 3: the bed's head against the front wall, a queen bed, the wardrobe
+# beside it, and the entrance passage left open.
+move(d1, "bed3", x=5.3, y=30.9, rot=0, size=[1.5, 0.95, 2.0])
+move(d1, "bed3-wardrobe", x=10.65, y=29.97, rot=270, size=[1.2, 2.2, 0.5])
+d1.put("bed3-table", "Bedside table", "side-table", "bedroom3", 8.6, 33.5, 0, [0.45, 0.5, 0.45], LOAK_D)
+# Bath 4: the basin away from the door.
+move(d1, "bath4-basin", y=6.5)
+# Bedroom 4: the armchair out of the way to the dressing room.
+move(d1, "bed4-armchair", x=26.6, y=9.3)
+# The lounge: the roof stairs and the landing door land on an open middle.
+# Seating at the right end round the side window, a table for two by the
+# glass, and the low nook under the curl at the left.
+drop(d1, ids=("lounge-table", "lounge-chair-rear-1", "lounge-chair-rear-2", "lounge-chair-front-1", "lounge-chair-front-2"))
+move(d1, "lounge-sofa", x=32.65, y=38.5, rot=270, size=[2.2, 0.8, 0.95])
+move(d1, "lounge-coffee", x=28.9, y=38.5, rot=90)
+move(d1, "lounge-rug", x=29.0, y=38.5, rot=90, size=[2.4, 0.02, 1.8])
+move(d1, "lounge-armchair", x=25.3, y=38.5, rot=90)
+move(d1, "lounge-plant", x=24.0, y=35.4)
+d1.put("lounge-bistro", "Round table", "round-table", "lounge", 16.5, 40.6, 0, [0.8, 0.75, 0.8], WOOD)
+d1.put("lounge-bistro-chair-1", "Dining chair", "dining-chair", "lounge", 14.3, 40.6, 90, [0.5, 0.9, 0.5], "#7a4a35")
+d1.put("lounge-bistro-chair-2", "Dining chair", "dining-chair", "lounge", 18.7, 40.6, 270, [0.5, 0.9, 0.5], "#7a4a35")
+# The balcony: the seats clear of the door.
+move(d1, "balcony-chair-1", x=27.0)
+move(d1, "balcony-chair-2", x=32.5)
+move(d1, "balcony-table", x=29.75)
+move(d1, "balcony-pot-1", x=8.0)
 
 here = os.path.dirname(os.path.abspath(__file__))
 g.write(os.path.join(here, "..", "scenes", "villa-ground.json"))

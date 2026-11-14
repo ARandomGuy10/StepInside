@@ -72,6 +72,11 @@ coverage and the floor area ratio (`src/core/areas.ts`). **PDF** opens the
 print dialog with a document to save as PDF: the area statement, then each
 floor drawn flat with its room names and sizes.
 
+`npx vitest run tests/walkable.test.ts` walks Design D floor by floor
+(`src/core/walkable.ts`): a person 50 cm across, starting at the walker's
+start, must reach every room, have a clear step on both sides of every door,
+and have room to stand at every bed, wardrobe, toilet, basin and shower.
+
 **Compare designs side by side** (under the design picker, or
 `?compare=villa-d,villa-e`) shows two designs next to each other. Turning,
 zooming, switching to a plan or walking on one side shows the same view of
