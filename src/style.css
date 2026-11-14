@@ -1266,6 +1266,51 @@ body.embed #view-extras {
   display: none;
 }
 
+/* Shown while the PDF is prepared. */
+#busy {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 18, 16, 0.55);
+  backdrop-filter: blur(3px);
+}
+#busy[hidden] {
+  display: none;
+}
+#busy > div {
+  min-width: 280px;
+  padding: 22px 28px;
+  border-radius: 12px;
+  background: #fffdf9;
+  color: #22201d;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  font: 15px system-ui, sans-serif;
+}
+#busy p {
+  margin: 12px 0 4px;
+  font-weight: 600;
+}
+#busy small {
+  color: #6b635a;
+}
+#busy .spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e4ddd2;
+  border-top-color: #b4834a;
+  border-radius: 50%;
+  animation: busy-spin 0.8s linear infinite;
+}
+@keyframes busy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media print {
   html,
   body {

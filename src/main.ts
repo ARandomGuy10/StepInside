@@ -481,6 +481,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const shareButton = viewButton('Share', 'Copy a link that opens exactly this view', () => void shareView());
   const savedButton = viewButton('Saved views ▾', 'Keep this view, or go back to one you kept', () => toggleSaved());
   const areasButton = viewButton('Areas', 'Carpet and built-up area of each floor, plot coverage', () => toggleAreas());
+  let capturing = false;
   const pdfButton = viewButton('PDF', 'Print or save the floor plans, with sizes and areas, as a PDF', () => exportPdf());
   tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
@@ -1428,14 +1429,60 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
    * drawn flat with its room names and sizes. The browser's print dialog
    * saves it as a PDF.
    */
-  function exportPdf(): void {
+  let exporting = false;
+  /** Waits for the browser to paint, so a message shows before slow work starts. */
+  const painted = (): Promise<void> => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
+  /** A full-screen note while the PDF is prepared; null hides it. */
+  function busyNote(text: string | null): void {
+    let note = document.getElementById('busy');
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'busy';
+      note.setAttribute('role', 'status');
+      note.innerHTML = '<div><span class="spinner"></span><p></p><small></small></div>';
+      document.body.append(note);
+    }
+    note.hidden = text === null;
+    if (text !== null) note.querySelector('p')!.textContent = text;
+  }
+  function busyStep(text: string): void {
+    const small = document.querySelector('#busy small');
+    if (small) small.textContent = text;
+  }
+
+  async function exportPdf(): Promise<void> {
+    if (exporting) return;
+    exporting = true;
+    pdfButton.disabled = true;
+    pdfButton.textContent = 'Preparing…';
+    busyNote('Preparing the PDF…');
+    busyStep('Getting the plans ready');
+    await painted();
+    try {
+      await buildPdf();
+    } finally {
+      busyNote(null);
+      pdfButton.disabled = false;
+      pdfButton.textContent = 'PDF';
+      capturing = false;
+      exporting = false;
+    }
+    setTimeout(() => window.print(), 50);
+  }
+
+  async function buildPdf(): Promise<void> {
     const before = currentView();
     const wasFlat = plan.flat;
     const wasDimensions = dimensions;
     const [w, h] = [1200, 1600];
+    // The render loop stands aside while the plans are drawn at print size.
+    capturing = true;
     renderer.setSize(w, h, false);
     plan.resize(w, h, 0, 0);
-    const images = levels.map((l, i) => {
+    const images: { name: string; src: string }[] = [];
+    for (const [i, l] of levels.entries()) {
+      busyStep(`Drawing the ${l.name.toLowerCase()} plan (${i + 1} of ${levels.length})`);
+      await painted();
       if (i !== level) setLevel(i);
       if (!inTopView) setTopView(true);
       plan.setFlat(true);
@@ -1470,10 +1517,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         g.font = '17px system-ui, sans-serif';
         g.fillText(sub, x, y + 12);
       }
-      return { name: l.name, src: shot.toDataURL('image/jpeg', 0.92) };
-    });
+      images.push({ name: l.name, src: shot.toDataURL('image/jpeg', 0.92) });
+    }
+    busyStep('Adding the area statement');
+    await painted();
     plan.setFlat(wasFlat);
     dimensions = wasDimensions;
+    capturing = false;
     resize();
     showView(before);
 
@@ -1498,7 +1548,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     });
     doc.replaceChildren(cover, ...pages);
     document.body.append(doc);
-    setTimeout(() => window.print(), 300);
+    // Let the plan images decode before the print dialog lays out the pages.
+    await Promise.all([...doc.querySelectorAll('img')].map((img) => img.decode().catch(() => undefined)));
   }
 
   // ---- Compare mode: this home is one side of a side-by-side page ----
@@ -1546,6 +1597,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // The render loop: the browser calls this before every screen refresh.
   renderer.setAnimationLoop((time) => {
     timer.update(time);
+    if (capturing) return;
     const dt = Math.min(timer.getDelta(), 0.1);
     controls.update(dt);
     if (inOrbit) orbit.update(dt);
