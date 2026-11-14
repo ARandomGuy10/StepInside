@@ -1190,7 +1190,8 @@ e1.window("win-lounge-side", "lounge", (R, 36.25), (R, 40.25), 1.4, 0.9)
 # feet across, metres up (to its top surface).
 # It is one smooth shell: an S-curve level at both ends, carrying straight
 # on as the roof slab over the lounge and the balcony, past the right wall.
-CURL = s_curve(2.0, 0.62, 12.0, 3.05, 20) + [(24.0, 3.05), (35.6, 3.05)]
+# The roof terrace runs out over its level part, so it stays just under the terrace floor.
+CURL = s_curve(2.0, 0.62, 12.0, 2.95, 20) + [(24.0, 2.95), (35.6, 2.95)]
 e1.sweep("curl", CURL, EB3F + INT - 0.1, EBAL + 0.4, 0.34, color=D_SHELL, glazing=[0.07, 0.22],
          curtain={"y": m(EGL), "from": m(ELEDGE), "to": m(ECURL)})
 # The balcony's thick slab edge, standing below the floor.
@@ -1245,12 +1246,11 @@ e2.exterior, e2.finish, e2.facade = D_CONCRETE, "render", D_FACADE
 e2.room("mumty", "Stair room", [(EMX0, EMY0), (EMX1, EMY0), (EMX1, EMY1), (E2X1, EMY1), (E2X1, E2Y0), (E2X0, E2Y0), (E2X0, EMY1), (EMX0, EMY1)], floor=OAK)
 e2.room("stairwell", "Stairwell", (E2X0 + RAIL, E2Y0 + RAIL, E2X1 - RAIL, EMY1), kind="void")
 e2.room("terrace", "Roof terrace", [(L, T), (13.25, T), (13.25, ROW1), (EMX0 - INT, ROW1), (EMX0 - INT, EMY1 + INT), (EMX1 + INT, EMY1 + INT),
-                                    (EMX1 + INT, MID0), (R, MID0), (R, EB3F), (EMX1 + INT, EB3F), (ECURL, EB3F), (ECURL, ETF), (L, ETF), (L, 26.25)],
+                                    (EMX1 + INT, MID0), (R, MID0), (R, EBAL), (ECURL, EBAL), (ECURL, ETF), (L, ETF), (L, 26.25)],
         kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
 PARAPET = dict(color=D_BOUNDARY, height=1.0)
-for p, q in (((L, T), (13.25, T)), ((13.25, T), (13.25, ROW1)), ((EMX1 + INT, MID0), (R, MID0)), ((R, MID0), (R, EB3F)), ((L, 26.25), (L, T))):
+for p, q in (((L, T), (13.25, T)), ((13.25, T), (13.25, ROW1)), ((EMX1 + INT, MID0), (R, MID0)), ((L, 26.25), (L, T))):
     e2.edge("terrace", p, q, **PARAPET)
-e2.edge("terrace", (R, EB3F), (EMX1 + INT, EB3F), color=D_BOUNDARY, height=0.3)
 e2.edge("mumty", (E2X0, EMY1), (EMX0, EMY1), outside="render")
 e2.edge("mumty", (EMX1, EMY1), (E2X1, EMY1), outside="wood")
 e2.door("stair-top", "mumty", (E2X1 - 0.05, E2Y0), (E2X0 + 0.05, E2Y0))
@@ -1267,6 +1267,15 @@ e2.put("hump-planter", "Planter", "planter", "terrace", (EMX1 + INT + R) / 2 + 0
 e2.put("front-chair-1", "Outdoor armchair", "armchair", "terrace", 3.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
 e2.put("front-chair-2", "Outdoor armchair", "armchair", "terrace", 6.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
 e2.put("front-pot", "Potted plant", "floor-plant", "terrace", 1.6, 28.0, 0, [0.45, 0.8, 0.45], "#f2efe9")
+# The front of the terrace, on the slab over the lounge: a sitting area and sun loungers.
+e2.put("deck-sofa", "Outdoor sofa", "sofa", "terrace", 17.0, 37.6, 180, [2.2, 0.75, 0.9], "#e8e2d6")
+e2.put("deck-coffee", "Coffee table", "coffee-table", "terrace", 17.0, 40.6, 0, [1.1, 0.4, 0.6], "#6e4529")
+e2.put("deck-chair-1", "Outdoor armchair", "armchair", "terrace", 13.6, 40.6, 90, [0.75, 0.75, 0.75], "#e8e2d6")
+e2.put("deck-chair-2", "Outdoor armchair", "armchair", "terrace", 20.4, 40.6, 270, [0.75, 0.75, 0.75], "#e8e2d6")
+for i, x in enumerate((26.0, 29.0)):
+    e2.put(f"deck-lounger-{i+1}", "Sun lounger", "lounger", "terrace", x, 42.5, 0, [0.7, 0.4, 1.9], WHITE)
+for i, x in enumerate((13.0, 33.3)):
+    e2.put(f"deck-pot-{i+1}", "Potted plant", "floor-plant", "terrace", x, 47.2, 0, [0.5, 0.9, 0.5], "#f2efe9")
 for i, x in enumerate((3, 6)):
     e2.put(f"terrace-lounger-{i+1}", "Sun lounger", "lounger", "terrace", x, 8, 0, [0.7, 0.4, 1.9], WHITE)
 e2.put("terrace-tank", "Water tank", "kitchen-tall", "terrace", 10.5, 3.0, 0, [1.2, 1.4, 1.2], "#3c3d3f")

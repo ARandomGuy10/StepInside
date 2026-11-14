@@ -9,7 +9,7 @@
   "rooms": [
     {"id": "mumty", "name": "Stair room", "polygon": [[2.667, 4.953], [6.629, 4.953], [6.629, 9.525], [4.572, 9.525], [4.572, 6.325], [3.658, 6.325], [3.658, 9.525], [2.667, 9.525]], "floor": {"material": "laminate", "color": "#c3a47c"}, "walls": [{"edge": 6, "outside": "render"}, {"edge": 2, "outside": "wood"}]},
     {"id": "stairwell", "name": "Stairwell", "polygon": [[3.708, 6.375], [4.522, 6.375], [4.522, 9.525], [3.708, 9.525]], "kind": "void"},
-    {"id": "terrace", "name": "Roof terrace", "polygon": [[0.229, 0.229], [4.039, 0.229], [4.039, 4.801], [2.515, 4.801], [2.515, 9.677], [6.782, 9.677], [6.782, 4.953], [10.439, 4.953], [10.439, 10.439], [6.782, 10.439], [3.353, 10.439], [3.353, 11.354], [0.229, 11.354], [0.229, 8.001]], "kind": "balcony", "floor": {"material": "tile", "color": "#bdb7ad"}, "walls": [{"edge": 0, "color": "#85817a", "height": 1.0}, {"edge": 1, "color": "#85817a", "height": 1.0}, {"edge": 6, "color": "#85817a", "height": 1.0}, {"edge": 7, "color": "#85817a", "height": 1.0}, {"edge": 13, "color": "#85817a", "height": 1.0}, {"edge": 8, "color": "#85817a", "height": 0.3}]}
+    {"id": "terrace", "name": "Roof terrace", "polygon": [[0.229, 0.229], [4.039, 0.229], [4.039, 4.801], [2.515, 4.801], [2.515, 9.677], [6.782, 9.677], [6.782, 4.953], [10.439, 4.953], [10.439, 14.707], [3.353, 14.707], [3.353, 11.354], [0.229, 11.354], [0.229, 8.001]], "kind": "balcony", "floor": {"material": "tile", "color": "#bdb7ad"}, "walls": [{"edge": 0, "color": "#85817a", "height": 1.0}, {"edge": 1, "color": "#85817a", "height": 1.0}, {"edge": 6, "color": "#85817a", "height": 1.0}, {"edge": 12, "color": "#85817a", "height": 1.0}]}
   ],
   "openings": [
     {"id": "stair-top", "type": "door", "room": "mumty", "edge": 4, "offset": 0.015, "width": 0.884, "height": 2.1},
@@ -27,6 +27,14 @@
     {"id": "front-chair-1", "name": "Outdoor armchair", "model": "armchair", "room": "terrace", "position": [0.914, 10.058], "rotationDeg": 180, "size": [0.75, 0.75, 0.75], "color": "#e8e2d6"},
     {"id": "front-chair-2", "name": "Outdoor armchair", "model": "armchair", "room": "terrace", "position": [1.829, 10.058], "rotationDeg": 180, "size": [0.75, 0.75, 0.75], "color": "#e8e2d6"},
     {"id": "front-pot", "name": "Potted plant", "model": "floor-plant", "room": "terrace", "position": [0.488, 8.534], "rotationDeg": 0, "size": [0.45, 0.8, 0.45], "color": "#f2efe9"},
+    {"id": "deck-sofa", "name": "Outdoor sofa", "model": "sofa", "room": "terrace", "position": [5.182, 11.46], "rotationDeg": 180, "size": [2.2, 0.75, 0.9], "color": "#e8e2d6"},
+    {"id": "deck-coffee", "name": "Coffee table", "model": "coffee-table", "room": "terrace", "position": [5.182, 12.375], "rotationDeg": 0, "size": [1.1, 0.4, 0.6], "color": "#6e4529"},
+    {"id": "deck-chair-1", "name": "Outdoor armchair", "model": "armchair", "room": "terrace", "position": [4.145, 12.375], "rotationDeg": 90, "size": [0.75, 0.75, 0.75], "color": "#e8e2d6"},
+    {"id": "deck-chair-2", "name": "Outdoor armchair", "model": "armchair", "room": "terrace", "position": [6.218, 12.375], "rotationDeg": 270, "size": [0.75, 0.75, 0.75], "color": "#e8e2d6"},
+    {"id": "deck-lounger-1", "name": "Sun lounger", "model": "lounger", "room": "terrace", "position": [7.925, 12.954], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
+    {"id": "deck-lounger-2", "name": "Sun lounger", "model": "lounger", "room": "terrace", "position": [8.839, 12.954], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
+    {"id": "deck-pot-1", "name": "Potted plant", "model": "floor-plant", "room": "terrace", "position": [3.962, 14.387], "rotationDeg": 0, "size": [0.5, 0.9, 0.5], "color": "#f2efe9"},
+    {"id": "deck-pot-2", "name": "Potted plant", "model": "floor-plant", "room": "terrace", "position": [10.15, 14.387], "rotationDeg": 0, "size": [0.5, 0.9, 0.5], "color": "#f2efe9"},
     {"id": "terrace-lounger-1", "name": "Sun lounger", "model": "lounger", "room": "terrace", "position": [0.914, 2.438], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
     {"id": "terrace-lounger-2", "name": "Sun lounger", "model": "lounger", "room": "terrace", "position": [1.829, 2.438], "rotationDeg": 0, "size": [0.7, 0.4, 1.9], "color": "#f4f2ee"},
     {"id": "terrace-tank", "name": "Water tank", "model": "kitchen-tall", "room": "terrace", "position": [3.2, 0.914], "rotationDeg": 0, "size": [1.2, 1.4, 1.2], "color": "#3c3d3f"}
