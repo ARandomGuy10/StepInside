@@ -166,6 +166,7 @@ export const HOMES: readonly HomeEntry[] = [
         elevation: 3.05,
         openCeilings: ['stair2'],
         keepOut: [
+          [0.75 * FT, 20.75 * FT, 2.0 * FT, 35.25 * FT],
           [0.75 * FT, 35.25 * FT, 11.0 * FT, 42.75 * FT],
           [0.75 * FT, 42.75 * FT, 4.75 * FT, 48.25 * FT],
         ],
@@ -177,7 +178,7 @@ export const HOMES: readonly HomeEntry[] = [
         elevation: 6.1,
         roofTerrace: true,
         keepOut: [
-          [22.25 * FT, 16.25 * FT, 29.25 * FT, 31.75 * FT],
+          [22.25 * FT, 16.25 * FT, 32.0 * FT, 32.25 * FT],
           [22.25 * FT, 32.5 * FT, 34.25 * FT, 34.25 * FT],
         ],
       },

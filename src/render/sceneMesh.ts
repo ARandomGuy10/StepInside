@@ -457,7 +457,7 @@ function buildSweep(sweep: Sweep): THREE.Group {
     false,
     'centripetal',
   );
-  const samples = 72;
+  const samples = 200;
   const top = curve.getSpacedPoints(samples).map((p) => new THREE.Vector2(p.x, p.y));
   // The underside: the curve moved down along its normal by the thickness.
   const offset = (points: THREE.Vector2[], by: number): THREE.Vector2[] =>
@@ -493,11 +493,12 @@ function buildSweep(sweep: Sweep): THREE.Group {
   );
   body.position.z = sweep.from;
   group.add(body);
-  // The lip: a slightly thicker edge at each end, standing proud of the top.
-  const lip = outline(offset(top, 0.06), offset(top, -sweep.thickness - 0.04));
-  const lipMaterial = matte(darker(sweep.color ?? '#b9b6b0', 0.06), 0.9);
-  for (const z of [sweep.from - 0.03, sweep.to - 0.12]) {
-    const edge = new THREE.Mesh(new THREE.ExtrudeGeometry(lip, { depth: 0.15, bevelEnabled: false }), lipMaterial);
+  // The ridge: a thicker band along each end, standing proud of the top
+  // and of the end face, so the edge of the curve reads as a raised rib.
+  const lip = outline(offset(top, 0.08), offset(top, -sweep.thickness - 0.05));
+  const lipMaterial = matte(darker(sweep.color ?? '#b9b6b0', 0.08), 0.9);
+  for (const z of [sweep.from - 0.06, sweep.to - 0.12]) {
+    const edge = new THREE.Mesh(new THREE.ExtrudeGeometry(lip, { depth: 0.18, bevelEnabled: false }), lipMaterial);
     edge.position.z = z;
     group.add(edge);
   }

@@ -1006,6 +1006,15 @@ ELEDGE = 4.75      # the planter ledge at the curl's foot
 EGAP = 6.75        # the balcony starts here, leaving a gap after the ledge
 PAVING = {"material": "tile", "color": "#b9b4ab"}
 
+
+def s_curve(x0, h0, x1, h1, n=16):
+    """An S-curve from (x0, h0) to (x1, h1), level at both ends: a smoothstep."""
+    pts = []
+    for i in range(n + 1):
+        t = i / n
+        pts.append((round(x0 + (x1 - x0) * t, 3), round(h0 + (h1 - h0) * (3 * t * t - 2 * t * t * t), 3)))
+    return pts
+
 e0 = Home("Design E, ground floor", (21, 51), 0)
 e0.site = {"margin": 30, "color": "#8fb070"}
 e0.exterior, e0.finish, e0.facade = D_CONCRETE, "render", D_FACADE
@@ -1019,7 +1028,7 @@ e0.room("guest", "Guest room", (L, 33.75, 12.75, EG), floor=OAK)
 # The pool court at the rear, the side passage and the front yard are one
 # open space inside the boundary wall.
 e0.room("garden", "Pool court + garden", [(13.25, T), (R, T), (R, B), (L, B), (L, EYARD), (ESIDE + INT, EYARD), (ESIDE + INT, ROW1), (13.25, ROW1)],
-        kind="balcony", floor=DECK)
+        kind="balcony", floor=GRASS)
 e0.edge("garden", (13.25, T), (R, T), color=D_BOUNDARY, height=2.4)
 e0.edge("garden", (R, T), (R, B), color=D_BOUNDARY, height=2.4)
 e0.edge("garden", (R, B), (L, B), color=D_BOUNDARY, height=1.2)
@@ -1091,13 +1100,22 @@ e0.put("guest-bed", "Guest bed", "bed", "guest", 4.2, 39.5, 90, [1.6, 0.9, 2.0],
 e0.put("guest-table", "Bedside table", "side-table", "guest", 1.8, 35.3, 0, [0.45, 0.5, 0.45], WOOD)
 e0.put("guest-wardrobe", "Wardrobe", "wardrobe", "guest", 9.5, 34.8, 180, [1.2, 2.2, 0.55], "#e9e6df")
 e0.put("pool", "Swimming pool", "pool", "garden", 23.75, 7.5, 0, [m(16), 0.06, m(9)], "#3fa9d6")
+# Stone paving round the pool and down the side passage; the rest is lawn.
+for i, (x0, y0, x1, y1) in enumerate(((13.25, T, R, 3.0), (13.25, 12.0, R, ROW1), (13.25, 3.0, 15.75, 12.0), (31.75, 3.0, R, 12.0),
+                                      (ESIDE + INT, ROW1, R, EYARD))):
+    e0.put(f"pool-deck-{i+1}", "Paving", "paving", "garden", (x0 + x1) / 2, (y0 + y1) / 2, 0, [m(x1 - x0) - 0.06, 0.04, m(y1 - y0) - 0.06], "#c9c1b3")
 for i, x in enumerate((17.5, 29.5)):
     e0.put(f"lounger-{i+1}", "Sun lounger", "lounger", "garden", x, 13.6, 90, [0.7, 0.4, 1.9], WHITE)
 e0.put("pool-planter", "Planter", "planter", "garden", 33.5, 8.0, 90, [m(10), 0.6, 0.4], "#4a4844")
 # The front yard: planters along the wall left of the gate, a tree in the corner.
 e0.put("yard-tree", "Tree", "tree", "garden", 3.2, 51.7, 0, [1.4, 3.0, 1.4], "#3f6b34")
 e0.put("yard-planter", "Flower box", "flower-box", "garden", 10.0, 53.6, 0, [m(8), 0.55, 0.35], "#4a4844")
-e0.put("yard-path", "Paving", "stepping-path", "garden", 21.25, (EYARD + B) / 2, 0, [m(14), 0.06, m(B - EYARD)], "#9a9893")
+# The front garden: lawn, with a stone path from the gate to the front door,
+# a planted bed along the house, box balls and flowers.
+e0.put("yard-path", "Stone path", "stepping-path", "garden", 16.0, (EYARD + B) / 2, 0, [1.3, 0.06, m(B - EYARD)], "#9a9893")
+e0.put("yard-bed", "Planted border", "planting-bed", "garden", 23.75, EYARD + 0.9, 0, [m(11), 0.6, 0.45], "#8b8478")
+for i, (x, y, sz) in enumerate(((20.5, 50.5, 0.6), (23.5, 51.5, 0.75), (26.5, 50.3, 0.55), (12.0, 49.0, 0.6), (8.0, 50.0, 0.7))):
+    e0.put(f"yard-ball-{i+1}", "Box ball", "shrub-ball", "garden", x, y, 0, [sz, sz * 0.92, sz], "#3f6b34")
 for i, (x, y) in enumerate(((30.0, 49.0), (32.5, 53.4))):
     e0.put(f"yard-pot-{i+1}", "Potted plant", "floor-plant", "garden", x, y, 0, [0.4, 0.7, 0.4], "#a87a4f")
 e0.put("passage-pot", "Rubber plant", "floor-plant", "garden", 33.2, 30.0, 0, [0.6, 1.3, 0.6], "#3d3a36")
@@ -1111,8 +1129,12 @@ e1.room("landing", "Landing", [(L, MID0), (22.25, MID0), (22.25, EY1), (SPLIT + 
 e1.room("stairwell", "Stairwell", (E1X0, EY0 + RAIL, SPLIT, EY1), kind="void")
 e1.room("stair2", "Stairs to the roof", (E2X0, E2Y0, E2X1, EY1), floor=OAK)
 e1.edge("stair2", (E2X1, E2Y0), (E2X1, EY1), height=3.0)
-e1.room("bath3", "Bath", (L, E2Y0, 5.75, 26.25), floor=BATH)
-e1.room("bedroom3", "Bedroom 3", [(6.25, E2Y0), (EB3, E2Y0), (EB3, EB3F), (L, EB3F), (L, 26.75), (6.25, 26.75)], floor=OAK)
+# The teak box stands in from the side wall: a planter runs along it,
+# from the back of bedroom 3 to the front of the curl.
+EBX = 2.75         # left wall of the teak box (inside face)
+ESTRIP = 2.0       # the planter strip, from the plot's wall to here
+e1.room("bath3", "Bath", (EBX, E2Y0, 7.75, 26.25), floor=BATH)
+e1.room("bedroom3", "Bedroom 3", [(8.25, E2Y0), (EB3, E2Y0), (EB3, EB3F), (EBX, EB3F), (EBX, 26.75), (8.25, 26.75)], floor=OAK)
 e1.room("bedroom1", "Bedroom 1", (22.75, MID0, R, 27.25), floor=OAK)
 e1.room("dressing", "Dressing", (22.75, 27.75, 28.25, 33.75))
 e1.room("bath1", "Bath", (28.75, 27.75, R, 33.75), floor=BATH)
@@ -1121,15 +1143,16 @@ e1.edge("lounge", (EB3, EB3F + INT), (22.25, EB3F + INT), height=3.0)
 # Under the curl: a planted garden behind the glass, and the planter ledge
 # at the curl's foot. Nobody walks here.
 KERB = dict(color=D_BOUNDARY, height=0.6)
-e1.room("curl-garden", "Garden under the curl", [(L, EB3F + INT), (ECURL, EB3F + INT), (ECURL, EGL), (ELEDGE, EGL), (ELEDGE, EBAL), (L, EBAL)],
-        kind="balcony", floor=PAVING)
+e1.room("curl-garden", "Garden under the curl", [(L, E2Y0), (ESTRIP, E2Y0), (ESTRIP, EB3F + INT), (ECURL, EB3F + INT), (ECURL, EGL),
+                                                   (ELEDGE, EGL), (ELEDGE, EBAL), (L, EBAL)], kind="balcony", floor=PAVING)
 e1.edge("curl-garden", (ELEDGE, EGL), (ELEDGE, EBAL), **KERB)
 e1.edge("curl-garden", (ELEDGE, EBAL), (L, EBAL), **KERB)
-e1.edge("curl-garden", (L, EBAL), (L, EB3F + INT), **KERB)
+e1.edge("curl-garden", (L, EBAL), (L, E2Y0), **KERB)
+e1.edge("curl-garden", (L, E2Y0), (ESTRIP, E2Y0), **KERB)
 e1.edge("curl-garden", (ECURL, EGL), (ELEDGE, EGL), color=D_BOUNDARY, height=0.25)
 e1.room("balcony", "Balcony", (EGAP, EGL + INT, R, EBAL), kind="balcony", floor=PAVING)
 e1.clad("bedroom3", "left", "wood")
-e1.edge("bedroom3", (EB3, EB3F), (L, EB3F), outside="wood")
+e1.edge("bedroom3", (EB3, EB3F), (EBX, EB3F), outside="wood")
 e1.clad("bath3", "left", "wood")
 e1.edge("lounge", (R, EGL), (EB3, EGL), outside="wood")
 e1.edge("lounge", (R, 33.75 + INT), (R, EGL), outside="stone")
@@ -1141,8 +1164,8 @@ e1.paint("bath3", left="#dfe7e6")
 e1.door("stair-head", "landing", (E1X1 - 0.05, EY0), (E1X0 + 0.05, EY0))
 e1.door("stair2-foot", "stair2", (E2X1 - 0.05, EY1), (E2X0 + 0.05, EY1))
 e1.door("door-bedroom2", "bedroom2", (2.5, ROW1), (5.5, ROW1))
-e1.door("door-bath3", "bath3", (1.5, E2Y0), (4.25, E2Y0))
-e1.door("door-bedroom3", "bedroom3", (7.25, E2Y0), (10.25, E2Y0))
+e1.door("door-bath3", "bath3", (3.0, E2Y0), (5.5, E2Y0))
+e1.door("door-bedroom3", "bedroom3", (8.5, E2Y0), (11.0, E2Y0))
 e1.door("door-bedroom1", "bedroom1", (22.75, 16.75), (22.75, 19.5))
 e1.door("door-dressing", "dressing", (24, 27.75), (26.5, 27.75))
 e1.door("door-bath1", "bath1", (30, 27.75), (32.5, 27.75))
@@ -1153,9 +1176,9 @@ e1.window("win-bedroom2-pool", "bedroom2", (12.75, 4), (12.75, 11), 1.6, 0.6)
 e1.window("win-bedroom1-pool", "bedroom1", (24.5, MID0), (32.5, MID0), 1.6, 0.6)
 e1.window("win-bedroom1-side", "bedroom1", (R, 20), (R, 24.5))
 e1.window("win-bath1", "bath1", (R, 30), (R, 32), 0.6, 1.7)
-e1.window("win-bath3", "bath3", (L, 22.5), (L, 24.5), 0.6, 1.7)
-e1.window("win-bedroom3-side", "bedroom3", (L, 28), (L, 32), 1.2, 1.0)
-e1.window("win-bedroom3", "bedroom3", (9.5, EB3F), (3.5, EB3F), 1.2, 0.9)
+e1.window("win-bath3", "bath3", (EBX, 22.5), (EBX, 24.5), 0.6, 1.7)
+e1.window("win-bedroom3-side", "bedroom3", (EBX, 28), (EBX, 32), 1.2, 1.0)
+e1.window("win-bedroom3", "bedroom3", (9.5, EB3F), (4.0, EB3F), 1.2, 0.9)
 # Glass from floor to ceiling across the front and into the curl garden.
 e1.window("win-lounge-1", "lounge", (20.75, EGL), (EB3 + 0.4, EGL), 2.7, 0.1)
 e1.window("win-lounge-2", "lounge", (30.25, EGL), (24.75, EGL), 2.7, 0.1)
@@ -1165,8 +1188,10 @@ e1.window("win-lounge-side", "lounge", (R, 36.25), (R, 40.25), 1.4, 0.9)
 # The curl: from the planter at the front-left corner, over the garden, up
 # to the roof slab. Glass under it at the lounge's front line. Profile in
 # feet across, metres up (to its top surface).
-e1.sweep("curl", [(2.0, 0.62), (3.2, 0.7), (4.4, 0.95), (5.6, 1.4), (6.8, 2.0), (8.0, 2.55), (9.2, 2.88), (10.4, 3.02), (11.6, 3.05), (13.0, 3.05)],
-         EB3F + INT - 0.1, EBAL + 0.4, 0.32, color=D_SHELL, glazing=[0.3, 0.58],
+# It is one smooth shell: an S-curve level at both ends, carrying straight
+# on as the roof slab over the lounge and the balcony, past the right wall.
+CURL = s_curve(2.0, 0.62, 12.0, 3.05, 20) + [(24.0, 3.05), (35.6, 3.05)]
+e1.sweep("curl", CURL, EB3F + INT - 0.1, EBAL + 0.4, 0.34, color=D_SHELL, glazing=[0.07, 0.22],
          curtain={"y": m(EGL), "from": m(ELEDGE), "to": m(ECURL)})
 # The balcony's thick slab edge, standing below the floor.
 e1.sweep("balcony-edge", [(EGAP - 0.2, -0.32), (35.2, -0.32)], EGL + INT, EBAL + 0.3, 0.3, solid=True, color=D_TRIM)
@@ -1183,10 +1208,10 @@ e1.put("dressing-wardrobe", "Wardrobe", "wardrobe", "dressing", 25.5, 32.8, 0, [
 e1.put("bath1-shower", "Shower", "shower", "bath1", 32.5, 32.1, 0, [0.9, 2.0, 0.9], "#cfe0e2")
 e1.put("bath1-toilet", "Toilet", "toilet", "bath1", 29.7, 32.6, 0, [0.4, 0.78, 0.68], WHITE)
 e1.put("bath1-basin", "Basin", "basin", "bath1", 33.45, 29.0, 270, [0.6, 0.85, 0.48], WOOD)
-e1.put("bath3-shower", "Shower", "shower", "bath3", 2.3, 24.7, 0, [0.9, 2.0, 0.9], "#cfe0e2")
-e1.put("bath3-toilet", "Toilet", "toilet", "bath3", 5.0, 25.1, 0, [0.4, 0.78, 0.68], WHITE)
-e1.put("bath3-basin", "Basin", "basin", "bath3", 4.9, 22.6, 270, [0.6, 0.85, 0.48], WOOD)
-e1.put("bed3", "Bed", "bed", "bedroom3", 5.0, 30.8, 90, [1.6, 0.95, 2.0], "#5b6b84")
+e1.put("bath3-shower", "Shower", "shower", "bath3", 4.3, 24.75, 0, [0.9, 2.0, 0.9], "#cfe0e2")
+e1.put("bath3-toilet", "Toilet", "toilet", "bath3", 7.0, 21.9, 0, [0.4, 0.78, 0.68], WHITE)
+e1.put("bath3-basin", "Basin", "basin", "bath3", 6.95, 24.6, 270, [0.6, 0.85, 0.48], WOOD)
+e1.put("bed3", "Bed", "bed", "bedroom3", 6.1, 30.8, 90, [1.6, 0.95, 2.0], "#5b6b84")
 e1.put("bed3-wardrobe", "Wardrobe", "wardrobe", "bedroom3", 10.45, 25.0, 270, [1.5, 2.2, 0.6], "#e9e6df")
 e1.put("landing-armchair-1", "Armchair", "armchair", "landing", 8.5, 18.4, 0, [0.85, 0.8, 0.85], GREEN)
 e1.put("landing-plant", "Rubber plant", "floor-plant", "landing", 21.4, 17.1, 0, [0.5, 1.3, 0.5], "#d8d2c6")
@@ -1202,7 +1227,7 @@ for i, x in enumerate((27.5, 30.5)):
 e1.put("lounge-plant", "Rubber plant", "floor-plant", "lounge", 33.2, 41.6, 0, [0.6, 1.6, 0.6], "#d8d2c6")
 # The curl garden: a long planter at the ledge and plants behind the glass.
 # A planter runs along the left side, from the teak box to the front, beside the curl's foot.
-e1.put("ledge-planter", "Planter", "planter", "curl-garden", (L + 2.0) / 2, (EB3F + INT + EBAL) / 2, 90, [m(EBAL - EB3F - INT) - 0.1, 0.62, m(2.0 - L) - 0.04], "#8f8c86")
+e1.put("ledge-planter", "Planter", "planter", "curl-garden", (L + ESTRIP) / 2, (E2Y0 + EBAL) / 2, 90, [m(EBAL - E2Y0) - 0.1, 0.62, m(ESTRIP - L) - 0.04], "#8f8c86")
 for i, (x, y) in enumerate(((6.5, 41.4), (9.5, 41.4), (8.0, 37.0))):
     e1.put(f"curl-plant-{i+1}", "Rubber plant", "floor-plant", "curl-garden", x, y, 0, [0.55, 1.1, 0.55], "#8f8c86")
 e1.put("balcony-chair-1", "Outdoor armchair", "armchair", "balcony", 19.5, 45.75, 90, [0.75, 0.75, 0.75], "#e8e2d6")
@@ -1213,13 +1238,14 @@ e1.hang("art-bed2", "Painting", "painting-1", "bedroom2", "left", 7, 1.3, [1.2, 
 
 # ---- The roof: the stair room, its curved roof, the terrace and the slab.
 EMX0, EMX1, EMY0, EMY1 = 8.75, 21.75, MID0, 31.25   # the stair room
-EHUMP = 29.0       # its curved roof comes down to the terrace here
+EHUMP = 31.5       # its curved roof comes down to the terrace here
+ETF = 37.25        # the roof terrace reaches out over the top of the curl to here
 e2 = Home("Design E, roof", (5, 32), 0)
 e2.exterior, e2.finish, e2.facade = D_CONCRETE, "render", D_FACADE
 e2.room("mumty", "Stair room", [(EMX0, EMY0), (EMX1, EMY0), (EMX1, EMY1), (E2X1, EMY1), (E2X1, E2Y0), (E2X0, E2Y0), (E2X0, EMY1), (EMX0, EMY1)], floor=OAK)
 e2.room("stairwell", "Stairwell", (E2X0 + RAIL, E2Y0 + RAIL, E2X1 - RAIL, EMY1), kind="void")
 e2.room("terrace", "Roof terrace", [(L, T), (13.25, T), (13.25, ROW1), (EMX0 - INT, ROW1), (EMX0 - INT, EMY1 + INT), (EMX1 + INT, EMY1 + INT),
-                                    (EMX1 + INT, MID0), (R, MID0), (R, EB3F), (EMX1 + INT, EB3F), (L, EB3F), (L, 26.25)],
+                                    (EMX1 + INT, MID0), (R, MID0), (R, EB3F), (EMX1 + INT, EB3F), (ECURL, EB3F), (ECURL, ETF), (L, ETF), (L, 26.25)],
         kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
 PARAPET = dict(color=D_BOUNDARY, height=1.0)
 for p, q in (((L, T), (13.25, T)), ((13.25, T), (13.25, ROW1)), ((EMX1 + INT, MID0), (R, MID0)), ((R, MID0), (R, EB3F)), ((L, 26.25), (L, T))):
@@ -1232,11 +1258,11 @@ e2.opening("door-terrace", "door", "mumty", (11.5, EMY1), (9.25, EMY1), height=2
 e2.window("win-mumty", "mumty", (EMX0, 20), (EMX0, 23), 1.2, 0.9)
 # Its roof: as wide as in the model, curving down to the right over the full
 # depth of the room, to a planter at its foot.
-e2.sweep("mumty-roof", [(EMX1 - 0.3, 3.3), (23.0, 3.24), (24.25, 2.95), (25.5, 2.3), (26.75, 1.45), (27.9, 0.8), (EHUMP, 0.55)],
-         EMY0 - 0.5, EMY1 + 1.0, 0.3, solid=True, color=D_SHELL)
+# It carries on level from the stair room's flat roof, over the roof's
+# overhang, before it turns down: one smooth S to the terrace.
+e2.sweep("mumty-roof", [(EMX1 - 0.3, 3.3)] + s_curve(24.25, 3.3, EHUMP, 0.55, 20), EMY0 - 0.5, EMY1 + 1.0, 0.3, solid=True, color=D_TRIM)
 # The roof slab over the lounge carries on over the balcony and past the
 # right-hand wall, with a rounded-looking thick edge.
-e2.sweep("front-slab", [(ECURL + 0.6, -0.36), (35.6, -0.36)], EB3F + INT, EBAL + 0.4, 0.36, solid=True, color=D_TRIM)
 e2.put("hump-planter", "Planter", "planter", "terrace", (EMX1 + INT + R) / 2 + 0.25, EB3F - 0.95, 0, [m(R - EMX1 - INT) - 0.3, 0.6, 0.5], "#8a867f")
 e2.put("front-chair-1", "Outdoor armchair", "armchair", "terrace", 3.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
 e2.put("front-chair-2", "Outdoor armchair", "armchair", "terrace", 6.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
