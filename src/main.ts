@@ -122,6 +122,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const plan = new OrbitView(bounds, 1, { azimuth: 0.3, polar: 0.5, reach: 1.25 });
   const units = home.units ?? 'm';
   let dimensions = true;
+  /** Room sizes under the room names; off leaves just the names. */
+  let sizes = true;
   // A home without an outside to show, such as a flat, opens with its lid off.
   let roofHidden = !scenes[0].site;
   if (scenes[0].site) {
@@ -488,8 +490,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     dimensions = !dimensions;
     updateHint();
   });
+  const sizesButton = viewButton('', 'Show or hide the room sizes, keeping the names', () => {
+    sizes = !sizes;
+    updateHint();
+  });
   roofButton.id = 'btn-roof';
   dimensionsButton.id = 'btn-dimensions';
+  sizesButton.id = 'btn-sizes';
   /** The camera that drags, the wheel and these buttons act on. */
   const turnable = (): OrbitView => (inOrbit ? orbit : plan);
   tools.replaceChildren(
@@ -500,6 +507,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     viewButton('Reset view', 'Back to the first view', () => turnable().reset()),
     roofButton,
     dimensionsButton,
+    sizesButton,
   );
 
   // Room names and sizes are HTML labels laid over the 3D view, one per
@@ -542,6 +550,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       el.classList.toggle('piece', !!item.piece);
       if (el.firstElementChild!.textContent !== item.text) el.firstElementChild!.textContent = item.text;
       if (el.lastElementChild!.textContent !== item.sub) el.lastElementChild!.textContent = item.sub;
+      // With sizes off, rooms show only their names; a selected piece keeps its size.
+      (el.lastElementChild as HTMLElement).hidden = !sizes && !item.piece;
     });
   }
 
@@ -665,8 +675,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     planButtons.forEach((b, i) => b.classList.toggle('active', inTopView && i === level));
     walkButton.classList.toggle('active', !inOrbit && !inTopView);
     roofButton.textContent = roofHidden ? 'Show roof' : 'Hide roof';
-    dimensionsButton.textContent = dimensions ? 'Hide dimensions' : 'Show dimensions';
+    dimensionsButton.textContent = dimensions ? 'Hide labels' : 'Show labels';
     dimensionsButton.classList.toggle('active', dimensions);
+    sizesButton.textContent = sizes ? 'Hide sizes' : 'Show sizes';
+    sizesButton.classList.toggle('active', sizes && dimensions);
+    sizesButton.disabled = !dimensions;
     if (inOrbit) {
       document.getElementById('hint-title')!.textContent = home.title;
       document.getElementById('hint-text')!.textContent =

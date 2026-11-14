@@ -60,8 +60,8 @@ moment.
 
 A floor plan is 3D too: the floor is seen from nearly overhead with its
 ceiling off. Drag the background to turn or tilt it (tilt it all the way
-up for a flat plan), and use **Hide dimensions** / **Show dimensions** to
-switch the room names and sizes off and on. Sizes show in feet and inches
+up for a flat plan). **Hide labels** switches the room names and sizes off
+and on; **Hide sizes** takes off just the sizes and keeps the names. Sizes show in feet and inches
 or in metres, set per home in `src/homes.ts`.
 
 Furniture is solid. A piece cannot be put where another one stands; while

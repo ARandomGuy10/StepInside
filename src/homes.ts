@@ -180,7 +180,7 @@ export const HOMES: readonly HomeEntry[] = [
         // The theater has no flat ceiling: the curved shell is its roof.
         openCeilings: ['theater'],
         keepOut: [
-          [23.5 * FT, 16.25 * FT, 27.0 * FT, 34.0 * FT],
+          [25.5 * FT, 16.25 * FT, 29.0 * FT, 34.0 * FT],
           [18.75 * FT, 37.75 * FT, 34.25 * FT, 41.75 * FT],
         ],
       },
