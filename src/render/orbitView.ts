@@ -42,6 +42,23 @@ export class OrbitView {
     }
   }
 
+  /** The camera's angles and distance, to put in a link. */
+  get state(): [number, number, number] {
+    return [this.goal.azimuth, this.goal.polar, this.goal.distance];
+  }
+
+  /** Goes back to angles and distance from `state`, jumping straight there. */
+  restore([azimuth, polar, distance]: readonly number[]): void {
+    if (![azimuth, polar, distance].every(Number.isFinite)) return;
+    this.goal = {
+      azimuth,
+      polar: Math.max(0.02, Math.min(1.5, polar)),
+      distance: Math.max(this.home.distance * 0.25, Math.min(this.home.distance * 2, distance)),
+    };
+    ({ azimuth: this.azimuth, polar: this.polar, distance: this.distance } = this.goal);
+    this.place();
+  }
+
   /** Looks at a point this high above the ground: the floor of a storey. */
   lookAtHeight(y: number): void {
     this.target.y = y;

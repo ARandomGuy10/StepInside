@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { roomHeight, toVec, wallColor, type Room, type Scene } from '../core/scene';
 import type { Vec2 } from '../core/collision';
 import type { Hole, WallModel, WallSlab } from '../core/walls';
-import { applySurface, floorSurface, pattern } from './textures';
+import { applySurface, floorSurface, pattern, setSurface, wallSurface, type Pattern } from './textures';
 
 const FRAME_COLOR = 0xfafafa;
 const FRONT_DOOR_COLOR = 0x3f5f85;
@@ -165,6 +165,8 @@ export function buildShell(scene: Scene, walls: WallModel, options: ShellOptions
     }
   }
 
+  // Walls with a material in the scene file get their pattern now.
+  applyShellColors(group, scene);
   return group;
 }
 
@@ -191,14 +193,41 @@ export function applyShellColors(shell: THREE.Object3D, scene: Scene): void {
       color = solid?.color ?? scene.defaults.wallColor;
     }
     if (color) (child.material as THREE.MeshStandardMaterial).color.set(color);
+    // A floor or wall whose material changed gets its new pattern.
+    if (kind === 'floor' || kind === 'threshold') {
+      const room = rooms.get(kind === 'floor' ? rest.join(':') : child.userData.roomId);
+      syncSurface(child, room?.floor?.material, floorSurface, floorRoughness);
+    } else if (kind === 'wall') {
+      const room = rooms.get(rest.slice(0, -1).join(':'));
+      const edge = Number(rest[rest.length - 1]);
+      syncSurface(child, room?.walls?.find((w) => w.edge === edge)?.material, wallSurface, () => WALL_ROUGHNESS);
+    }
   }
+}
+
+const WALL_ROUGHNESS = 0.95;
+/** Polished concrete shines a little; other floors are matt. */
+const floorRoughness = (material: string | undefined): number => (material === 'concrete' ? 0.45 : 0.6);
+
+/** Puts the pattern for `wanted` on a mesh's material, if it is not on already. */
+function syncSurface(
+  mesh: THREE.Mesh,
+  wanted: string | undefined,
+  surfaceOf: (m: string | undefined) => [Pattern, number] | null,
+  roughnessOf: (m: string | undefined) => number,
+): void {
+  const material = mesh.material as THREE.MeshStandardMaterial;
+  if (material.userData.surface === wanted) return;
+  material.userData.surface = wanted;
+  setSurface(material, surfaceOf(wanted), roughnessOf(wanted));
 }
 
 /** A floor's colour, with the pattern for its material (planks, tiles) on top. */
 function floorMaterial(scene: Scene, room: Room | undefined): THREE.MeshStandardMaterial {
-  const material = matte(room?.floor?.color ?? scene.defaults.floorColor, 0.6);
+  const material = matte(room?.floor?.color ?? scene.defaults.floorColor, floorRoughness(room?.floor?.material));
   const surface = floorSurface(room?.floor?.material);
   if (surface) applySurface(material, surface[0], surface[1]);
+  material.userData.surface = room?.floor?.material;
   return material;
 }
 

@@ -472,3 +472,53 @@ export function paint(scene: Scene, target: PaintTarget, color: string): Scene {
   rooms[index] = next;
   return { ...scene, rooms };
 }
+
+// ---------------------------------------------------------------------------
+// Materials
+// ---------------------------------------------------------------------------
+
+/** A surface that can have a material: a floor or one wall. */
+export type MaterialTarget = Extract<PaintTarget, { kind: 'floor' } | { kind: 'wall' }>;
+
+/** The material of a floor or wall, or undefined for a plain surface. */
+export function materialOf(scene: Scene, target: MaterialTarget): string | undefined {
+  const room = scene.rooms.find((r) => r.id === target.room);
+  if (!room) return undefined;
+  if (target.kind === 'floor') return room.floor?.material;
+  return room.walls?.find((w) => w.edge === target.edge)?.material;
+}
+
+/**
+ * Gives a floor or wall a material, such as planks or tiles, keeping its
+ * colour. `undefined` makes it plain again.
+ */
+export function setMaterial(scene: Scene, target: MaterialTarget, material: string | undefined): Scene {
+  const index = scene.rooms.findIndex((r) => r.id === target.room);
+  if (index < 0 || materialOf(scene, target) === material) return scene;
+  const room = scene.rooms[index];
+  let next: Room;
+  if (target.kind === 'floor') {
+    const floor = { color: room.floor?.color ?? scene.defaults.floorColor, ...(material ? { material } : {}) };
+    next = { ...room, floor };
+  } else {
+    if (target.edge < 0 || target.edge >= room.polygon.length) return scene;
+    const walls = [...(room.walls ?? [])];
+    const at = walls.findIndex((w) => w.edge === target.edge);
+    const old = at >= 0 ? walls[at] : { edge: target.edge };
+    const { material: _drop, ...rest } = old;
+    const wall = material ? { ...rest, material } : rest;
+    if (at >= 0) walls[at] = wall;
+    else walls.push(wall);
+    next = { ...room, walls };
+  }
+  const rooms = [...scene.rooms];
+  rooms[index] = next;
+  return { ...scene, rooms };
+}
+
+/** Gives every wall of one room the same material. */
+export function setRoomWallsMaterial(scene: Scene, roomId: string, material: string | undefined): Scene {
+  const room = scene.rooms.find((r) => r.id === roomId);
+  if (!room) return scene;
+  return room.polygon.reduce((s, _, edge) => setMaterial(s, { kind: 'wall', room: roomId, edge }, material), scene);
+}

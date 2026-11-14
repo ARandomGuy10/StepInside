@@ -349,9 +349,39 @@ export function floorSurface(material: string | undefined): [Pattern, number] | 
     case 'large-tile':
       // Four tiles across the pattern, so each tile is 80 cm.
       return ['tiles', 1 / 3.2];
+    case 'stone':
+      return ['stone', 1 / 2.4];
     default:
       return null;
   }
+}
+
+/** The pattern and scale for a wall's inside `material` in the scene file. Wall UVs are in metres too. */
+export function wallSurface(material: string | undefined): [Pattern, number] | null {
+  switch (material) {
+    case 'stone':
+      return ['stone', 1 / 2.4];
+    case 'wood':
+      return ['planks', 1 / 1.6];
+    case 'tile':
+      return ['tiles', 1 / 1.2];
+    default:
+      return null;
+  }
+}
+
+/**
+ * Changes the pattern on a material that is already in use, or takes it
+ * off (`null`) for a plain surface. Keeps the material's own colour.
+ */
+export function setSurface(material: THREE.MeshStandardMaterial, surface: [Pattern, number] | null, roughness: number): void {
+  material.map = null;
+  material.normalMap = null;
+  material.roughnessMap = null;
+  material.roughness = roughness;
+  if (surface) applySurface(material, surface[0], surface[1]);
+  // A map that comes or goes changes the shader the GPU runs, so it is rebuilt.
+  material.needsUpdate = true;
 }
 
 /** A soft sky: pale at the horizon, bluer overhead. */

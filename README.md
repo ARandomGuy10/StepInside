@@ -136,6 +136,38 @@ Paint (the **Paint** tab):
 - **Reset all colours** returns to the colours in the scene file. Paint
   and layout undo with the same Ctrl/Cmd+Z.
 
+Materials (also on the **Paint** tab):
+
+- Pick a floor and choose **Wood**, **Tiles**, **Large tiles**, **Stone**,
+  **Concrete**, **Decking** or **Plain**. Pick a wall and choose **Paint**,
+  **Stone**, **Wood panels** or **Tiles**. The colour stays, so a tiled
+  wall can still be any colour.
+- **Use this material on all walls of this room** does the whole room.
+
+Styles (the **Style** tab):
+
+- One click restyles the home: Modern, Scandinavian, Japandi, Industrial,
+  Coastal, Mediterranean or Dark luxe. It sets the walls, ceilings, floors
+  and their materials (tiles in bathrooms and kitchens), and the colours
+  of sofas, beds, wooden furniture, kitchen units and rugs. Nothing moves,
+  and balconies, terraces and gardens are left alone.
+- With **All floors** ticked it does every storey, otherwise just the one
+  you are on. Undo, or **Back to the original look**, undoes it.
+
+Tour, sharing and saved views (the row above the view bar):
+
+- **▶ Tour** walks through every room on its own, through the doorways,
+  stopping in each to look round, then goes up to the next floor. Click
+  the view or press any key to stop and carry on walking from there.
+- **Share** copies a link that opens exactly this view: the whole house
+  from this angle, this floor plan, or this spot in the walk. The link
+  holds the view only, not furniture or colour changes; use Save for those.
+- **Saved views** keeps views by name in this browser. Click one to go
+  back to it, or **Link** to copy its link.
+- A link looks like `?home=villa&view=walk&floor=1&at=4.2,7.9,90,-5`:
+  `at` is x and y on the plan in metres, the facing and the up/down look
+  in degrees. `view=plan` and `view=whole` take `cam=` instead.
+
 Save and load (bottom of the panel):
 
 - **Save** (or Ctrl/Cmd+S) downloads the current furniture and colours as
@@ -184,6 +216,10 @@ came from and every assumption. The plan it was read from is
   and a colour per wall (`walls: [{ "edge": 2, "color": "#7d8a74" }]`).
   Anything not set uses `defaults`. The Paint tab edits exactly these.
 - A room with `"kind": "balcony"` gets railings and no ceiling.
+- A floor's `material` is one of `laminate`, `tile`, `large-tile`, `stone`,
+  `concrete`, `decking`, `lawn` or `setts`; without one it is plain. A
+  wall can have a `material` too (`stone`, `wood` or `tile`), next to its
+  colour in `walls`.
 
 If the file is invalid, the app shows a list of problems, each with the
 path of the offending field, for example
@@ -197,7 +233,10 @@ src/core/     Scene logic with no Three.js imports. Unit tested.
               scene.ts     file format and validation
               walls.ts     rooms to wall slabs, doorways and collision lines
               collision.ts walking into walls
-              edits.ts     edits: move, turn, take out, add, paint, reset
+              edits.ts     edits: move, turn, take out, add, paint, materials, reset
+              styles.ts    the one-click styles
+              tour.ts      the route of the automatic tour
+              viewLink.ts  views in the page address, for links
               catalogue.ts the pieces that can be added from the panel
               layout.ts    saving and loading layouts
               history.ts   undo and redo

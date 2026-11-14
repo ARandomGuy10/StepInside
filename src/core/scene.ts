@@ -53,7 +53,14 @@ export interface WallOverride {
    * a screen of vertical aluminium fins.
    */
   outside?: 'stone' | 'render' | 'fins';
+  /** The inside finish of this wall, from WALL_MATERIALS. Plain paint when not set. */
+  material?: string;
 }
+
+/** Inside finishes a wall can have. Plain paint is the default. */
+export const WALL_MATERIALS = ['stone', 'wood', 'tile'] as const;
+/** Finishes a floor can have. Without one the floor is a plain, smooth surface. */
+export const FLOOR_MATERIALS = ['laminate', 'large-tile', 'tile', 'stone', 'concrete', 'decking', 'lawn', 'setts'] as const;
 
 export interface Room {
   id: string;
@@ -391,7 +398,7 @@ export function parseScene(input: unknown): Scene {
       const seenEdges = new Set<number>();
       (c.array(room.walls, `${path}.walls`) ?? []).forEach((w, k) => {
         const wp = `${path}.walls[${k}]`;
-        const wall = c.object(w, wp, ['edge', 'color', 'height', 'outside']);
+        const wall = c.object(w, wp, ['edge', 'color', 'height', 'outside', 'material']);
         if (!wall) return;
         if (!Number.isInteger(wall.edge) || (wall.edge as number) < 0 || (wall.edge as number) >= polygon.length) {
           c.fail(`${wp}.edge`, `must be an edge index from 0 to ${polygon.length - 1}`);
@@ -404,6 +411,9 @@ export function parseScene(input: unknown): Scene {
         if (wall.height !== undefined) c.positive(wall.height, `${wp}.height`);
         if (wall.outside !== undefined && !['stone', 'render', 'fins'].includes(wall.outside as string)) {
           c.fail(`${wp}.outside`, 'must be "stone", "render" or "fins"');
+        }
+        if (wall.material !== undefined && !(WALL_MATERIALS as readonly string[]).includes(wall.material as string)) {
+          c.fail(`${wp}.material`, `must be one of ${WALL_MATERIALS.join(', ')}`);
         }
       });
     }

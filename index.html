@@ -26,6 +26,7 @@
         <div id="tabs">
           <button id="tab-furniture" class="active">Furniture</button>
           <button id="tab-paint">Paint</button>
+          <button id="tab-style">Style</button>
         </div>
         <button id="btn-top" title="Toggle the top-down view (T)">Top view</button>
       </header>
@@ -85,11 +86,32 @@
             <div class="row">
               <button id="btn-paint-room" hidden>Use on all walls of this room</button>
             </div>
+            <div id="material-box" hidden>
+              <h3>Material</h3>
+              <div id="materials" class="chips"></div>
+              <div class="row">
+                <button id="btn-material-room" hidden>Use this material on all walls of this room</button>
+              </div>
+            </div>
           </div>
         </section>
         <section class="grow">
           <div class="row">
             <button id="btn-reset-paint">Reset all colours</button>
+          </div>
+        </section>
+      </div>
+
+      <div id="pane-style" class="pane" hidden>
+        <section>
+          <h2>Restyle in one click</h2>
+          <p class="muted">Changes the walls, floors, ceilings and furniture colours of every room. Furniture stays where it is, and outdoor spaces are left alone. Undo brings the old look back.</p>
+          <label id="style-scope" class="row check"><input type="checkbox" id="style-all" checked /> All floors, not just this one</label>
+          <div id="styles"></div>
+        </section>
+        <section class="grow">
+          <div class="row">
+            <button id="btn-reset-style" title="Back to the colours and materials in the scene file">Back to the original look</button>
           </div>
         </section>
       </div>
@@ -106,7 +128,10 @@
 
     <div id="labels" hidden></div>
     <div id="view-bar">
-      <div id="orbit-tools"></div>
+      <div class="tool-row">
+        <div id="orbit-tools"></div>
+        <div id="view-extras"></div>
+      </div>
       <div id="views"></div>
     </div>
     <div id="hint">

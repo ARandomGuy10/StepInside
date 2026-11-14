@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { CATALOGUE } from './core/catalogue';
 import {
-  addFurniture, colorOf, emptyRoom, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resizeFurniture,
-  resetLayout, resetPaint, roomAt, rotateFurniture, takeOut, type PaintTarget,
+  addFurniture, colorOf, emptyRoom, materialOf, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resizeFurniture,
+  resetLayout, resetPaint, roomAt, rotateFurniture, setMaterial, setRoomWallsMaterial, takeOut, type PaintTarget,
 } from './core/edits';
+import { applyStyle, STYLES } from './core/styles';
+import { openSpot, tourRoute } from './core/tour';
+import { viewFromParams, viewToParams, type ViewState } from './core/viewLink';
+import { TourPlayer } from './render/tourPlayer';
 import { History } from './core/history';
 import { HOMES, type HomeEntry, type StairEntry } from './homes';
 import { loadLayout, saveLayout } from './core/layout';
@@ -70,7 +74,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       collision.push({ a: { x: s.x0, y: s.yTop }, b: { x: s.x1, y: s.yTop } });
     }
     return {
-      name: entry.name, elevation: entry.elevation, original, shell, furniture, lamps, collision,
+      name: entry.name, elevation: entry.elevation, original, walls, shell, furniture, lamps, collision,
       painted: original as Pick<Scene, 'rooms' | 'solids'>,
     };
   });
@@ -217,7 +221,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     const room = scene.rooms.find((r) => r.id === t.room);
     const name = t.kind === 'wall' ? `wall:${t.room}:${t.edge}` : `${t.kind}:${t.room}`;
-    return { label: `${room?.name ?? t.room}: ${t.kind}`, color, isWall: t.kind === 'wall', object: shell.getObjectByName(name) };
+    const material = t.kind === 'ceiling' ? undefined : { kind: t.kind, current: materialOf(scene, t) };
+    return { label: `${room?.name ?? t.room}: ${t.kind}`, color, isWall: t.kind === 'wall', material, object: shell.getObjectByName(name) };
   };
 
   const setPaintTarget = (target: PaintTarget | null): void => {
@@ -316,7 +321,32 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     paintRoomWalls: (color) => {
       if (paintTarget?.kind === 'wall') apply(paintRoomWalls(now(), paintTarget.room, color), 'Those walls already have this colour.');
     },
-    resetPaint: () => apply(resetPaint(now(), lv().original), 'The colours are already as they started.'),
+    resetPaint: () => {
+      // On the Style tab this undoes a style everywhere; on the Paint tab, on this floor.
+      if (mode === 'style') {
+        const next = history.current.map((s, i) => resetPaint(s, levels[i].original));
+        if (next.every((s, i) => s === history.current[i])) panel.toast('This is already the original look.');
+        else history.set(next);
+        return;
+      }
+      apply(resetPaint(now(), lv().original), 'The colours are already as they started.');
+    },
+    setMaterial: (material) => {
+      const t = paintTarget;
+      if (t?.kind === 'floor' || t?.kind === 'wall') apply(setMaterial(now(), t, material), 'It already has that material.');
+    },
+    setRoomWallsMaterial: (material) => {
+      if (paintTarget?.kind === 'wall') {
+        apply(setRoomWallsMaterial(now(), paintTarget.room, material), 'Those walls already have this material.');
+      }
+    },
+    applyStyle: (key, allFloors) => {
+      const style = STYLES.find((s) => s.key === key);
+      if (!style) return;
+      const next = history.current.map((s, i) => (allFloors || i === level ? applyStyle(s, style) : s));
+      history.set(next);
+      panel.toast(`${style.name} style on ${allFloors && levels.length > 1 ? 'every floor' : 'this floor'}. Undo brings the old look back.`);
+    },
     turn: (deltaDeg) => {
       if (selectedId) apply(rotateFurniture(now(), selectedId, deltaDeg), 'No space to turn it here.');
     },
@@ -379,11 +409,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       canUndo: history.canUndo,
       canRedo: history.canRedo,
       topView: inTopView,
+      storeys: levels.length > 1,
     });
   }
   history.subscribe(refresh);
 
   function setTopView(on: boolean): void {
+    if (tour) stopTour();
     inTopView = on;
     inOrbit = false;
     if (on) controls.unlock();
@@ -398,6 +430,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   /** The whole home seen from outside. Nothing is edited in this view. */
   function setOrbit(): void {
+    if (tour) stopTour();
     setTopView(false);
     inOrbit = true;
     controls.unlock();
@@ -429,7 +462,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   );
   const walkButton = viewButton('Walk through', 'Walk it in first person', () => setTopView(false));
   walkButton.classList.add('primary');
+  const tourButton = viewButton('▶ Tour', 'A walk through every room, hands free', () => (tour ? stopTour() : startTour()));
+  const shareButton = viewButton('Share', 'Copy a link that opens exactly this view', () => void shareView());
+  const savedButton = viewButton('Saved views ▾', 'Keep this view, or go back to one you kept', () => toggleSaved());
+  tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
+  document.getElementById('view-extras')!.replaceChildren(tourButton, savedButton, shareButton);
   const tools = document.getElementById('orbit-tools')!;
   const roofButton = viewButton('', 'Take the roof off to look inside', () => {
     roofHidden = !roofHidden;
@@ -598,6 +636,16 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   function updateHint(): void {
     const painting = mode === 'paint';
+    tourButton.textContent = tour ? '■ Stop tour' : '▶ Tour';
+    tourButton.classList.toggle('active', !!tour);
+    if (tour) {
+      wholeButton.classList.remove('active');
+      planButtons.forEach((b) => b.classList.remove('active'));
+      walkButton.classList.remove('active');
+      document.getElementById('hint-title')!.textContent = tour.room ? `Tour: ${tour.room}` : 'Tour';
+      document.getElementById('hint-text')!.textContent = 'Click the view or press any key to stop and take over';
+      return;
+    }
     wholeButton.classList.toggle('active', inOrbit);
     planButtons.forEach((b, i) => b.classList.toggle('active', inTopView && i === level));
     walkButton.classList.toggle('active', !inOrbit && !inTopView);
@@ -726,6 +774,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }, { passive: false });
 
   canvas.addEventListener('pointerdown', (e) => {
+    if (tour) {
+      stopTour();
+      return;
+    }
     // The hint has done its job once the view is touched.
     document.body.classList.add('hint-gone');
     if (inOrbit) {
@@ -851,6 +903,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   window.addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return;
+    // Any key during the tour hands control back, right where the tour is.
+    if (tour && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) {
+      stopTour();
+      if (e.code === 'Escape') return;
+    }
     const command = e.metaKey || e.ctrlKey;
     if (command && e.code === 'KeyZ') {
       e.preventDefault();
@@ -960,6 +1017,240 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   showMore(false);
   document.getElementById('home-bar')!.append(more);
 
+  // ---- The tour: a hands-free walk through every room ----
+
+  /** The tour being played: one storey at a time, in `order`. */
+  let tour: { player: TourPlayer; order: number[]; step: number; room?: string; fade: number } | null = null;
+  const fader = document.createElement('div');
+  fader.id = 'fade';
+  document.body.append(fader);
+
+  /** The tour route of storey `i`, from `from` if it is inside a room there. */
+  function routeFor(i: number, from?: { x: number; y: number }) {
+    const scene = history.current[i];
+    const inside = from ? roomAt(scene, from) : undefined;
+    let startRoom = inside?.id;
+    if (!startRoom) {
+      // Upstairs, begin by the top of the stairs; elsewhere at the room nearest the start.
+      const flight = stairs.find((s) => s.upper === i);
+      const near = flight ? { x: (flight.x0 + flight.x1) / 2, y: flight.yTop - 0.4 } : from ?? { x: spawn.position[0], y: spawn.position[1] };
+      const rooms = scene.rooms.filter((r) => r.kind !== 'void');
+      const byDistance = rooms.map((r) => ({ r, p: openSpot(r, scene.furniture) }))
+        .sort((a, b) => Math.hypot(a.p.x - near.x, a.p.y - near.y) - Math.hypot(b.p.x - near.x, b.p.y - near.y));
+      startRoom = roomAt(scene, near)?.id ?? byDistance[0]?.r.id;
+    }
+    return tourRoute(scene, levels[i].walls, startRoom, inside ? from : undefined);
+  }
+
+  function startTour(): void {
+    const walking = !inOrbit && !inTopView;
+    const first = walking ? level : 0;
+    if (!walking) setTopView(false);
+    controls.unlock();
+    controls.enabled = false;
+    selectedId = null;
+    paintTarget = null;
+    const order = [first, ...levels.map((_, i) => i).filter((i) => i !== first)];
+    const route = routeFor(first, walking ? controls.pose : undefined);
+    if (route.path.length === 0) {
+      controls.enabled = true;
+      panel.toast('There are no rooms to tour here.');
+      return;
+    }
+    const p = route.path[0];
+    if (!walking || level !== first) goTo(first, { position: [p.x, p.y], yawDeg: THREE.MathUtils.radToDeg(controls.pose.yaw) });
+    tour = { player: new TourPlayer(route, controls.pose.yaw), order, step: 0, fade: 0 };
+    document.body.classList.add('touring');
+    document.body.classList.remove('hint-gone');
+    updateHint();
+    refresh();
+  }
+
+  function stopTour(): void {
+    tour = null;
+    controls.enabled = !inTopView && !inOrbit;
+    fader.style.opacity = '0';
+    document.body.classList.remove('touring');
+    updateHint();
+  }
+
+  /** Called every frame while the tour plays. */
+  function playTour(dt: number): void {
+    const t = tour!;
+    // Between storeys the view fades out, jumps, and fades back in.
+    if (t.fade > 0) {
+      t.fade -= dt;
+      fader.style.opacity = String(Math.min(1, Math.max(0, t.fade / 0.5)));
+    }
+    const frame = t.player.update(dt);
+    controls.teleport(frame.x, frame.y, THREE.MathUtils.radToDeg(frame.yaw), -6);
+    if (frame.room !== t.room && frame.room) {
+      t.room = frame.room;
+      updateHint();
+    }
+    if (!frame.done) return;
+    t.step += 1;
+    if (t.step >= t.order.length) {
+      stopTour();
+      panel.toast('That was every room. Walk on from here, or press Tour to see it again.');
+      return;
+    }
+    const next = t.order[t.step];
+    const route = routeFor(next);
+    const start = route.path[0];
+    if (!start) return;
+    goTo(next, { position: [start.x, start.y], yawDeg: THREE.MathUtils.radToDeg(frame.yaw) });
+    controls.enabled = false;
+    t.player = new TourPlayer(route, frame.yaw);
+    t.fade = 1;
+    fader.style.opacity = '1';
+  }
+
+  // ---- Views: share a link to this view, and keep views to come back to ----
+
+  /** The view on screen now, as it goes into a link. */
+  function currentView(): ViewState {
+    if (inOrbit) return { view: 'whole', floor: level, cam: orbit.state };
+    if (inTopView) return { view: 'plan', floor: level, cam: plan.state };
+    const p = controls.pose;
+    return { view: 'walk', floor: level, at: [p.x, p.y, THREE.MathUtils.radToDeg(p.yaw), controls.pitchDeg] };
+  }
+
+  /** Shows a view from a link or a saved view. */
+  function showView(v: ViewState): void {
+    if (tour) stopTour();
+    if (v.view === 'whole') {
+      setOrbit();
+      if (v.cam) orbit.restore(v.cam);
+    } else if (v.view === 'plan') {
+      if (v.floor !== level) goTo(v.floor);
+      setTopView(true);
+      if (v.cam) plan.restore(v.cam);
+    } else {
+      setTopView(false);
+      if (v.at) {
+        goTo(v.floor, { position: [v.at[0], v.at[1]], yawDeg: v.at[2] });
+        controls.teleport(v.at[0], v.at[1], v.at[2], v.at[3]);
+      } else if (v.floor !== level) {
+        goTo(v.floor);
+      }
+    }
+  }
+
+  const linkTo = (v: ViewState): string => {
+    const base = new URLSearchParams(window.location.search);
+    base.set('home', home.id);
+    return `${window.location.origin}${window.location.pathname}?${viewToParams(v, base)}`;
+  };
+
+  async function shareView(): Promise<void> {
+    const link = linkTo(currentView());
+    try {
+      await navigator.clipboard.writeText(link);
+      panel.toast('Link copied. It opens this exact view; furniture and colour changes are not in it.');
+    } catch {
+      // Some browsers refuse the clipboard; show the link so it can be copied by hand.
+      window.history.replaceState(null, '', link);
+      panel.toast('The address bar now holds the link to this view. Copy it from there.');
+    }
+  }
+
+  /** Views kept in this browser, per home. */
+  interface SavedView { name: string; state: ViewState }
+  const storeKey = `stepinside.views.${home.id}`;
+  const readSaved = (): SavedView[] => {
+    try {
+      const list = JSON.parse(localStorage.getItem(storeKey) ?? '[]');
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  };
+  const writeSaved = (list: SavedView[]): void => {
+    try {
+      localStorage.setItem(storeKey, JSON.stringify(list));
+    } catch {
+      panel.toast('This browser will not keep saved views (private window?).');
+    }
+  };
+
+  const savedBox = document.createElement('div');
+  savedBox.id = 'saved-views';
+  savedBox.hidden = true;
+  savedBox.innerHTML = `
+    <div class="saved-head"><strong>Saved views</strong><span>Kept in this browser</span></div>
+    <form class="row"><input type="text" id="saved-name" maxlength="40" aria-label="Name for this view" /><button type="submit">Save this view</button></form>
+    <ul></ul>
+    <p class="muted" id="saved-empty">Nothing saved yet. Find a good spot, give it a name and save it.</p>`;
+  // It opens above the view bar, as part of it.
+  document.getElementById('view-bar')!.prepend(savedBox);
+  savedBox.addEventListener('keydown', (e) => e.stopPropagation());
+  const nameBox = savedBox.querySelector<HTMLInputElement>('#saved-name')!;
+
+  /** A name for the view on screen, such as "Living room" or "Ground floor plan". */
+  const suggestName = (): string => {
+    if (inOrbit) return scenes[0].site ? 'Whole house' : 'Whole home';
+    const floorName = levels.length > 1 ? lv().name : 'Floor';
+    if (inTopView) return `${floorName} plan`;
+    const room = roomAt(now(), controls.pose)?.name;
+    return room ?? (levels.length > 1 ? lv().name : 'Walk');
+  };
+
+  function renderSaved(): void {
+    const list = readSaved();
+    savedBox.querySelector('#saved-empty')!.toggleAttribute('hidden', list.length > 0);
+    savedBox.querySelector('ul')!.replaceChildren(
+      ...list.map((item, i) => {
+        const li = document.createElement('li');
+        const go = document.createElement('button');
+        go.className = 'go';
+        go.textContent = item.name;
+        go.title = 'Go to this view';
+        go.addEventListener('click', () => {
+          showView(item.state);
+          savedBox.hidden = true;
+        });
+        const copy = document.createElement('button');
+        copy.textContent = 'Link';
+        copy.title = 'Copy a link to this view';
+        copy.addEventListener('click', () => {
+          void navigator.clipboard.writeText(linkTo(item.state)).then(
+            () => panel.toast(`Link to "${item.name}" copied.`),
+            () => panel.toast('The browser would not copy the link.'),
+          );
+        });
+        const remove = document.createElement('button');
+        remove.textContent = '×';
+        remove.title = 'Forget this view';
+        remove.addEventListener('click', () => {
+          writeSaved(readSaved().filter((_, j) => j !== i));
+          renderSaved();
+        });
+        li.append(go, copy, remove);
+        return li;
+      }),
+    );
+  }
+
+  savedBox.querySelector('form')!.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = nameBox.value.trim() || suggestName();
+    writeSaved([...readSaved(), { name, state: currentView() }]);
+    nameBox.value = '';
+    nameBox.placeholder = suggestName();
+    renderSaved();
+    panel.toast(`Saved "${name}".`);
+  });
+
+  function toggleSaved(): void {
+    savedBox.hidden = !savedBox.hidden;
+    savedButton.classList.toggle('active', !savedBox.hidden);
+    if (savedBox.hidden) return;
+    nameBox.value = '';
+    nameBox.placeholder = suggestName();
+    renderSaved();
+  }
+
   // ---- Sizing and the render loop ----
 
   function resize(): void {
@@ -981,8 +1272,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   window.addEventListener('resize', resize);
   resize();
   setLevel(0);
-  // Open on the whole home, unless the address asks for ?view=walk.
-  if (new URLSearchParams(window.location.search).get('view') !== 'walk') setOrbit();
+  // Open on the whole home, unless the address asks for another view.
+  showView(viewFromParams(new URLSearchParams(window.location.search), levels.length));
 
   let lastRoom: string | undefined;
   const timer = new THREE.Timer();
@@ -994,7 +1285,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (inOrbit) orbit.update(dt);
     if (inTopView) plan.update(dt);
     placeLabels();
-    walkStairs();
+    if (tour) playTour(dt);
+    else walkStairs();
     const pose = controls.pose;
     topView.placeMarker(pose.x, pose.y, pose.yaw, controls.baseHeight);
     if (selection.visible) selection.update();
@@ -1013,7 +1305,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   // Handy in the browser console, and used by the automated screenshots.
-  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, planCamera: plan.camera, topCamera: topView.camera } });
+  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, planCamera: plan.camera, topCamera: topView.camera, startTour, stopTour, currentView, showView } });
 }
 
 // The address picks the home: ?home=apartment. Without it, the start

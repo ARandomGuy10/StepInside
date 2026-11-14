@@ -1,7 +1,17 @@
 import { CATALOGUE } from '../core/catalogue';
 import type { Furniture, Room, Scene } from '../core/scene';
+import { STYLES } from '../core/styles';
 
-export type Mode = 'furniture' | 'paint';
+export type Mode = 'furniture' | 'paint' | 'style';
+
+/** Material choices offered in the paint tab. `undefined` is a plain surface. */
+const FLOOR_CHOICES: readonly [string | undefined, string][] = [
+  ['laminate', 'Wood'], ['tile', 'Tiles'], ['large-tile', 'Large tiles'], ['stone', 'Stone'],
+  ['concrete', 'Concrete'], ['decking', 'Decking'], [undefined, 'Plain'],
+];
+const WALL_CHOICES: readonly [string | undefined, string][] = [
+  [undefined, 'Paint'], ['stone', 'Stone'], ['wood', 'Wood panels'], ['tile', 'Tiles'],
+];
 
 export interface PanelActions {
   setMode(mode: Mode): void;
@@ -18,6 +28,11 @@ export interface PanelActions {
   paint(color: string, done: boolean): void;
   paintRoomWalls(color: string): void;
   resetPaint(): void;
+  /** Gives the picked floor or wall a material; undefined makes it plain. */
+  setMaterial(material: string | undefined): void;
+  setRoomWallsMaterial(material: string | undefined): void;
+  /** Restyles this floor, or the whole home when `allFloors` is set. */
+  applyStyle(key: string, allFloors: boolean): void;
   save(): void;
   /** Called with the text of a file the user chose to load. */
   load(text: string): void;
@@ -32,7 +47,9 @@ export interface PanelState {
   selected: Furniture | undefined;
   room: Room | undefined;
   /** What the paint tab has picked: its label and current colour. */
-  paint: { label: string; color: string; isWall: boolean } | undefined;
+  paint: { label: string; color: string; isWall: boolean; material?: { kind: 'floor' | 'wall'; current: string | undefined } } | undefined;
+  /** True when the home has more than one storey. */
+  storeys: boolean;
   canUndo: boolean;
   canRedo: boolean;
   topView: boolean;
@@ -60,6 +77,9 @@ export const labelOf = (f: Furniture): string => f.name ?? f.id;
 export class FurniturePanel {
   private toastTimer: number | undefined;
   private removedKey = '';
+  private materialKey = '';
+  /** The material the picked wall has, for "use on all walls". */
+  private wallMaterial: string | undefined;
 
   constructor(private readonly actions: PanelActions) {
     const on = (id: string, run: () => void): void => {
@@ -71,6 +91,35 @@ export class FurniturePanel {
     };
     on('tab-furniture', () => actions.setMode('furniture'));
     on('tab-paint', () => actions.setMode('paint'));
+    on('tab-style', () => actions.setMode('style'));
+    on('btn-reset-style', () => actions.resetPaint());
+    on('btn-material-room', () => actions.setRoomWallsMaterial(this.wallMaterial));
+
+    const allFloors = byId<HTMLInputElement>('style-all');
+    byId('styles').replaceChildren(
+      ...STYLES.map((style) => {
+        const button = document.createElement('button');
+        button.className = 'style-card';
+        button.dataset.key = style.key;
+        const strip = document.createElement('span');
+        strip.className = 'strip';
+        for (const color of [style.wall, style.floor.color, style.fabric, style.wood, style.kitchen]) {
+          const swatch = document.createElement('i');
+          swatch.style.background = color;
+          strip.append(swatch);
+        }
+        const name = document.createElement('strong');
+        name.textContent = style.name;
+        const about = document.createElement('span');
+        about.textContent = style.about;
+        button.append(strip, name, about);
+        button.addEventListener('click', () => {
+          actions.applyStyle(style.key, allFloors.checked);
+          button.blur();
+        });
+        return button;
+      }),
+    );
     on('btn-top', () => actions.toggleTopView());
     on('btn-turn-left', () => actions.turn(-15));
     on('btn-turn-right', () => actions.turn(15));
@@ -147,6 +196,9 @@ export class FurniturePanel {
     byId('tab-paint').classList.toggle('active', state.mode === 'paint');
     byId('pane-furniture').hidden = state.mode !== 'furniture';
     byId('pane-paint').hidden = state.mode !== 'paint';
+    byId('tab-style').classList.toggle('active', state.mode === 'style');
+    byId('pane-style').hidden = state.mode !== 'style';
+    byId('style-scope').hidden = !state.storeys;
 
     const name = byId('selected-name');
     name.textContent = selected
@@ -191,6 +243,7 @@ export class FurniturePanel {
         button.classList.toggle('current', (button as HTMLElement).dataset.color === color);
       }
     }
+    this.renderMaterials(state.paint?.material);
 
     const removed = scene.furniture.filter((f) => f.removed);
     byId('removed-empty').hidden = removed.length > 0;
@@ -200,6 +253,38 @@ export class FurniturePanel {
     if (key !== this.removedKey) {
       this.removedKey = key;
       byId('removed').replaceChildren(...removed.map((f) => this.removedItem(f)));
+    }
+  }
+
+  /** The material chips for a picked floor or wall. */
+  private renderMaterials(material: { kind: 'floor' | 'wall'; current: string | undefined } | undefined): void {
+    byId('material-box').hidden = !material;
+    if (!material) return;
+    this.wallMaterial = material.kind === 'wall' ? material.current : undefined;
+    byId('btn-material-room').hidden = material.kind !== 'wall';
+    const choices = material.kind === 'floor' ? FLOOR_CHOICES : WALL_CHOICES;
+    // A floor of a material not on the list (a lawn) shows it as an extra choice.
+    const list = choices.some(([key]) => key === material.current)
+      ? choices
+      : [...choices, [material.current, material.current ?? 'Plain'] as [string | undefined, string]];
+    const key = `${material.kind}|${list.map(([k]) => k).join(',')}`;
+    if (key !== this.materialKey) {
+      this.materialKey = key;
+      byId('materials').replaceChildren(
+        ...list.map(([value, label]) => {
+          const button = document.createElement('button');
+          button.textContent = label;
+          button.dataset.material = value ?? '';
+          button.addEventListener('click', () => {
+            this.actions.setMaterial(value);
+            button.blur();
+          });
+          return button;
+        }),
+      );
+    }
+    for (const button of byId('materials').children) {
+      button.classList.toggle('current', (button as HTMLElement).dataset.material === (material.current ?? ''));
     }
   }
 

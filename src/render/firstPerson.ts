@@ -114,6 +114,11 @@ export class FirstPersonControls {
     return { x: this.camera.position.x, y: this.camera.position.z, yaw: this.yaw };
   }
 
+  /** How far up (positive) or down the walker looks, in degrees. */
+  get pitchDeg(): number {
+    return THREE.MathUtils.radToDeg(this.pitch);
+  }
+
   setWalls(walls: Segment[]): void {
     this.walls = walls;
   }
