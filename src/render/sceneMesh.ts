@@ -400,10 +400,12 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
 
   const doors = slab.holes.filter((h) => h.sill <= 0.001);
   const full = length + slab.extendEnd;
-  if (slab.glass) addGlassFittings(mesh, slab, full, doors, raised && slab.outside);
-  if (slab.boundary) addBoundaryFittings(mesh, slab, full, doors);
+  if (slab.glass) addGlassFittings(mesh, slab, full, doors, raised && slab.outside, scene);
+  if (slab.boundary) addBoundaryFittings(mesh, slab, full, doors, scene);
 
-  if (slab.kind === 'wall' && slab.outside && exteriorColor) {
+  // A wall onto a balcony shows an outside finish too, when the scene gives it one.
+  const cladOpen = slab.open && !!slab.finish;
+  if (slab.kind === 'wall' && (slab.outside || cladOpen) && exteriorColor) {
     // The outside of an outside wall is a thin skin: stone cladding or render.
     const kind = slab.finish ?? scene.defaults.exteriorMaterial ?? 'render';
     const finish = matte(
@@ -423,6 +425,8 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
     mesh.add(skin);
     // A white band where the floor above (or the roof) meets the wall, standing proud of it.
     if (kind === 'fins') addFins(mesh, slab, full);
+  }
+  if (slab.kind === 'wall' && slab.outside && exteriorColor) {
     const band = new THREE.Mesh(new THREE.BoxGeometry(full + 0.4, 0.32, 0.2), matte(scene.defaults.trimColor ?? '#f6f4ef', 0.85));
     band.name = 'band';
     band.position.set(full / 2, top + 0.04, -slab.thickness - 0.1);
@@ -434,8 +438,8 @@ function buildSlab(slab: WallSlab, scene: Scene, raised: boolean): THREE.Mesh {
 
   for (const hole of slab.holes) {
     if (!hole.primary) continue;
-    if (hole.type === 'window') mesh.add(buildWindow(hole, slab.thickness));
-    else if (!hole.passable && slab.kind === 'wall') mesh.add(buildClosedDoor(hole, slab.thickness));
+    if (hole.type === 'window') mesh.add(buildWindow(hole, slab.thickness, scene.defaults.frameColor));
+    else if (!hole.passable && slab.kind === 'wall') mesh.add(buildClosedDoor(hole, slab.thickness, scene.defaults.doorColor));
   }
   return mesh;
 }
@@ -569,8 +573,11 @@ function between(length: number, doors: readonly Hole[]): [number, number][] {
 }
 
 /** Steel handrail and base shoe for a glass balustrade, and a white slab edge under a raised balcony. */
-function addGlassFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, doors: readonly Hole[], edge: boolean): void {
-  const steel = new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.3, metalness: 0.9 });
+function addGlassFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, doors: readonly Hole[], edge: boolean, scene: Scene): void {
+  // Brushed steel, or a timber handrail where the scene asks for one.
+  const steel = scene.defaults.railColor
+    ? matte(scene.defaults.railColor, 0.5)
+    : new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.3, metalness: 0.9 });
   for (const [from, to] of between(length, doors)) {
     for (const [h, y] of [[0.04, slab.height - 0.02], [0.06, 0.03]] as const) {
       const bar = new THREE.Mesh(new THREE.BoxGeometry(to - from, h, slab.thickness + 0.03), steel);
@@ -581,7 +588,7 @@ function addGlassFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, door
     }
   }
   if (edge) {
-    const fascia = new THREE.Mesh(new THREE.BoxGeometry(length + 0.5, 0.36, 0.25), matte('#f6f4ef', 0.85));
+    const fascia = new THREE.Mesh(new THREE.BoxGeometry(length + 0.5, 0.36, 0.25), matte(scene.defaults.trimColor ?? '#f6f4ef', 0.85));
     fascia.name = 'band';
     fascia.position.set(length / 2, -0.15, -slab.thickness - 0.1);
     fascia.castShadow = true;
@@ -591,8 +598,8 @@ function addGlassFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, door
 }
 
 /** A white coping on a boundary wall, and a timber gate between grey posts in each gateway. */
-function addBoundaryFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, doors: readonly Hole[]): void {
-  const white = matte('#f6f4ef', 0.85);
+function addBoundaryFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, doors: readonly Hole[], scene: Scene): void {
+  const white = matte(scene.defaults.boundaryMaterial === 'render' ? (scene.defaults.trimColor ?? '#f6f4ef') : '#f6f4ef', 0.85);
   for (const [from, to] of between(length, doors)) {
     const cap = new THREE.Mesh(new THREE.BoxGeometry(to - from, 0.05, slab.thickness + 0.06), white);
     cap.name = 'trim';
@@ -686,12 +693,12 @@ function addTrim(mesh: THREE.Mesh, slab: WallSlab, length: number): void {
 }
 
 /** A frame with upright bars and a sheet of glass, in the wall's local space. */
-function buildWindow(hole: Hole, thickness: number): THREE.Group {
+function buildWindow(hole: Hole, thickness: number, frameColor?: string): THREE.Group {
   const group = new THREE.Group();
   group.name = `window:${hole.openingId}`;
   group.position.set(hole.offset + hole.width / 2, hole.sill + hole.height / 2, -thickness / 2);
 
-  const frame = new THREE.MeshStandardMaterial({ color: FRAME_COLOR, roughness: 0.6 });
+  const frame = new THREE.MeshStandardMaterial({ color: frameColor ?? FRAME_COLOR, roughness: 0.6 });
   const depth = Math.min(0.07, thickness);
   const bar = (w: number, h: number, x: number, y: number): void => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, depth), frame);
@@ -725,10 +732,10 @@ function buildWindow(hole: Hole, thickness: number): THREE.Group {
 }
 
 /** A door that leads nowhere in the model, such as the front door: a shut panel. */
-function buildClosedDoor(hole: Hole, thickness: number): THREE.Mesh {
+function buildClosedDoor(hole: Hole, thickness: number, color?: string): THREE.Mesh {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(hole.width, hole.height, 0.05),
-    new THREE.MeshStandardMaterial({ color: FRONT_DOOR_COLOR, roughness: 0.5 }),
+    new THREE.MeshStandardMaterial({ color: color ?? FRONT_DOOR_COLOR, roughness: 0.5 }),
   );
   mesh.name = `door:${hole.openingId}`;
   mesh.position.set(hole.offset + hole.width / 2, hole.height / 2, -thickness / 2);

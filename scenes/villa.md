@@ -179,3 +179,29 @@ Assumed, since the video does not show it: everything at the back and the
 sides that the camera never sees, all window positions, and where the
 second flight goes. Check with an architect: the curl and the stair room's
 curved roof are shell structures that need a structural engineer.
+
+## Design D: the architect's model (`?home=villa-d`)
+
+Design C remodelled to follow the model's front view as closely as the
+plot allows (Surya asked for the first floor to be exact; the ground floor
+may differ, to keep design A's guest room).
+
+- **First floor front, left to right:** Bedroom 3 (13 x 8.5 ft, teak-clad,
+  set back) behind the concrete curl, which rises from a planter at the
+  front-left corner to the roof, with a rooflight; the living room (glass
+  from floor to ceiling, dark frames), with dining at the back by the pool
+  side; a 4.5 x 7.5 ft bath in a teak box at the right end, with a stone
+  corner. A 4.5 ft balcony with a thick slab edge and a glass railing with
+  a timber handrail runs in front of the glass.
+- **Roof:** a wider stair room (12.5 ft) with a door and a window onto a
+  front terrace with a glass railing; its roof curves down to the right to
+  a planter; a planter along the front; the rear terrace behind it.
+- **Ground floor:** design A's rooms. A wider gate (10 ft) between lamp
+  posts; stone and teak on the walls behind the garden.
+- **Colours:** darker warm concrete, teak, beige stone, dark bronze window
+  frames, timber handrails and front door.
+
+Differs from the model: the model's ground floor is set back behind a low
+front wall along its whole width; here the guest room stays at the front
+left, as in design A. Bedroom 3 is at the small end of a bedroom (about
+10 m²) so that the curl can sit in front of it.

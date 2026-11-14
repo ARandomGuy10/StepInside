@@ -6,6 +6,9 @@ import villaGround from '../scenes/villa-ground.json';
 import villaCFirst from '../scenes/villa-c-first.json';
 import villaCGround from '../scenes/villa-c-ground.json';
 import villaCRoof from '../scenes/villa-c-roof.json';
+import villaDFirst from '../scenes/villa-d-first.json';
+import villaDGround from '../scenes/villa-d-ground.json';
+import villaDRoof from '../scenes/villa-d-roof.json';
 import type { Place } from './core/sun';
 
 /** One storey of a home: a scene file, and how high its floor is. */
@@ -116,6 +119,26 @@ export const HOMES: readonly HomeEntry[] = [
     ],
     // Must match the staircases in scripts/make-villa.py. The second one
     // climbs towards the front, so its top step has the larger y.
+    stairs: [
+      { lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.05 * FT, yBottom: 38.25 * FT, yTop: 24.25 * FT },
+      { lower: 1, upper: 2, x0: 4.25 * FT, x1: 7.55 * FT, yBottom: 24.25 * FT, yTop: 38.25 * FT },
+    ],
+    start: { position: [16.25 * FT, 67 * FT], yawDeg: 0 },
+    place: LUCKNOW,
+  },
+  {
+    id: 'villa-d',
+    units: 'ft',
+    design: { group: 'New house', name: 'Design D: the architect\'s model' },
+    title: 'New house',
+    about: 'The curved-roof house copied from the architect\'s model: a concrete curl over the first floor, a glass living room behind a balcony, teak and stone, and a roof terrace. Design A\'s ground floor.',
+    levels: [
+      { name: 'Ground floor', json: villaDGround, elevation: 0, openCeilings: ['living'] },
+      // The planter under the low end of the curl is not walked on.
+      { name: 'First floor', json: villaDFirst, elevation: 3.05, keepOut: [[0.75 * FT, 50.75 * FT, 9.1 * FT, 54.25 * FT]] },
+      { name: 'Roof', json: villaDRoof, elevation: 6.1, roofTerrace: true },
+    ],
+    // The same two flights as design C.
     stairs: [
       { lower: 0, upper: 1, x0: 0.75 * FT, x1: 4.05 * FT, yBottom: 38.25 * FT, yTop: 24.25 * FT },
       { lower: 1, upper: 2, x0: 4.25 * FT, x1: 7.55 * FT, yBottom: 24.25 * FT, yTop: 38.25 * FT },

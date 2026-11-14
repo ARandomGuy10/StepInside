@@ -780,6 +780,188 @@ c2.put("terrace-tank", "Water tank", "kitchen-tall", "terrace", 31.5, 4, 0, [1.2
 for i, (x, y) in enumerate(((2.2, 22), (17.5, 2.3), (17.5, 30))):
     c2.put(f"terrace-pot-{i+1}", "Potted plant", "floor-plant", "terrace", x, y, 0, [0.5, 1.0, 0.5], "#f2efe9")
 
+# =============================================================================
+# Design D: the curved-roof house, copied as closely as the plot allows from
+# the architect's model in Surya's video (front view first).
+#
+# Front of the first floor, left to right, as in the model: a teak-clad
+# bedroom set back behind a concrete curl that rises from a planter at the
+# front-left corner to the roof; a living room glazed from floor to ceiling
+# behind a balcony with a thick slab and glass railing; a narrow teak box (a
+# bath) and a stone corner. On the roof: a wide stair room with a door and a
+# teak panel, a glass railing in front, its roof curving down to the right to
+# a planter, and a long planter along the front. Dark window frames, timber
+# handrails, darker concrete. The ground floor keeps design A's rooms (the
+# guest room included); only the front gate is wider, as in the model.
+# =============================================================================
+D_CONCRETE, D_TRIM, D_SHELL, D_BOUNDARY = "#7f7b75", "#96928b", "#8e8a84", "#85817a"
+D_FACADE = {"trimColor": D_TRIM, "stoneColor": "#bcae96", "woodColor": "#6e4529", "boundaryMaterial": "render",
+            "frameColor": "#3a332d", "doorColor": "#5a3a24", "railColor": "#7a5236"}
+
+d0 = copy.deepcopy(gc)
+d0.name = "Curved-roof house D, ground floor"
+d0.exterior, d0.facade = D_CONCRETE, D_FACADE
+for r in d0.rooms:
+    for w in r.get("walls", []):
+        if w.get("color") == C_BOUNDARY: w["color"] = D_BOUNDARY
+# A wide gate between lamp posts, as in the model (garden edge 2 runs right to left from x = 33.25).
+gate = next(o for o in d0.openings if o["id"] == "gate")
+gate["offset"], gate["width"] = m(33.25 - 25.25), m(10)
+d0.clad("toilet", "bottom", "stone")
+d0.clad("pool-shower", "bottom", "wood")
+
+DFRONT = 50.25     # front wall of bedroom 3 (the teak box)
+DGL = 49.25        # the glass front of the living room and the bath
+DBX = 13.75        # right wall of bedroom 3
+DLX = DBX + INT    # left wall of the living room
+DB3 = 29.75        # the bath at the right end of the front
+d1 = Home("Curved-roof house D, first floor", (10, 21), 180)
+d1.exterior, d1.finish, d1.facade = D_CONCRETE, "render", D_FACADE
+d1.room("bedroom2", "Bedroom 2", (L, T, L + 13.5, ROW1), floor=OAK)
+d1.room("bedroom1", "Bedroom 1", (L + 14, T, L + 27.5, ROW1), floor=OAK)
+d1.room("bath1", "Bath", (L + 28, T, R, T + 10), floor=BATH)
+d1.room("dressing", "Dressing", (L + 28, T + 10.5, R, ROW1))
+d1.room("landing", "Landing", [(L, MID0), (SPLIT, MID0), (SPLIT, F2Y0), (F2X1, F2Y0), (F2X1, CORR), (SPLIT, CORR),
+                               (SPLIT, MID1), (L, MID1), (L, CORR), (F2X0, CORR), (F2X0, F2Y0), (L, F2Y0)], floor=OAK)
+d1.edge("landing", (F2X1, F2Y0), (F2X1, CORR), height=3.0)
+d1.room("stairwell", "Stairwell", (L, F2Y0 + RAIL, F2X0 - RAIL, CORR - RAIL), kind="void")
+d1.room("void", "Double-height void", (WALL2, F2Y0 + RAIL, SPLIT, CORR - RAIL), kind="void",
+        walls=[{"edge": 3, "color": "#c9a58a"}])
+d1.room("bedroom3", "Bedroom 3", (L, ROW3, DBX, DFRONT), floor=OAK)
+d1.room("living", "Living room", [(SPLIT + INT, LY0), (R, LY0), (R, MID1), (DB3 - INT, MID1), (DB3 - INT, DGL), (DLX, DGL),
+                                  (DLX, ROW3), (SPLIT + INT, ROW3)], floor=TILE)
+d1.room("bath3", "Bath", (DB3, ROW3, R, DGL), floor=BATH)
+d1.room("balcony", "Balcony", [(L, DFRONT + INT), (DLX, DFRONT + INT), (DLX, DGL + INT), (R, DGL + INT), (R, B), (L, B)],
+        kind="balcony", floor={"material": "tile", "color": "#b9b4ab"})
+d1.clad("bedroom3", "bottom", "wood")
+d1.clad("bedroom3", "left", "wood")
+d1.clad("bath3", "bottom", "wood")
+d1.clad("bath3", "right", "stone")
+d1.edge("living", (R, LY0), (R, MID1), outside="stone")
+d1.edge("living", (DB3 - INT, DGL), (DLX, DGL), outside="render")
+d1.paint("bedroom2", top="#6d7f9a")
+d1.paint("bedroom1", top="#8a9a83")
+d1.paint("bedroom3", left="#a7835f")
+d1.paint("bath1", top="#dfe7e6", right="#dfe7e6")
+d1.paint("bath3", right="#dfe7e6")
+
+d1.door("stair-head", "landing", (STAIR_X1 - 0.05, F2Y0), (L + 0.05, F2Y0))
+d1.door("door-bedroom2", "bedroom2", (2.5, ROW1), (5.5, ROW1))
+d1.door("door-bedroom1", "bedroom1", (15.25, ROW1), (18.25, ROW1))
+d1.door("door-dressing", "dressing", (L + 28, 12.25), (L + 28, 15))
+d1.door("door-bath1", "bath1", (30.5, T + 10), (33, T + 10))
+d1.door("door-bedroom3", "bedroom3", (9, ROW3), (11.75, ROW3))
+d1.door("door-living", "living", (SPLIT + INT, 38.6), (SPLIT + INT, 41.0))
+d1.door("door-bath3", "bath3", (DB3, 42.25), (DB3, 44.75))
+d1.opening("door-balcony", "door", "living", (21.25, DGL), (24.25, DGL), height=2.6)
+d1.window("win-bedroom2", "bedroom2", (4, T), (10.5, T))
+d1.window("win-bedroom1", "bedroom1", (18, T), (24.5, T))
+d1.window("win-bath1", "bath1", (30.5, T), (32.5, T), 0.6, 1.7)
+d1.window("win-landing", "landing", (L, 18), (L, 22.5))
+d1.window("win-bedroom3-side", "bedroom3", (L, 43.5), (L, 48), 1.2, 1.0)
+d1.window("win-bedroom3", "bedroom3", (9.75, DFRONT), (12.75, DFRONT), 0.9, 1.1)
+d1.window("win-bath3", "bath3", (31, DGL), (33, DGL), 0.6, 1.7)
+# Glass from floor to ceiling across the front, in tall dark-framed panes.
+d1.window("win-living-1", "living", (DLX + 0.4, DGL), (20.75, DGL), 2.7, 0.1)
+d1.window("win-living-2", "living", (24.75, DGL), (DB3 - 0.9, DGL), 2.7, 0.1)
+d1.window("win-living-side", "living", (R, 36), (R, 40.25), 1.6, 0.8)
+d1.window("win-living-rear", "living", (21.5, LY0), (L + 26.5, LY0), 1.4, 0.9)
+
+# The curl: from a planter at the front-left corner up across bedroom 3's
+# front to the roof over the living room. Profile in feet across, metres up.
+d1.sweep("curl", [(0.0, 0.0), (1.5, 0.08), (3.5, 0.5), (5.5, 1.3), (7.5, 2.25), (9.5, 2.95), (11.5, 3.35), (DLX, 3.6)],
+         DFRONT + INT - 0.25, 55, 0.28, color=D_SHELL, glazing=[0.32, 0.6])
+# The balcony's thick slab edge, standing below the floor.
+d1.sweep("balcony-edge", [(DLX - 0.4, -0.32), (35.1, -0.32)], DGL + INT - 0.2, 55.1, 0.3, solid=True, color=D_TRIM)
+d1.put("stairs-roof", "Staircase to the roof", "stairs", "landing", (F2X0 + F2X1) / 2, (F2Y0 + F2Y1) / 2, 180,
+       [m(F2X1 - F2X0), 3.05, m(F2Y1 - F2Y0)], "#c9c2b6", fixed=True)
+d1.put("landing-armchair-1", "Armchair", "armchair", "landing", 11, 18.4, 180, [0.85, 0.8, 0.85], GREEN)
+d1.put("landing-armchair-2", "Armchair", "armchair", "landing", 14, 18.4, 180, [0.85, 0.8, 0.85], FABRIC)
+d1.put("landing-table", "Side table", "side-table", "landing", 12.5, 18.2, 0, [0.5, 0.45, 0.5], DARK)
+d1.put("landing-plant", "Rubber plant", "floor-plant", "landing", 8, 17.2, 0, [0.5, 1.3, 0.5], "#d8d2c6")
+d1.put("landing-shelf", "Sideboard", "sideboard", "landing", 12.5, 23.3, 180, [1.8, 0.8, 0.4], WOOD)
+d1.put("bed2", "Bed", "bed", "bedroom2", 7.5, 4.6, 180, [1.8, 0.95, 2.1], "#5d7fa3")
+d1.put("bed2-table-1", "Bedside table", "side-table", "bedroom2", 3.4, 2, 0, [0.45, 0.5, 0.45], WOOD)
+d1.put("bed2-table-2", "Bedside table", "side-table", "bedroom2", 11.6, 2, 0, [0.45, 0.5, 0.45], WOOD)
+d1.put("bed2-wardrobe", "Wardrobe", "wardrobe", "bedroom2", 1.8, 10.5, 90, [1.5, 2.2, 0.6], "#e9e6df")
+d1.put("bed1", "Bed", "bed", "bedroom1", 21.5, 4.6, 180, [1.8, 0.95, 2.1], "#7d8a74")
+d1.put("bed1-table-1", "Bedside table", "side-table", "bedroom1", 17.4, 2, 0, [0.45, 0.5, 0.45], WOOD)
+d1.put("bed1-table-2", "Bedside table", "side-table", "bedroom1", 25.6, 2, 0, [0.45, 0.5, 0.45], WOOD)
+d1.put("bed1-armchair", "Armchair", "armchair", "bedroom1", 25.7, 11.6, 270, [0.8, 0.8, 0.8], FABRIC)
+d1.put("bath1-toilet", "Toilet", "toilet", "bath1", 30, 2.1, 180, [0.4, 0.78, 0.68], WHITE)
+d1.put("bath1-shower", "Shower", "shower", "bath1", 32.7, 2.4, 0, [0.9, 2.0, 0.9], "#cfe0e2")
+d1.put("bath1-basin", "Basin", "basin", "bath1", 33.3, 7.8, 270, [0.6, 0.85, 0.48], WOOD)
+d1.put("dressing-wardrobe", "Wardrobe", "wardrobe", "dressing", 31.5, 14.6, 0, [1.4, 2.2, 0.55], "#e9e6df")
+d1.put("bed3", "Bed", "bed", "bedroom3", 4.6, 46.6, 90, [1.6, 0.95, 2.0], "#5b6b84")
+d1.put("bed3-wardrobe", "Wardrobe", "wardrobe", "bedroom3", 4.5, 42.8, 180, [1.5, 2.2, 0.6], "#e9e6df")
+d1.put("bed3-desk", "Desk", "desk", "bedroom3", 12.6, 46.6, 270, [1.3, 0.75, 0.65], "#b9a68c")
+d1.put("bath3-basin", "Basin", "basin", "bath3", 33.45, 43.2, 270, [0.6, 0.85, 0.48], WOOD)
+d1.put("bath3-toilet", "Toilet", "toilet", "bath3", 33.1, 45.0, 270, [0.4, 0.78, 0.68], WHITE)
+d1.put("bath3-shower", "Shower", "shower", "bath3", 32.0, 47.75, 0, [0.9, 2.0, 0.9], "#cfe0e2")
+# The living room: sofa facing the glass, dining at the back by the pool side.
+d1.put("living-sofa", "Sofa", "sofa", "living", 21.75, 43.45, 0, [2.4, 0.8, 0.95], FABRIC)
+d1.put("living-rug", "Rug", "rug", "living", 21.75, 46.4, 0, [2.6, 0.02, 1.6], "#b8a98c")
+d1.put("living-coffee", "Coffee table", "coffee-table", "living", 21.75, 46.4, 0, [1.1, 0.42, 0.6], DARK)
+d1.put("living-armchair", "Armchair", "armchair", "living", 16.4, 45.5, 90, [0.85, 0.8, 0.85], WHITE)
+d1.put("living-plant", "Rubber plant", "floor-plant", "living", 28, 47.9, 0, [0.6, 1.6, 0.6], "#d8d2c6")
+d1.put("living-table", "Dining table", "dining-table", "living", 27.5, 38, 0, [1.6, 0.75, 0.9], WOOD)
+for i, x in enumerate((26, 29)):
+    d1.put(f"living-chair-rear-{i+1}", "Dining chair", "dining-chair", "living", x, 36.2, 180, [0.5, 0.9, 0.5], "#7a4a35")
+    d1.put(f"living-chair-front-{i+1}", "Dining chair", "dining-chair", "living", x, 39.8, 0, [0.5, 0.9, 0.5], "#7a4a35")
+d1.put("living-sideboard", "Sideboard", "sideboard", "living", 33.5, 38, 270, [1.6, 0.8, 0.4], WOOD)
+# The balcony: a planter under the low end of the curl, chairs and a table in front of the glass.
+d1.put("curl-planter", "Planter", "planter", "balcony", 4.9, (DFRONT + INT + B) / 2, 0, [m(8.1), 0.55, m(B - DFRONT - INT) - 0.12], "#8f8c86")
+d1.put("balcony-chair-1", "Outdoor armchair", "armchair", "balcony", 19, 52, 90, [0.75, 0.75, 0.75], "#e8e2d6")
+d1.put("balcony-chair-2", "Outdoor armchair", "armchair", "balcony", 25, 52, 270, [0.75, 0.75, 0.75], "#e8e2d6")
+d1.put("balcony-table", "Coffee table", "coffee-table", "balcony", 22, 52, 0, [0.9, 0.4, 0.5], "#6e4529")
+d1.put("balcony-pot-1", "Potted plant", "floor-plant", "balcony", 33.4, 52, 0, [0.5, 0.9, 0.5], "#f2efe9")
+d1.put("balcony-pot-2", "Potted plant", "floor-plant", "balcony", 15.2, 52.8, 0, [0.45, 0.8, 0.45], "#f2efe9")
+d1.hang("art-bed2", "Painting", "painting-1", "bedroom2", "left", 5, 1.3, [1.2, 0.8, 0.04], "#2b2520")
+d1.hang("art-bed1", "Painting", "painting-3", "bedroom1", "right", 6, 1.3, [0.8, 0.8, 0.04], "#f2f0ea")
+d1.hang("art-landing", "Painting", "painting-2", "landing", "top", 12.5, 1.3, [0.9, 0.7, 0.04], "#d8c7a6")
+
+# ---- The roof: a wide stair room in the middle-left, its roof curving down
+# to the right, a front terrace with a glass railing and a planter along the front.
+DMX = 13.25        # right wall of the stair room
+DHUMP = 21.5       # the curved roof reaches the terrace here
+DH0 = LY0          # the curved roof runs from here to the front of the stair room
+d2 = Home("Curved-roof house D, roof", (3, 46), 0)
+d2.exterior, d2.finish, d2.facade = D_CONCRETE, "render", D_FACADE
+d2.room("mumty", "Stair room", [(L, MUM0), (F2X0, MUM0), (F2X0, F2Y1), (F2X1, F2Y1), (F2X1, MUM0), (DMX, MUM0), (DMX, MUM1), (L, MUM1)], floor=OAK)
+d2.room("stairwell", "Stairwell", (F2X0 + RAIL, MUM0, F2X1 - RAIL, F2Y1 - RAIL), kind="void")
+d2.room("terrace", "Rear terrace", [(L, T), (R, T), (R, ROW1), (SPLIT, ROW1), (SPLIT, DH0), (DMX + INT, DH0), (DMX + INT, MUM0 - INT), (L, MUM0 - INT)],
+        kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
+for p, q in (((L, T), (R, T)), ((R, T), (R, ROW1)), ((R, ROW1), (SPLIT, ROW1)), ((SPLIT, ROW1), (SPLIT, DH0)),
+             ((SPLIT, DH0), (DMX + INT, DH0)), ((L, MUM0 - INT), (L, T))):
+    d2.edge("terrace", p, q, color=D_BOUNDARY, height=1.0)
+d2.room("front-terrace", "Front terrace", [(L, MUM1 + INT), (DHUMP, MUM1 + INT), (DHUMP, DH0), (R, DH0), (R, B), (DLX, B), (DLX, DFRONT), (L, DFRONT)],
+        kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
+for p, q, height in (((L, MUM1 + INT), (DHUMP, MUM1 + INT), 0.5), ((DHUMP, MUM1 + INT), (DHUMP, DH0), 0.5), ((DHUMP, DH0), (R, DH0), 1.0),
+                     ((R, DH0), (R, B), 1.0), ((R, B), (DLX, B), 0.75), ((DLX, B), (DLX, DFRONT), 0.75)):
+    d2.edge("front-terrace", p, q, color=D_BOUNDARY, height=height)
+d2.edge("mumty", (DMX, MUM1), (L, MUM1), outside="render")
+d2.edge("mumty", (DMX, MUM0), (DMX, MUM1), outside="render")
+d2.edge("mumty", (L, MUM0), (F2X0, MUM0), outside="render")
+d2.door("stair-top", "mumty", (F2X1 - 0.05, F2Y1), (F2X0 + 0.05, F2Y1))
+d2.opening("door-front-terrace", "door", "mumty", (3.0, MUM1), (6.0, MUM1), height=2.3)
+d2.door("door-terrace", "mumty", (1.1, MUM0), (3.9, MUM0))
+d2.window("win-mumty", "mumty", (8.75, MUM1), (11.75, MUM1), 1.2, 0.9)
+d2.sweep("mumty-roof", [(DMX - 0.4, 3.3), (14.75, 3.22), (16.25, 2.85), (17.75, 2.05), (19.25, 1.15), (20.5, 0.72), (DHUMP + 0.3, 0.62)],
+         DH0, MUM1 + 0.75, 0.24, solid=True, color=D_SHELL)
+# The thick edge of the roof slab over the balcony.
+d2.sweep("roof-edge", [(DLX - 0.2, -0.3), (35.1, -0.3)], 53.6, 55.1, 0.3, solid=True, color=D_TRIM)
+d2.put("front-planter", "Planter", "planter", "front-terrace", (DLX + R) / 2, B - 1.0, 0, [m(R - DLX) - 0.2, 0.7, 0.55], "#8a867f")
+d2.put("hump-planter", "Planter", "planter", "front-terrace", (DMX + DHUMP) / 2 + 0.3, MUM1 + 1.6, 0, [m(DHUMP - DMX) - 0.3, 0.55, 0.6], "#8a867f")
+d2.put("front-chair-1", "Outdoor armchair", "armchair", "front-terrace", 3.5, 48, 0, [0.75, 0.75, 0.75], "#e8e2d6")
+d2.put("front-chair-2", "Outdoor armchair", "armchair", "front-terrace", 8, 48, 0, [0.75, 0.75, 0.75], "#e8e2d6")
+d2.put("front-table", "Side table", "side-table", "front-terrace", 5.75, 48, 0, [0.5, 0.45, 0.5], "#3a2a22")
+d2.put("front-pot", "Potted plant", "floor-plant", "front-terrace", 11.5, 49, 0, [0.45, 0.8, 0.45], "#f2efe9")
+d2.put("terrace-sofa", "Outdoor sofa", "sofa", "front-terrace", 27.75, 41.5, 0, [2.2, 0.75, 0.9], "#c9c2b4")
+d2.put("terrace-coffee", "Coffee table", "coffee-table", "front-terrace", 27.75, 44.4, 0, [1.1, 0.4, 0.6], "#3a2a22")
+for i, x in enumerate((8, 11)):
+    d2.put(f"terrace-lounger-{i+1}", "Sun lounger", "lounger", "terrace", x, 9, 0, [0.7, 0.4, 1.9], WHITE)
+d2.put("terrace-tank", "Water tank", "kitchen-tall", "terrace", 31.5, 4, 0, [1.2, 1.4, 1.2], "#3c3d3f")
+
 here = os.path.dirname(os.path.abspath(__file__))
 g.write(os.path.join(here, "..", "scenes", "villa-ground.json"))
 f.write(os.path.join(here, "..", "scenes", "villa-first.json"))
@@ -788,4 +970,7 @@ k.write(os.path.join(here, "..", "scenes", "villa-b-first.json"))
 gc.write(os.path.join(here, "..", "scenes", "villa-c-ground.json"))
 c1.write(os.path.join(here, "..", "scenes", "villa-c-first.json"))
 c2.write(os.path.join(here, "..", "scenes", "villa-c-roof.json"))
+d0.write(os.path.join(here, "..", "scenes", "villa-d-ground.json"))
+d1.write(os.path.join(here, "..", "scenes", "villa-d-first.json"))
+d2.write(os.path.join(here, "..", "scenes", "villa-d-roof.json"))
 print("wrote", len(g.rooms), "+", len(f.rooms), "and", len(h.rooms), "+", len(k.rooms), "rooms")

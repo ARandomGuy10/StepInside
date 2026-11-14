@@ -47,6 +47,8 @@ export interface WallSlab {
   kind: 'wall' | 'railing';
   /** True when nothing is behind this wall: its far side is the outside of the home. */
   outside: boolean;
+  /** True when only balconies or gardens are behind this wall: open air, but not the edge of the home. */
+  open: boolean;
   /** A guard rail or balcony edge with no colour of its own: drawn as glass. */
   glass: boolean;
   /** An outer wall of a garden or court, given its own colour: a boundary wall. */
@@ -222,6 +224,7 @@ export function buildWalls(scene: Scene): WallModel {
           edge: e.index,
           kind: e.railing ? 'railing' : 'wall',
           outside: facing.get(e)!.length === 0,
+          open: facing.get(e)!.length > 0 && facing.get(e)!.every((f) => isBalcony(f.room)),
           glass: e.railing && !e.room.walls?.find((w) => w.edge === e.index)?.color,
           boundary: e.railing && isBalcony(e.room) && !!e.room.walls?.find((w) => w.edge === e.index)?.color,
           a: e.a,

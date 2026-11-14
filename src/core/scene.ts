@@ -42,6 +42,12 @@ export interface Defaults {
   woodColor?: string;
   /** `render` draws the plot's boundary walls as smooth concrete instead of stone. */
   boundaryMaterial?: 'stone' | 'render';
+  /** Colour of window frames. White when not given. */
+  frameColor?: string;
+  /** Colour of the front door. */
+  doorColor?: string;
+  /** Colour of the handrails on glass railings. Brushed steel when not given. */
+  railColor?: string;
   floorColor: string;
   ceilingColor: string;
 }
@@ -340,7 +346,7 @@ export function parseScene(input: unknown): Scene {
   }
 
   const defaults = c.object(root.defaults, 'scene.defaults', [
-    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial', 'roofRise', 'trimColor', 'stoneColor', 'woodColor', 'boundaryMaterial',
+    'ceilingHeight', 'exteriorWallThickness', 'railingHeight', 'wallColor', 'floorColor', 'ceilingColor', 'exteriorColor', 'exteriorMaterial', 'roofRise', 'trimColor', 'stoneColor', 'woodColor', 'boundaryMaterial', 'frameColor', 'doorColor', 'railColor',
   ]);
   if (defaults) {
     c.positive(defaults.ceilingHeight, 'scene.defaults.ceilingHeight');
@@ -354,6 +360,9 @@ export function parseScene(input: unknown): Scene {
     if (defaults.stoneColor !== undefined) c.color(defaults.stoneColor, 'scene.defaults.stoneColor');
     if (defaults.exteriorColor !== undefined) c.color(defaults.exteriorColor, 'scene.defaults.exteriorColor');
     if (defaults.woodColor !== undefined) c.color(defaults.woodColor, 'scene.defaults.woodColor');
+    for (const key of ['frameColor', 'doorColor', 'railColor'] as const) {
+      if (defaults[key] !== undefined) c.color(defaults[key], `scene.defaults.${key}`);
+    }
     if (defaults.exteriorMaterial !== undefined && !['stone', 'render', 'wood'].includes(defaults.exteriorMaterial as string)) {
       c.fail('scene.defaults.exteriorMaterial', 'must be "stone", "render" or "wood"');
     }
