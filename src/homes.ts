@@ -178,7 +178,7 @@ export const HOMES: readonly HomeEntry[] = [
         elevation: 6.1,
         roofTerrace: true,
         keepOut: [
-          [15.5 * FT, 16.25 * FT, 25.5 * FT, 33.75 * FT],
+          [15.5 * FT, 16.25 * FT, 27.0 * FT, 33.75 * FT],
           [18.75 * FT, 34.75 * FT, 34.25 * FT, 38.75 * FT],
         ],
       },

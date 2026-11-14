@@ -1246,7 +1246,7 @@ e1.hang("art-bed2", "Painting", "painting-1", "bedroom2", "left", 7, 1.3, [1.2, 
 # 25 ft. The glass railing stops at about 18 ft, where a planter starts on
 # the slab in front of the curve's foot and runs to the right-hand edge.
 EMX0, EMX1, EMY0, EMY1 = 7.25, 15.0, MID0, 31.25   # the stair room
-EHUMP = 25.0       # its curved roof comes down to the terrace here
+EHUMP = 26.5       # its curved roof comes down to the terrace here
 ERAIL = 18.25      # the glass railing ends here; the planter starts beyond
 ETF = 37.25        # the roof terrace's front edge: straight across, just over the top of the curl
 EVOID = EMY1 - 0.5 # the stairwell stops short of the stair room's front wall
@@ -1272,9 +1272,9 @@ e2.window("win-mumty", "mumty", (EMX0, 20), (EMX0, 23), 1.2, 0.9)
 # The roof: a flat slab overhanging the room on the left, carrying on level
 # past the room on the right, then one smooth, steep S down to the terrace.
 # Both pieces share the same front edge, with the raised rib along it.
-EROOF = 3.38
+EROOF = 3.48
 e2.sweep("mumty-slab", [(EMX0 - 3.0, EROOF), (EMX1 + 0.3, EROOF)], EMY0 - 2.5, EMY1 + 2.5, 0.3, color=D_TRIM)
-e2.sweep("mumty-roof", [(EMX1, EROOF)] + s_curve(18.5, EROOF, EHUMP, 0.5, 20), EMY0 - 0.5, EMY1 + 2.5, 0.3, solid=True, color=D_TRIM)
+e2.sweep("mumty-roof", [(EMX1, EROOF)] + s_curve(15.5, EROOF, EHUMP, 0.5, 24), EMY0 - 0.5, EMY1 + 2.5, 0.3, solid=True, color=D_TRIM)
 # The planter on the slab, from where the railing ends to the right-hand edge.
 EPL = ETF + 1.5    # front of the planter on the slab
 e2.room("slab-planter", "Planter on the slab", (ERAIL + INT, EB3F + INT, R, EPL), kind="balcony", floor={"material": "tile", "color": "#5a4636"},
