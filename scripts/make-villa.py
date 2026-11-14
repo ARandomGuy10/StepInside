@@ -1257,30 +1257,43 @@ e2.exterior, e2.finish, e2.facade = D_CONCRETE, "render", D_FACADE
 e2.room("mumty", "Stair room", [(EMX0, EMY0), (EMX1, EMY0), (EMX1, E2Y0), (E2X0, E2Y0), (E2X0, EVOID), (EMX1, EVOID), (EMX1, EMY1),
                                 (11.25, EMY1), (EMX0, EMY1)], floor=OAK)
 e2.room("stairwell", "Stairwell", (E2X0 + RAIL, E2Y0 + RAIL, EMX1, EVOID - RAIL), kind="void")
-e2.room("terrace", "Roof terrace", [(L, T), (13.25, T), (13.25, ROW1), (EMX0 - INT, ROW1), (EMX0 - INT, EMY1 + INT), (EMX1 + INT, EMY1 + INT),
-                                    (EMX1 + INT, MID0), (R, MID0), (R, EB3F), (ERAIL, EB3F), (ERAIL, ETF), (L, ETF), (L, 26.25)],
+# A theater under the curved roof, beside the stair room: full height on
+# its left, the shell coming down to a low wall on its right. Its back and
+# front are closed by the shell's end walls.
+THX0, THX1, THF = EMX1 + INT, 23.0, 33.25
+e2.room("theater", "Theater", (THX0, EMY0, THX1, THF), floor={"material": "laminate", "color": "#5b4a3e"}, lamp=False,
+        walls=[{"edge": 0, "height": 0.05}, {"edge": 1, "height": 0.9, "color": "#2f3133"}, {"edge": 2, "height": 0.05}, {"edge": 3, "height": 3.0, "color": "#2f3133"}])
+e2.lights.append({"id": "lamp-theater", "position": [m(18.5), m(26.0)], "height": 1.9, "color": "#ffd9a8", "intensity": 3, "style": "spot"})
+e2.room("terrace", "Roof terrace", [(L, T), (13.25, T), (13.25, ROW1), (EMX0 - INT, ROW1), (EMX0 - INT, EMY1 + INT), (EMX1, EMY1 + INT),
+                                    (EMX1, THF + INT), (THX1 + INT, THF + INT), (THX1 + INT, MID0), (R, MID0), (R, ETF), (ERAIL, ETF), (L, ETF), (L, 26.25)],
         kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
 PARAPET = dict(color=D_BOUNDARY, height=1.0)
-for p, q in (((L, T), (13.25, T)), ((13.25, T), (13.25, ROW1)), ((EMX1 + INT, MID0), (R, MID0)), ((L, 26.25), (L, T))):
+for p, q in (((L, T), (13.25, T)), ((13.25, T), (13.25, ROW1)), ((THX1 + INT, MID0), (R, MID0)), ((L, 26.25), (L, T))):
     e2.edge("terrace", p, q, **PARAPET)
-e2.edge("terrace", (R, EB3F), (ERAIL, EB3F), color=D_BOUNDARY, height=0.3)
+e2.edge("terrace", (R, ETF), (ERAIL, ETF), color=D_BOUNDARY, height=0.3)
 e2.edge("mumty", (11.25, EMY1), (EMX0, EMY1), outside="render")
 e2.edge("mumty", (EMX1, EMY1), (11.25, EMY1), outside="wood")
 e2.door("stair-top", "mumty", (E2X1 - 0.05, E2Y0), (E2X0 + 0.05, E2Y0))
+e2.door("door-theater", "mumty", (EMX1, 17.0), (EMX1, 19.75))
 e2.opening("door-terrace", "door", "mumty", (10.5, EMY1), (8.0, EMY1), height=2.3)
 e2.window("win-mumty", "mumty", (EMX0, 20), (EMX0, 23), 1.2, 0.9)
 # The roof: a flat slab overhanging the room on the left, carrying on level
-# past the room on the right, then one smooth, steep S down to the terrace.
-# Both pieces share the same front edge, with the raised rib along it.
+# past the room on the right, then one smooth S down to the terrace. The
+# curved part is a shell over the theater, closed at both ends.
 EROOF = 3.48
-e2.sweep("mumty-slab", [(EMX0 - 3.0, EROOF), (EMX1 + 0.3, EROOF)], EMY0 - 2.5, EMY1 + 2.5, 0.3, color=D_TRIM)
-e2.sweep("mumty-roof", [(EMX1, EROOF)] + s_curve(15.5, EROOF, EHUMP, 0.5, 24), EMY0 - 0.5, EMY1 + 2.5, 0.3, solid=True, color=D_TRIM)
-# The planter on the slab, from where the railing ends to the right-hand edge.
-EPL = ETF + 1.5    # front of the planter on the slab
-e2.room("slab-planter", "Planter on the slab", (ERAIL + INT, EB3F + INT, R, EPL), kind="balcony", floor={"material": "tile", "color": "#5a4636"},
+e2.sweep("mumty-slab", [(EMX0 - 3.0, EROOF), (EMX1 + 0.3, EROOF)], EMY0 - 2.5, THF + EXT, 0.3, color=D_TRIM)
+e2.sweep("mumty-roof", [(EMX1, EROOF)] + s_curve(15.5, EROOF, EHUMP, 0.5, 24), EMY0 - EXT, THF + EXT, 0.3, ends=True, color=D_TRIM)
+# The planter sits further out on the slab, leaving a walk in front of the theater.
+EPL0, EPL = ETF + INT, ETF + 4.5
+e2.room("slab-planter", "Planter on the slab", (ERAIL + INT, EPL0, R, EPL), kind="balcony", floor={"material": "tile", "color": "#5a4636"},
         walls=[{"edge": e, "color": D_BOUNDARY, "height": 0.15} for e in range(4)])
-e2.put("slab-planting", "Planter", "planter", "slab-planter", (ERAIL + INT + R) / 2, (EB3F + INT + EPL) / 2, 0,
-       [m(R - ERAIL - INT) - 0.1, 0.6, m(EPL - EB3F - INT) - 0.1], "#8a867f")
+e2.put("slab-planting", "Planter", "planter", "slab-planter", (ERAIL + INT + R) / 2, (EPL0 + EPL) / 2, 0,
+       [m(R - ERAIL - INT) - 0.1, 0.6, m(EPL - EPL0) - 0.1], "#8a867f")
+# The theater: a screen on the back wall and two rows of sofas.
+e2.put("theater-screen", "TV unit", "tv-unit", "theater", 19.0, EMY0 + 0.75, 180, [1.8, 0.55, 0.42], "#2b2520")
+e2.put("theater-rug", "Rug", "rug", "theater", 19.0, 26.0, 0, [1.8, 0.02, 3.0], "#6e5a4a")
+for i, y in enumerate((24.0, 28.5)):
+    e2.put(f"theater-sofa-{i+1}", "Sofa", "sofa", "theater", 19.0, y, 0, [1.9, 0.8, 0.95], "#4a4f5a")
 e2.put("front-chair-1", "Outdoor armchair", "armchair", "terrace", 3.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
 e2.put("front-chair-2", "Outdoor armchair", "armchair", "terrace", 6.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
 e2.put("front-pot", "Potted plant", "floor-plant", "terrace", 1.6, 28.0, 0, [0.45, 0.8, 0.45], "#f2efe9")

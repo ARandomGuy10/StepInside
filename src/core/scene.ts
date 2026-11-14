@@ -155,6 +155,8 @@ export interface Sweep {
    * x = `from` and `to`, from the floor up to the curve's underside.
    */
   curtain?: { y: number; from: number; to: number };
+  /** True closes both ends of a hollow shell with a wall under the curve, so it can roof a room. */
+  ends?: boolean;
 }
 
 /** A lamp: a point of light, drawn with a simple fitting. */
@@ -480,7 +482,7 @@ export function parseScene(input: unknown): Scene {
   if (root.sweeps !== undefined) {
     (c.array(root.sweeps, 'scene.sweeps') ?? []).forEach((value, i) => {
       const path = `scene.sweeps[${i}]`;
-      const sweep = c.object(value, path, ['id', 'profile', 'from', 'to', 'thickness', 'solid', 'color', 'glazing', 'curtain']);
+      const sweep = c.object(value, path, ['id', 'profile', 'from', 'to', 'thickness', 'solid', 'color', 'glazing', 'curtain', 'ends']);
       if (!sweep) return;
       c.uniqueId(sweep.id, `${path}.id`, ids);
       const profile = c.array(sweep.profile, `${path}.profile`) ?? [];
@@ -491,6 +493,7 @@ export function parseScene(input: unknown): Scene {
       if (typeof sweep.from === 'number' && typeof sweep.to === 'number' && sweep.to <= sweep.from) c.fail(`${path}.to`, 'must be more than from');
       c.positive(sweep.thickness, `${path}.thickness`);
       if (sweep.solid !== undefined && typeof sweep.solid !== 'boolean') c.fail(`${path}.solid`, 'must be true or false');
+      if (sweep.ends !== undefined && typeof sweep.ends !== 'boolean') c.fail(`${path}.ends`, 'must be true or false');
       if (sweep.color !== undefined) c.color(sweep.color, `${path}.color`);
       if (sweep.curtain !== undefined) {
         const curtain = c.object(sweep.curtain, `${path}.curtain`, ['y', 'from', 'to']);

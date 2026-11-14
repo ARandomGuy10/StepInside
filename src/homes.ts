@@ -171,15 +171,17 @@ export const HOMES: readonly HomeEntry[] = [
           [0.75 * FT, 42.75 * FT, 4.75 * FT, 48.25 * FT],
         ],
       },
-      // The curved roof and the planter at its foot are not walked on.
+      // The low end of the curved roof and the planter on the slab are not walked on.
       {
         name: 'Roof',
         json: villaERoof,
         elevation: 6.1,
         roofTerrace: true,
+        // The theater has no flat ceiling: the curved shell is its roof.
+        openCeilings: ['theater'],
         keepOut: [
-          [15.5 * FT, 16.25 * FT, 27.0 * FT, 33.75 * FT],
-          [18.75 * FT, 34.75 * FT, 34.25 * FT, 38.75 * FT],
+          [23.5 * FT, 16.25 * FT, 27.0 * FT, 34.0 * FT],
+          [18.75 * FT, 37.75 * FT, 34.25 * FT, 41.75 * FT],
         ],
       },
     ],

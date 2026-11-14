@@ -493,6 +493,16 @@ function buildSweep(sweep: Sweep): THREE.Group {
   );
   body.position.z = sweep.from;
   group.add(body);
+  if (sweep.ends && !sweep.solid) {
+    // End walls: the space under the shell, closed at both ends.
+    const cap = new THREE.ShapeGeometry(outline(offset(top, -sweep.thickness), null));
+    for (const z of [sweep.from, sweep.to]) {
+      const wall = new THREE.Mesh(cap, matte(sweep.color ?? '#b9b6b0', 0.92));
+      (wall.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+      wall.position.z = z;
+      group.add(wall);
+    }
+  }
   // The ridge: a thicker band along each end, standing proud of the top
   // and of the end face, so the edge of the curve reads as a raised rib.
   const lip = outline(offset(top, 0.08), offset(top, -sweep.thickness - 0.05));
