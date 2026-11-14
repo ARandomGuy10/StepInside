@@ -1240,32 +1240,47 @@ e1.put("balcony-pot-1", "Potted plant", "floor-plant", "balcony", 33.4, 46.5, 0,
 e1.hang("art-bed2", "Painting", "painting-1", "bedroom2", "left", 7, 1.3, [1.2, 0.8, 0.04], "#2b2520")
 
 # ---- The roof: the stair room, its curved roof, the terrace and the slab.
-EMX0, EMX1, EMY0, EMY1 = 8.75, 21.75, MID0, 31.25   # the stair room
-EHUMP = 31.5       # its curved roof comes down to the terrace here
+# Measured off the model's front view (35 ft = the house's width): the
+# stair room runs from 7 to 15 ft, its flat roof overhangs 3 ft on the left,
+# stays level to about 18 ft, then one steep S comes down to the terrace by
+# 25 ft. The glass railing stops at about 18 ft, where a planter starts on
+# the slab in front of the curve's foot and runs to the right-hand edge.
+EMX0, EMX1, EMY0, EMY1 = 7.25, 15.0, MID0, 31.25   # the stair room
+EHUMP = 25.0       # its curved roof comes down to the terrace here
+ERAIL = 18.25      # the glass railing ends here; the planter starts beyond
 ETF = 37.25        # the roof terrace's front edge: straight across, just over the top of the curl
+EVOID = EMY1 - 0.5 # the stairwell stops short of the stair room's front wall
 e2 = Home("Design E, roof", (5, 32), 0)
 e2.exterior, e2.finish, e2.facade = D_CONCRETE, "render", D_FACADE
-e2.room("mumty", "Stair room", [(EMX0, EMY0), (EMX1, EMY0), (EMX1, EMY1), (E2X1, EMY1), (E2X1, E2Y0), (E2X0, E2Y0), (E2X0, EMY1), (EMX0, EMY1)], floor=OAK)
-e2.room("stairwell", "Stairwell", (E2X0 + RAIL, E2Y0 + RAIL, E2X1 - RAIL, EMY1), kind="void")
+# The stairwell opens off the room's right side, under the curved roof, so
+# the front wall runs unbroken: a door on the left, a teak panel on the right.
+e2.room("mumty", "Stair room", [(EMX0, EMY0), (EMX1, EMY0), (EMX1, E2Y0), (E2X0, E2Y0), (E2X0, EVOID), (EMX1, EVOID), (EMX1, EMY1),
+                                (11.25, EMY1), (EMX0, EMY1)], floor=OAK)
+e2.room("stairwell", "Stairwell", (E2X0 + RAIL, E2Y0 + RAIL, EMX1, EVOID - RAIL), kind="void")
 e2.room("terrace", "Roof terrace", [(L, T), (13.25, T), (13.25, ROW1), (EMX0 - INT, ROW1), (EMX0 - INT, EMY1 + INT), (EMX1 + INT, EMY1 + INT),
-                                    (EMX1 + INT, MID0), (R, MID0), (R, ETF), (L, ETF), (L, 26.25)],
+                                    (EMX1 + INT, MID0), (R, MID0), (R, EB3F), (ERAIL, EB3F), (ERAIL, ETF), (L, ETF), (L, 26.25)],
         kind="balcony", floor={"material": "tile", "color": "#bdb7ad"})
 PARAPET = dict(color=D_BOUNDARY, height=1.0)
 for p, q in (((L, T), (13.25, T)), ((13.25, T), (13.25, ROW1)), ((EMX1 + INT, MID0), (R, MID0)), ((L, 26.25), (L, T))):
     e2.edge("terrace", p, q, **PARAPET)
-e2.edge("mumty", (E2X0, EMY1), (EMX0, EMY1), outside="render")
-e2.edge("mumty", (EMX1, EMY1), (E2X1, EMY1), outside="wood")
+e2.edge("terrace", (R, EB3F), (ERAIL, EB3F), color=D_BOUNDARY, height=0.3)
+e2.edge("mumty", (11.25, EMY1), (EMX0, EMY1), outside="render")
+e2.edge("mumty", (EMX1, EMY1), (11.25, EMY1), outside="wood")
 e2.door("stair-top", "mumty", (E2X1 - 0.05, E2Y0), (E2X0 + 0.05, E2Y0))
-e2.opening("door-terrace", "door", "mumty", (11.5, EMY1), (9.25, EMY1), height=2.3)
+e2.opening("door-terrace", "door", "mumty", (10.5, EMY1), (8.0, EMY1), height=2.3)
 e2.window("win-mumty", "mumty", (EMX0, 20), (EMX0, 23), 1.2, 0.9)
-# Its roof: as wide as in the model, curving down to the right over the full
-# depth of the room, to a planter at its foot.
-# It carries on level from the stair room's flat roof, over the roof's
-# overhang, before it turns down: one smooth S to the terrace.
-e2.sweep("mumty-roof", [(EMX1 - 0.3, 3.3)] + s_curve(24.25, 3.3, EHUMP, 0.55, 20), EMY0 - 0.5, EMY1 + 1.0, 0.3, solid=True, color=D_TRIM)
-# The roof slab over the lounge carries on over the balcony and past the
-# right-hand wall, with a rounded-looking thick edge.
-e2.put("hump-planter", "Planter", "planter", "terrace", (EMX1 + INT + R) / 2 + 0.25, EB3F - 0.95, 0, [m(R - EMX1 - INT) - 0.3, 0.6, 0.5], "#8a867f")
+# The roof: a flat slab overhanging the room on the left, carrying on level
+# past the room on the right, then one smooth, steep S down to the terrace.
+# Both pieces share the same front edge, with the raised rib along it.
+EROOF = 3.38
+e2.sweep("mumty-slab", [(EMX0 - 3.0, EROOF), (EMX1 + 0.3, EROOF)], EMY0 - 2.5, EMY1 + 2.5, 0.3, color=D_TRIM)
+e2.sweep("mumty-roof", [(EMX1, EROOF)] + s_curve(18.5, EROOF, EHUMP, 0.5, 20), EMY0 - 0.5, EMY1 + 2.5, 0.3, solid=True, color=D_TRIM)
+# The planter on the slab, from where the railing ends to the right-hand edge.
+EPL = ETF + 1.5    # front of the planter on the slab
+e2.room("slab-planter", "Planter on the slab", (ERAIL + INT, EB3F + INT, R, EPL), kind="balcony", floor={"material": "tile", "color": "#5a4636"},
+        walls=[{"edge": e, "color": D_BOUNDARY, "height": 0.15} for e in range(4)])
+e2.put("slab-planting", "Planter", "planter", "slab-planter", (ERAIL + INT + R) / 2, (EB3F + INT + EPL) / 2, 0,
+       [m(R - ERAIL - INT) - 0.1, 0.6, m(EPL - EB3F - INT) - 0.1], "#8a867f")
 e2.put("front-chair-1", "Outdoor armchair", "armchair", "terrace", 3.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
 e2.put("front-chair-2", "Outdoor armchair", "armchair", "terrace", 6.0, 33.0, 180, [0.75, 0.75, 0.75], "#e8e2d6")
 e2.put("front-pot", "Potted plant", "floor-plant", "terrace", 1.6, 28.0, 0, [0.45, 0.8, 0.45], "#f2efe9")
