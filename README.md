@@ -80,9 +80,12 @@ the choice (`?home=villa`), so a home can be bookmarked.
 
 A home opens on a view of the whole building from outside. Drag to turn
 it, right-drag or Shift-drag to move it around (two fingers on a phone),
-scroll to zoom, and use **Hide roof** to look inside. The bar at the
-bottom switches between **Whole house**, a **plan** of each floor and
-**Walk through**. Add `&view=walk` to the address to open straight in the
+scroll to zoom, and use the roof button to look inside. The list at the
+top of the side panel switches between **Whole house**, a **plan** of each
+floor and **Walk through**. The tools (turn, zoom, roof, labels, tour,
+saved views, share, areas, PDF) are icons on a rail at the right edge, so
+nothing lies over the model; hover one for its name and key. On a phone
+both are bars at the bottom. Add `&view=walk` to the address to open straight in the
 walk.
 
 Homes with a `place` in `src/homes.ts` get a **Sun** panel at the top
@@ -112,7 +115,7 @@ and have room to stand at every bed, wardrobe, toilet, basin and shower.
 **Compare designs side by side** (under the design picker, or
 `?compare=villa-d,villa-e`) shows two designs next to each other. Turning,
 zooming, switching to a plan or walking on one side shows the same view of
-the other; untick **Same view on both sides** to look around them separately.
+the other; untick **Move both sides together** to look around them separately. In a walk the two designs have different walls, so the other side goes to the room of the same name and looks the same way.
 
 Outdoor lights (wall lights, bollards, uplights, soffit downlights, LED strips)
 glow faintly by day and come up as the sun panel goes past sunset.
@@ -146,6 +149,26 @@ To add a home, put its scene file in `scenes/` and list it in
 `src/homes.ts`.
 
 ## Controls
+
+Every feature has a key. Press **?** in the viewer for the list.
+
+| Key | What it does |
+| --- | --- |
+| H | Whole house |
+| 1, 2, 3 | Plan of that floor |
+| Enter | Walk through (T switches between plan and walk) |
+| Q, E | Turn the view left, right |
+| + and - | Zoom |
+| 0 | Reset view |
+| X | Flat 2D or 3D plan |
+| O | Roof on or off |
+| N, M | Room names, sizes |
+| F, P, L | Furniture, Paint, Style tab |
+| G | Tour |
+| C | Copy a link to this view |
+| V | Saved views |
+| I | Areas |
+| Shift+P | PDF |
 
 Walking:
 

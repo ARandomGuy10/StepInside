@@ -31,7 +31,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import '@fontsource-variable/archivo/wdth.css';
 import { DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePanel';
-import { hydrateIcons, setLabel } from './ui/icons';
+import { hydrateIcons, setLabel, setTool } from './ui/icons';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 hydrateIcons();
@@ -473,59 +473,89 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     button.addEventListener('click', run);
     return button;
   };
-  const wholeButton = viewButton(scenes[0].site ? 'Whole house' : 'Whole home', 'See it from outside: drag to turn, right-drag to move, scroll to zoom', setOrbit);
+  /** A view in the list: its name, and the key that goes to it. */
+  const withKey = (button: HTMLButtonElement, key: string): HTMLButtonElement => {
+    const kbd = document.createElement('kbd');
+    kbd.textContent = key;
+    button.append(kbd);
+    return button;
+  };
+  /** A tool on the rail: an icon, with its name and key shown beside it on hover. */
+  const tool = (name: string, label: string, key: string, run: () => void, glyph = ''): HTMLButtonElement => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.key = key;
+    setTool(button, name, label, glyph);
+    button.addEventListener('click', run);
+    return button;
+  };
+  const wholeButton = withKey(viewButton(scenes[0].site ? 'Whole house' : 'Whole home', 'See it from outside: drag to turn, right-drag to move, scroll to zoom', setOrbit), 'H');
   const planButtons = levels.map((l, i) =>
-    viewButton(levels.length > 1 ? `${l.name} plan` : 'Floor plan', 'This floor as a 3D plan with its sizes', () => {
-      if (i !== level) goTo(i);
-      setTopView(true);
-    }),
+    withKey(
+      viewButton(levels.length > 1 ? `${l.name} plan` : 'Floor plan', 'This floor as a 3D plan with its sizes', () => {
+        if (i !== level) goTo(i);
+        setTopView(true);
+      }),
+      String(i + 1),
+    ),
   );
-  const walkButton = viewButton('Walk through', 'Walk it in first person', () => setTopView(false), 'walk');
+  const walkButton = withKey(viewButton('Walk through', 'Walk it in first person', () => setTopView(false), 'walk'), 'Enter');
   walkButton.classList.add('primary');
-  const tourButton = viewButton('Tour', 'A walk through every room, hands free', () => (tour ? stopTour() : startTour()), 'play');
-  const shareButton = viewButton('Share', 'Copy a link that opens exactly this view', () => void shareView(), 'share');
-  const savedButton = viewButton('Saved views', 'Keep this view, or go back to one you kept', () => toggleSaved(), 'bookmark');
-  const areasButton = viewButton('Areas', 'Carpet and built-up area of each floor, plot coverage', () => toggleAreas(), 'ruler');
+  const tourButton = tool('play', 'Tour', 'G', () => (tour ? stopTour() : startTour()));
+  const savedButton = tool('bookmark', 'Saved views', 'V', () => toggleSaved());
+  const shareButton = tool('share', 'Share a link', 'C', () => void shareView());
+  const areasButton = tool('areas', 'Areas', 'I', () => toggleAreas());
   let capturing = false;
-  const pdfButton = viewButton('PDF', 'Print or save the floor plans, with sizes and areas, as a PDF', () => exportPdf(), 'file');
+  const pdfButton = tool('file', 'PDF', 'Shift P', () => exportPdf());
+  const keysButton = tool('keys', 'Shortcuts', '?', () => toggleKeys());
   tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
-  document.getElementById('view-extras')!.replaceChildren(tourButton, savedButton, shareButton, areasButton, pdfButton);
+  document.getElementById('view-extras')!.replaceChildren(tourButton, savedButton, shareButton, areasButton, pdfButton, keysButton);
   const tools = document.getElementById('orbit-tools')!;
-  const roofButton = viewButton('', 'Take the roof off to look inside', () => {
+  const roofButton = tool('roof', 'Hide roof', 'O', () => {
     roofHidden = !roofHidden;
     showLevels();
     updateHint();
   });
-  const dimensionsButton = viewButton('', 'Show or hide the room names and sizes', () => {
+  const dimensionsButton = tool('labels', 'Hide labels', 'N', () => {
     dimensions = !dimensions;
     updateHint();
   });
-  const sizesButton = viewButton('', 'Show or hide the room sizes, keeping the names', () => {
+  const sizesButton = tool('ruler', 'Hide sizes', 'M', () => {
+    if (!dimensions) return;
     sizes = !sizes;
     updateHint();
   });
   roofButton.id = 'btn-roof';
   dimensionsButton.id = 'btn-dimensions';
   sizesButton.id = 'btn-sizes';
-  const flatButton = viewButton('', 'Switch the plan between a flat 2D drawing and 3D', () => {
+  const flatButton = tool('', 'Flat 2D drawing', 'X', () => {
     plan.setFlat(!plan.flat);
     updateHint();
-  });
+  }, '2D');
   flatButton.id = 'btn-flat';
   /** The camera that drags, the wheel and these buttons act on. */
   const turnable = (): OrbitView => (inOrbit ? orbit : plan);
-  tools.replaceChildren(
-    flatButton,
-    viewButton('', 'Turn left', () => turnable().turn(-Math.PI / 4), 'turn-left'),
-    viewButton('', 'Turn right', () => turnable().turn(Math.PI / 4), 'turn-right'),
-    viewButton('', 'Zoom in', () => turnable().zoom(0.8), 'plus'),
-    viewButton('', 'Zoom out', () => turnable().zoom(1.25), 'minus'),
-    viewButton('Reset view', 'Back to the first view', () => turnable().reset()),
-    roofButton,
-    dimensionsButton,
-    sizesButton,
-  );
+  const turnLeft = tool('turn-left', 'Turn left', 'Q', () => turnable().turn(-Math.PI / 4));
+  const turnRight = tool('turn-right', 'Turn right', 'E', () => turnable().turn(Math.PI / 4));
+  const zoomIn = tool('plus', 'Zoom in', '+', () => turnable().zoom(0.8));
+  const zoomOut = tool('minus', 'Zoom out', '-', () => turnable().zoom(1.25));
+  const resetButton = tool('fit', 'Reset view', '0', () => turnable().reset());
+  for (const b of [flatButton, turnLeft, turnRight, zoomIn, zoomOut]) b.classList.add('bare');
+  tools.replaceChildren(flatButton, turnLeft, turnRight, zoomIn, zoomOut, resetButton, roofButton, dimensionsButton, sizesButton);
+
+  // On a wide screen the list of views lives in the panel at the side and the tools on a
+  // slim rail at the right, so nothing lies over the model. On a phone, and on each side
+  // of the compare page (which has no panel), the views stay in a bar at the bottom.
+  const wideScreen = window.matchMedia('(min-width: 701px)');
+  const placeViews = (): void => {
+    const aside = !EMBED && wideScreen.matches;
+    if (aside) document.getElementById('home-box')!.after(viewBar);
+    else document.getElementById('view-bar')!.append(viewBar);
+    document.body.classList.toggle('views-aside', aside);
+  };
+  placeViews();
+  wideScreen.addEventListener('change', placeViews);
 
   // Room names and sizes are HTML labels laid over the 3D view, one per
   // room of the floor on show, plus one for the selected piece.
@@ -678,7 +708,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   function updateHint(): void {
     const painting = mode === 'paint';
-    setLabel(tourButton, tour ? 'stop' : 'play', tour ? 'Stop tour' : 'Tour');
+    setTool(tourButton, tour ? 'stop' : 'play', tour ? 'Stop tour' : 'Tour');
     tourButton.classList.toggle('active', !!tour);
     if (tour) {
       wholeButton.classList.remove('active');
@@ -691,11 +721,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     wholeButton.classList.toggle('active', inOrbit);
     planButtons.forEach((b, i) => b.classList.toggle('active', inTopView && i === level));
     walkButton.classList.toggle('active', !inOrbit && !inTopView);
-    roofButton.textContent = roofHidden ? 'Show roof' : 'Hide roof';
-    dimensionsButton.textContent = dimensions ? 'Hide labels' : 'Show labels';
+    setTool(roofButton, 'roof', roofHidden ? 'Show roof' : 'Hide roof');
+    roofButton.classList.toggle('active', !roofHidden);
+    setTool(dimensionsButton, 'labels', dimensions ? 'Hide labels' : 'Show labels');
     dimensionsButton.classList.toggle('active', dimensions);
-    sizesButton.textContent = sizes ? 'Hide sizes' : 'Show sizes';
-    flatButton.textContent = plan.flat ? '3D' : '2D';
+    setTool(sizesButton, 'ruler', sizes ? 'Hide sizes' : 'Show sizes');
+    setTool(flatButton, '', plan.flat ? 'Back to the 3D plan' : 'Flat 2D drawing', plan.flat ? '3D' : '2D');
     flatButton.classList.toggle('active', plan.flat);
     sizesButton.classList.toggle('active', sizes && dimensions);
     sizesButton.disabled = !dimensions;
@@ -968,12 +999,112 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
   });
 
+  // ---- A key for every feature. The list here is also what the shortcuts card shows. ----
+
+  const SHORTCUTS: [string, [string, string][]][] = [
+    ['Views', [
+      ['H', scenes[0].site ? 'Whole house' : 'Whole home'],
+      [levels.length > 1 ? `1 to ${levels.length}` : '1', levels.length > 1 ? 'Plan of a floor' : 'Floor plan'],
+      ['Enter', 'Walk through'],
+      ['T', 'Switch between plan and walk'],
+      ['Page Up / Down', 'Floor above or below'],
+      ['G', 'Tour'],
+    ]],
+    ['Looking around', [
+      ['Q  E', 'Turn left or right'],
+      ['+  -', 'Zoom in or out'],
+      ['0', 'Reset view'],
+      ['X', 'Flat 2D or 3D plan'],
+      ['O', 'Roof on or off'],
+      ['N  M', 'Room names, sizes'],
+      ['W A S D', 'Walk (Shift: faster)'],
+    ]],
+    ['Changing things', [
+      ['F  P  L', 'Furniture, Paint, Style'],
+      ['R', 'Turn the selected piece'],
+      ['Delete', 'Take the piece out'],
+      ['Ctrl/Cmd Z', 'Undo (with Shift: redo)'],
+      ['Ctrl/Cmd S', 'Save the layout'],
+    ]],
+    ['Sharing', [
+      ['C', 'Copy a link to this view'],
+      ['V', 'Saved views'],
+      ['I', 'Areas'],
+      ['Shift P', 'Plans as a PDF'],
+      ['?', 'This list'],
+    ]],
+  ];
+  const keysPanel = document.createElement('section');
+  keysPanel.id = 'keys';
+  keysPanel.hidden = true;
+  {
+    const head = document.createElement('header');
+    const title = document.createElement('strong');
+    title.textContent = 'Keyboard shortcuts';
+    head.append(title, viewButton('', 'Close', () => toggleKeys(), 'close'));
+    const groups = document.createElement('div');
+    groups.className = 'groups';
+    for (const [name, rows] of SHORTCUTS) {
+      const group = document.createElement('div');
+      const h = document.createElement('h3');
+      h.textContent = name;
+      const list = document.createElement('dl');
+      for (const [key, what] of rows) {
+        const dt = document.createElement('dt');
+        for (const part of key.split('  ')) {
+          const kbd = document.createElement('kbd');
+          kbd.textContent = part;
+          dt.append(kbd);
+        }
+        const dd = document.createElement('dd');
+        dd.textContent = what;
+        list.append(dt, dd);
+      }
+      group.append(h, list);
+      groups.append(group);
+    }
+    keysPanel.append(head, groups);
+  }
+  document.body.append(keysPanel);
+  function toggleKeys(): void {
+    keysPanel.hidden = !keysPanel.hidden;
+    keysButton.classList.toggle('active', !keysPanel.hidden);
+  }
+
+  /** Runs the feature a plain key stands for. True if the key was one of them. */
+  function quickKey(e: KeyboardEvent): boolean {
+    const looking = inOrbit || inTopView;
+    const onButton = e.target instanceof HTMLButtonElement || e.target instanceof HTMLAnchorElement;
+    if (e.key === '?') toggleKeys();
+    else if (e.code === 'KeyH') setOrbit();
+    else if (/^Digit[1-9]$/.test(e.code) && !e.shiftKey && planButtons[Number(e.code.slice(5)) - 1]) planButtons[Number(e.code.slice(5)) - 1].click();
+    else if (e.code === 'Enter' && !onButton) setTopView(false);
+    else if (e.code === 'KeyG') startTour();
+    else if (e.code === 'KeyP' && e.shiftKey) void exportPdf();
+    else if (e.code === 'KeyC') void shareView();
+    else if (e.code === 'KeyV') toggleSaved();
+    else if (e.code === 'KeyI') toggleAreas();
+    else if (e.code === 'KeyQ' && looking) turnable().turn(-Math.PI / 4);
+    else if (e.code === 'KeyE' && looking) turnable().turn(Math.PI / 4);
+    else if ((e.key === '+' || e.key === '=') && looking) turnable().zoom(0.8);
+    else if ((e.key === '-' || e.key === '_') && looking) turnable().zoom(1.25);
+    else if (e.code === 'Digit0' && looking) turnable().reset();
+    else if (e.code === 'KeyX' && inTopView) flatButton.click();
+    else if (e.code === 'KeyO' && inOrbit) roofButton.click();
+    else if (e.code === 'KeyN' && inTopView) dimensionsButton.click();
+    else if (e.code === 'KeyM' && inTopView) sizesButton.click();
+    else if (!EMBED && !inOrbit && (e.code === 'KeyF' || e.code === 'KeyP' || e.code === 'KeyL')) {
+      document.getElementById(e.code === 'KeyF' ? 'tab-furniture' : e.code === 'KeyP' ? 'tab-paint' : 'tab-style')!.click();
+    } else return false;
+    return true;
+  }
+
   window.addEventListener('keydown', (e) => {
-    if (e.target instanceof HTMLInputElement) return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
     // Any key during the tour hands control back, right where the tour is.
     if (tour && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) {
       stopTour();
-      if (e.code === 'Escape') return;
+      return;
     }
     const command = e.metaKey || e.ctrlKey;
     if (command && e.code === 'KeyZ') {
@@ -991,8 +1122,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       e.preventDefault();
       goTo(level + (e.code === 'PageUp' ? 1 : -1));
     } else if (e.code === 'Escape') {
+      if (!keysPanel.hidden) toggleKeys();
       selectedId = null;
       setPaintTarget(null);
+    } else if (e.altKey) {
+      return;
+    } else if (quickKey(e)) {
+      e.preventDefault();
     } else if (mode !== 'furniture') {
       return;
     } else if (e.code === 'KeyR' && selectedId) {
@@ -1459,7 +1595,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (exporting) return;
     exporting = true;
     pdfButton.disabled = true;
-    setLabel(pdfButton, 'file', 'Preparing…');
+    setTool(pdfButton, 'file', 'Preparing…');
     busyNote('Preparing the PDF…');
     busyStep('Getting the plans ready');
     await painted();
@@ -1468,7 +1604,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     } finally {
       busyNote(null);
       pdfButton.disabled = false;
-      setLabel(pdfButton, 'file', 'PDF');
+      setTool(pdfButton, 'file', 'PDF');
       capturing = false;
       exporting = false;
     }
@@ -1579,7 +1715,18 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         }
         if (v.cam) plan.restore(v.cam);
       } else if (v.view === 'walk' && !inOrbit && !inTopView && v.floor === level && v.at) {
-        controls.teleport(v.at[0], v.at[1], v.at[2], v.at[3]);
+        // Two designs have their walls in different places, so the same spot may be inside
+        // a wall here. Follow by room instead: go to the room of the same name if this
+        // design has one, and always look the same way.
+        const here = roomAt(now(), controls.pose);
+        const name = e.data.room as string | undefined;
+        const match = name && (here?.name ?? here?.id) !== name ? now().rooms.find((r) => r.kind !== 'void' && (r.name ?? r.id) === name) : undefined;
+        if (match) {
+          const spot = openSpot(match, now().furniture);
+          controls.teleport(spot.x, spot.y, v.at[2], v.at[3]);
+        } else {
+          controls.teleport(controls.pose.x, controls.pose.y, v.at[2], v.at[3]);
+        }
       } else {
         showView(v);
       }
@@ -1594,7 +1741,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (key === lastSync) return;
     lastSync = key;
     lastSyncAt = time;
-    window.parent.postMessage({ type: 'stepinside-view', state: v }, '*');
+    const room = v.view === 'walk' ? roomAt(now(), controls.pose) : undefined;
+    window.parent.postMessage({ type: 'stepinside-view', state: v, room: room?.name ?? room?.id }, '*');
   }
 
   let lastRoom: string | undefined;
@@ -1725,7 +1873,8 @@ function startCompare(params: URLSearchParams): void {
   const title = document.createElement('strong');
   title.textContent = 'Compare designs';
   const sync = document.createElement('label');
-  sync.innerHTML = '<input type="checkbox" checked /> Same view on both sides';
+  sync.innerHTML = '<input type="checkbox" checked /> Move both sides together';
+  sync.title = 'Turning, zooming and plans match exactly. In a walk each design has its own walls, so the other side goes to the room of the same name and looks the same way.';
   const syncBox = sync.querySelector('input')!;
   const brand = document.createElement('a');
   brand.className = 'mark';

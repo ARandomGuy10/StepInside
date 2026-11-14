@@ -1,5 +1,5 @@
 import {
-  ArrowDown, ArrowUp, Bookmark, Box, ChevronDown, ChevronUp, Columns2, createElement, Download, FileText, Footprints,
+  ArrowDown, ArrowUp, Bookmark, Box, House, Keyboard, LandPlot, Maximize, Tag, ChevronDown, ChevronUp, Columns2, createElement, Download, FileText, Footprints,
   Link, Minus, PaintRoller, Play, Plus, Redo2, RotateCcw, RotateCw, Ruler, Share2, Sofa, Square, SwatchBook, Trash2,
   Undo2, Upload, X, type IconNode,
 } from 'lucide';
@@ -13,6 +13,7 @@ const ICONS: Record<string, IconNode> = {
   save: Download, load: Upload, plus: Plus, minus: Minus, play: Play, stop: Square, share: Share2, bookmark: Bookmark,
   ruler: Ruler, file: FileText, close: X, 'chevron-down': ChevronDown, 'chevron-up': ChevronUp, compare: Columns2,
   walk: Footprints, link: Link, furniture: Sofa, paint: PaintRoller, style: SwatchBook, box: Box,
+  fit: Maximize, roof: House, labels: Tag, areas: LandPlot, keys: Keyboard,
 };
 
 export type IconName = keyof typeof ICONS;
@@ -41,4 +42,30 @@ export function hydrateIcons(root: ParentNode = document): void {
     setLabel(el, el.dataset.icon!, text);
     delete el.dataset.icon;
   }
+}
+
+/**
+ * A tool on the rail at the side of the view: the icon alone, with its name and its
+ * key in a tip that shows beside it. `glyph` is short text used in place of an icon.
+ */
+export function setTool(button: HTMLElement, name: string, text: string, glyph = ''): void {
+  const tip = document.createElement('span');
+  tip.className = 'tip';
+  tip.textContent = text;
+  const key = button.dataset.key;
+  if (key) {
+    const kbd = document.createElement('kbd');
+    kbd.textContent = key;
+    tip.append(kbd);
+  }
+  if (glyph) {
+    const mark = document.createElement('b');
+    mark.className = 'glyph';
+    mark.textContent = glyph;
+    button.replaceChildren(mark, tip);
+  } else {
+    button.replaceChildren(icon(name), tip);
+  }
+  button.removeAttribute('title');
+  button.setAttribute('aria-label', text);
 }

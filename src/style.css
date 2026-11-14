@@ -761,7 +761,7 @@ body.blocked #view {
 }
 
 /* In the whole-house view the editing tools step aside. */
-body.orbit-view #panel > :not(#home-box) {
+body.orbit-view #panel > :not(#home-box):not(#views) {
   display: none;
 }
 
@@ -1514,6 +1514,308 @@ body.embed #view-extras {
 
 /* ---- Phones ---- */
 
+/* ---- Keys: the small caps that name a shortcut ---- */
+
+kbd {
+  flex: none;
+  min-width: 1.5em;
+  padding: 1px 5px 2px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font: inherit;
+  font-stretch: var(--narrow);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+
+.glyph {
+  font-stretch: var(--narrow);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+#view-bar .tip kbd {
+  display: none;
+}
+
+#view-bar button.bare .tip {
+  display: none;
+}
+
+#view-bar #views kbd {
+  display: none;
+}
+
+/* ---- Wide screens: the views in the panel, the tools on a rail, the model left clear ---- */
+
+#panel #views {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 12px;
+  border-radius: 0;
+  border-top: 1px solid var(--panel-line);
+  background: none;
+  box-shadow: none;
+}
+
+#panel #views button {
+  justify-content: flex-start;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-color: transparent;
+  background: none;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+#panel #views button kbd {
+  margin-left: auto;
+}
+
+#panel #views button:hover:not(:disabled) {
+  background: var(--panel-raised);
+}
+
+#panel #views button.active {
+  background: var(--lime);
+  color: var(--soot);
+}
+
+#panel #views button.primary:not(.active) {
+  margin-top: 6px;
+  background: var(--line);
+  color: var(--soot);
+  box-shadow: inset 0 -2px 0 var(--line-deep);
+}
+
+#panel #views button.primary:not(.active):hover {
+  background: var(--line-bright);
+}
+
+#panel #views button.primary kbd,
+#panel #views button.active kbd {
+  opacity: 0.8;
+}
+
+@media (min-width: 701px) {
+  #view-bar,
+  body.orbit-view #view-bar {
+    left: 0;
+    right: 0;
+    transform: none;
+    pointer-events: none;
+  }
+
+  #view-bar > * {
+    pointer-events: auto;
+  }
+
+  #view-bar > #views {
+    max-width: calc(100% - 76px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  /* The list of views already names every floor. */
+  body.views-aside.top-view #levels {
+    display: none;
+  }
+
+  #view-bar .tool-row,
+  body.orbit-view #view-bar .tool-row {
+    position: fixed;
+    right: 12px;
+    bottom: 16px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    gap: 8px;
+    max-width: none;
+  }
+
+  body.embed #view-bar .tool-row {
+    right: 8px;
+    bottom: 72px;
+  }
+
+  #view-bar #orbit-tools,
+  #view-bar #view-extras {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  #view-bar .tool-row button {
+    position: relative;
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+  }
+
+  #view-bar .tool-row .icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* The name of a tool and its key, shown beside it. */
+  #view-bar .tool-row .tip,
+  #view-bar .tool-row button.bare .tip {
+    position: absolute;
+    right: calc(100% + 10px);
+    top: 50%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 9px;
+    border-radius: 5px;
+    background: var(--soot);
+    color: var(--lime);
+    font-size: 12.5px;
+    font-weight: 550;
+    white-space: nowrap;
+    box-shadow: var(--panel-shadow);
+    opacity: 0;
+    transform: translate(4px, -50%);
+    transition: opacity 0.12s, transform 0.12s var(--ease-out);
+    pointer-events: none;
+  }
+
+  #view-bar .tool-row .tip kbd {
+    display: inline-block;
+    color: var(--tape);
+    opacity: 1;
+  }
+
+  #view-bar .tool-row button:hover .tip,
+  #view-bar .tool-row button:focus-visible .tip {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+
+  /* The cards the rail opens sit beside it, not over the middle of the model. */
+  #saved-views {
+    position: fixed;
+    right: 64px;
+    bottom: 16px;
+  }
+
+  #areas {
+    top: auto;
+    right: 64px;
+    bottom: 16px;
+    max-height: calc(100vh - 230px);
+  }
+}
+
+/* A short window: the two groups of tools stand side by side. */
+@media (min-width: 701px) and (max-height: 780px) {
+  #view-bar .tool-row,
+  body.orbit-view #view-bar .tool-row {
+    flex-direction: row;
+  }
+
+  #saved-views,
+  #areas,
+  #keys {
+    right: 106px;
+  }
+}
+
+/* ---- The card of keyboard shortcuts ---- */
+
+#keys {
+  position: fixed;
+  right: 64px;
+  bottom: 16px;
+  z-index: 7;
+  width: min(620px, calc(100vw - 96px));
+  max-height: calc(100vh - 230px);
+  overflow: auto;
+  padding: 14px 16px 16px;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--panel-shadow);
+  scrollbar-color: var(--panel-edge) transparent;
+  scrollbar-width: thin;
+}
+
+#keys[hidden] {
+  display: none;
+}
+
+#keys header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+#keys header strong {
+  font-stretch: var(--wide);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+#keys header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+
+#keys .groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 28px;
+}
+
+#keys h3 {
+  margin: 0 0 6px;
+  font-stretch: var(--narrow);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--tape);
+}
+
+#keys dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 12px;
+  margin: 0;
+  font-size: 13px;
+}
+
+#keys dt {
+  display: flex;
+  gap: 4px;
+}
+
+#keys dd {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+#keys kbd {
+  color: var(--text);
+  opacity: 0.9;
+}
+
 @media (max-width: 700px) {
   #panel {
     top: 8px;
@@ -1599,6 +1901,18 @@ body.embed #view-extras {
 
   #saved-views {
     width: 100%;
+  }
+
+  #keys {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 70vh;
+  }
+
+  #keys .groups {
+    grid-template-columns: 1fr;
   }
 
   #sun-bar {
