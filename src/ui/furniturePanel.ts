@@ -177,7 +177,7 @@ export class FurniturePanel {
     byId('catalogue').replaceChildren(
       ...CATALOGUE.map((item) => {
         const button = document.createElement('button');
-        button.textContent = `+ ${item.name}`;
+        button.textContent = item.name;
         button.title = `Add: ${item.name}`;
         button.dataset.key = item.key;
         button.addEventListener('click', () => {
@@ -315,6 +315,7 @@ export class FurniturePanel {
 
     const button = document.createElement('button');
     button.textContent = 'Put back';
+    button.className = 'small';
     button.title = 'Put it back where it stood';
     button.addEventListener('click', () => this.actions.putBack(f.id));
 

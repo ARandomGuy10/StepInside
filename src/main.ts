@@ -29,9 +29,12 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import '@fontsource-variable/archivo/wdth.css';
 import { DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePanel';
+import { hydrateIcons, setLabel } from './ui/icons';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
+hydrateIcons();
 const PANEL_WIDTH = 288;
 /** True inside one side of the compare page: no panel, the views kept in step. */
 const EMBED = window.parent !== window && new URLSearchParams(window.location.search).has('embed');
@@ -461,10 +464,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // ---- The view bar: whole house, a plan per floor, walk through ----
 
   const viewBar = document.getElementById('views')!;
-  const viewButton = (label: string, title: string, run: () => void): HTMLButtonElement => {
+  const viewButton = (label: string, title: string, run: () => void, iconName?: string): HTMLButtonElement => {
     const button = document.createElement('button');
-    button.textContent = label;
+    button.type = 'button';
     button.title = title;
+    if (iconName) setLabel(button, iconName, label);
+    else button.textContent = label;
     button.addEventListener('click', run);
     return button;
   };
@@ -475,14 +480,14 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       setTopView(true);
     }),
   );
-  const walkButton = viewButton('Walk through', 'Walk it in first person', () => setTopView(false));
+  const walkButton = viewButton('Walk through', 'Walk it in first person', () => setTopView(false), 'walk');
   walkButton.classList.add('primary');
-  const tourButton = viewButton('▶ Tour', 'A walk through every room, hands free', () => (tour ? stopTour() : startTour()));
-  const shareButton = viewButton('Share', 'Copy a link that opens exactly this view', () => void shareView());
-  const savedButton = viewButton('Saved views ▾', 'Keep this view, or go back to one you kept', () => toggleSaved());
-  const areasButton = viewButton('Areas', 'Carpet and built-up area of each floor, plot coverage', () => toggleAreas());
+  const tourButton = viewButton('Tour', 'A walk through every room, hands free', () => (tour ? stopTour() : startTour()), 'play');
+  const shareButton = viewButton('Share', 'Copy a link that opens exactly this view', () => void shareView(), 'share');
+  const savedButton = viewButton('Saved views', 'Keep this view, or go back to one you kept', () => toggleSaved(), 'bookmark');
+  const areasButton = viewButton('Areas', 'Carpet and built-up area of each floor, plot coverage', () => toggleAreas(), 'ruler');
   let capturing = false;
-  const pdfButton = viewButton('PDF', 'Print or save the floor plans, with sizes and areas, as a PDF', () => exportPdf());
+  const pdfButton = viewButton('PDF', 'Print or save the floor plans, with sizes and areas, as a PDF', () => exportPdf(), 'file');
   tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
   document.getElementById('view-extras')!.replaceChildren(tourButton, savedButton, shareButton, areasButton, pdfButton);
@@ -512,10 +517,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const turnable = (): OrbitView => (inOrbit ? orbit : plan);
   tools.replaceChildren(
     flatButton,
-    viewButton('⟲', 'Turn left', () => turnable().turn(-Math.PI / 4)),
-    viewButton('⟳', 'Turn right', () => turnable().turn(Math.PI / 4)),
-    viewButton('+', 'Zoom in', () => turnable().zoom(0.8)),
-    viewButton('−', 'Zoom out', () => turnable().zoom(1.25)),
+    viewButton('', 'Turn left', () => turnable().turn(-Math.PI / 4), 'turn-left'),
+    viewButton('', 'Turn right', () => turnable().turn(Math.PI / 4), 'turn-right'),
+    viewButton('', 'Zoom in', () => turnable().zoom(0.8), 'plus'),
+    viewButton('', 'Zoom out', () => turnable().zoom(1.25), 'minus'),
     viewButton('Reset view', 'Back to the first view', () => turnable().reset()),
     roofButton,
     dimensionsButton,
@@ -673,7 +678,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   function updateHint(): void {
     const painting = mode === 'paint';
-    tourButton.textContent = tour ? '■ Stop tour' : '▶ Tour';
+    setLabel(tourButton, tour ? 'stop' : 'play', tour ? 'Stop tour' : 'Tour');
     tourButton.classList.toggle('active', !!tour);
     if (tour) {
       wholeButton.classList.remove('active');
@@ -1083,7 +1088,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   more.type = 'button';
   const showMore = (open: boolean): void => {
     document.body.classList.toggle('panel-open', open);
-    more.textContent = open ? 'Less ▴' : 'Edit ▾';
+    setLabel(more, open ? 'chevron-up' : 'chevron-down', open ? 'Less' : 'Edit');
   };
   more.addEventListener('click', () => showMore(!document.body.classList.contains('panel-open')));
   showMore(false);
@@ -1285,8 +1290,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
           savedBox.hidden = true;
         });
         const copy = document.createElement('button');
-        copy.textContent = 'Link';
         copy.title = 'Copy a link to this view';
+        setLabel(copy, 'link');
         copy.addEventListener('click', () => {
           void navigator.clipboard.writeText(linkTo(item.state)).then(
             () => panel.toast(`Link to "${item.name}" copied.`),
@@ -1294,8 +1299,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
           );
         });
         const remove = document.createElement('button');
-        remove.textContent = '×';
         remove.title = 'Forget this view';
+        setLabel(remove, 'close');
         remove.addEventListener('click', () => {
           writeSaved(readSaved().filter((_, j) => j !== i));
           renderSaved();
@@ -1401,7 +1406,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     const head = document.createElement('header');
     const title = document.createElement('strong');
     title.textContent = 'Areas';
-    const close = viewButton('×', 'Close', () => toggleAreas());
+    const close = viewButton('', 'Close', () => toggleAreas(), 'close');
     head.append(title, close);
     const note = document.createElement('p');
     note.textContent =
@@ -1454,7 +1459,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (exporting) return;
     exporting = true;
     pdfButton.disabled = true;
-    pdfButton.textContent = 'Preparing…';
+    setLabel(pdfButton, 'file', 'Preparing…');
     busyNote('Preparing the PDF…');
     busyStep('Getting the plans ready');
     await painted();
@@ -1463,7 +1468,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     } finally {
       busyNote(null);
       pdfButton.disabled = false;
-      pdfButton.textContent = 'PDF';
+      setLabel(pdfButton, 'file', 'PDF');
       capturing = false;
       exporting = false;
     }
@@ -1626,7 +1631,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
 
   // Handy in the browser console, and used by the automated screenshots.
-  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, planCamera: plan.camera, topCamera: topView.camera, startTour, stopTour, currentView, showView } });
+  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, planCamera: plan.camera, topCamera: topView.camera, startTour, stopTour, currentView, showView, plan, marker: topView.marker } });
 }
 
 // The address picks the home: ?home=apartment. Without it, the start
@@ -1660,7 +1665,7 @@ if (params.has('compare')) {
   // "Change home" keeps other switches such as ?fast.
   const back = new URLSearchParams(params);
   back.delete('home');
-  document.querySelector<HTMLAnchorElement>('#home-change')!.href = back.size ? `?${back}` : './';
+  document.querySelector<HTMLAnchorElement>('#home-change')!.href = back.size ? `?${back}` : 'studio.html';
   try {
     // The designs of this home, in a dropdown. Picking one loads it in the same view.
     const designs = HOMES.filter((h) => chosen.design && h.design?.group === chosen.design.group);
@@ -1722,6 +1727,11 @@ function startCompare(params: URLSearchParams): void {
   const sync = document.createElement('label');
   sync.innerHTML = '<input type="checkbox" checked /> Same view on both sides';
   const syncBox = sync.querySelector('input')!;
+  const brand = document.createElement('a');
+  brand.className = 'mark';
+  brand.href = './';
+  brand.textContent = 'Step Inside';
+  bar.append(brand);
   const back = document.createElement('a');
   back.textContent = 'Back to one design';
   bar.append(title, sync, back);

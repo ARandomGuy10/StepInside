@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Send your plan · Step Inside</title>
+    <link rel="stylesheet" href="/src/site/site.css" />
+  </head>
+  <body>
+    <header class="site-head">
+      <a class="mark" href="./">Step Inside</a>
+      <a class="far" href="./#what-you-get">What you get</a>
+      <a class="far" href="studio.html?home=villa-d">Sample home</a>
+      <a data-auth="out" href="login.html">Log in</a>
+      <a data-auth="in" href="account.html" hidden>Your account</a>
+      <a class="btn" href="request.html">Send your plan</a>
+    </header>
+
+    <main class="page page-narrow" id="request" hidden>
+      <div class="page-top">
+        <div>
+          <h1>Send your plan</h1>
+          <p>A picture of the plan and a few notes are enough to start.</p>
+        </div>
+      </div>
+
+      <div class="sheet">
+        <form id="request-form" novalidate>
+          <div class="request-grid">
+            <div class="col">
+              <div class="field">
+                <span class="label" id="plan-label">The plan</span>
+                <label class="drop" id="drop">
+                  <input type="file" id="plan-file" accept="image/*" aria-labelledby="plan-label" />
+                  <span id="drop-empty">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></svg>
+                    <b>Choose a picture, or drop it here</b><br />
+                    <span class="help">A photo or scan of a drawing or a sketch. JPG or PNG.</span>
+                  </span>
+                  <img id="drop-preview" alt="The plan you chose" hidden />
+                </label>
+                <span class="help" id="drop-name" hidden></span>
+              </div>
+            </div>
+            <div class="col">
+              <div class="field">
+                <label for="title">Name for this plan</label>
+                <input type="text" id="title" name="title" maxlength="60" placeholder="Our new house" required />
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="plot">Plot size <span class="help">(if you know it)</span></label>
+                  <input type="text" id="plot" name="plot" maxlength="40" placeholder="35 x 55 ft" />
+                </div>
+                <div class="field">
+                  <label for="floors">Floors</label>
+                  <input type="number" id="floors" name="floors" min="1" max="6" step="1" value="1" required />
+                </div>
+              </div>
+              <div class="field">
+                <label for="notes">Notes for us</label>
+                <textarea id="notes" name="notes" maxlength="1500" placeholder="Which way the plot faces, ceiling heights, anything you are unsure about and want to see."></textarea>
+              </div>
+              <p class="form-error" id="form-error" role="alert" hidden></p>
+              <div class="form-foot">
+                <button class="btn btn-line btn-big" type="submit" id="send">Send the plan</button>
+                <a class="text-btn" href="account.html">Back to your plans</a>
+              </div>
+            </div>
+          </div>
+        </form>
+        <p class="preview-note"><b>Preview</b><span>Requests are saved in this browser only for now and do not reach us yet. The page works the way it will once the backend is connected.</span></p>
+      </div>
+    </main>
+
+    <script type="module" src="/src/site/request.ts"></script>
+  </body>
+</html>

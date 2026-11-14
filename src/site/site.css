@@ -1,0 +1,1542 @@
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--earth);
+  color: var(--soot);
+  font-family: var(--font);
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  font-weight: 450;
+  -webkit-font-smoothing: antialiased;
+  scrollbar-color: var(--soot-soft) var(--earth-shade);
+}
+
+::selection {
+  background: var(--line);
+  color: var(--soot);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1.5px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--line);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-stretch: var(--wide);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/* The soil's grain, laid over the earth. */
+.grain {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+}
+
+.wrap {
+  width: min(100% - 2.75rem, 82rem);
+  margin-inline: auto;
+}
+
+/* ---- Buttons ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 2.75rem;
+  padding: 0.7rem 1.2rem;
+  border: 0;
+  border-radius: 3px;
+  background: var(--soot);
+  color: var(--lime);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+
+.btn:hover {
+  background: oklch(0.3 0.01 70);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-line {
+  background: var(--line);
+  color: var(--soot);
+  box-shadow: inset 0 -3px 0 var(--line-deep);
+}
+
+.btn-line:hover {
+  background: var(--line-bright);
+}
+
+.btn-line:focus-visible {
+  outline-color: var(--soot);
+}
+
+.btn-open {
+  background: transparent;
+  color: var(--soot);
+  box-shadow: inset 0 0 0 1.5px var(--soot);
+}
+
+.btn-open:hover {
+  background: oklch(0.19 0.01 70 / 0.09);
+}
+
+.btn-big {
+  min-height: 3.5rem;
+  padding: 1rem 1.6rem;
+  font-size: 1.0625rem;
+}
+
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn svg {
+  width: 1.1em;
+  height: 1.1em;
+  flex: none;
+}
+
+/* A measure written on a strip of the steel tape. */
+.tag {
+  display: inline-block;
+  padding: 0.3rem 0.6rem 0.22rem;
+  background: var(--tape);
+  color: var(--soot);
+  font-stretch: var(--narrow);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: var(--shadow-low), inset 0 -2px 0 var(--tape-shade);
+}
+
+/* ---- Header ---- */
+
+.site-head {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2.1rem;
+  padding: 1.5rem 2.75rem;
+  font-size: 0.9375rem;
+  font-weight: 550;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-right: auto;
+  font-stretch: var(--wide);
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* The peg driven in at the corner of a plot. */
+.mark::before {
+  content: '';
+  width: 0.8rem;
+  height: 0.8rem;
+  background: var(--line);
+  transform: rotate(45deg);
+}
+
+.site-head a:not(.btn):not(.mark) {
+  white-space: nowrap;
+  text-decoration: none;
+  padding-block: 0.4rem;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 2px no-repeat;
+  transition: background-size 0.25s var(--ease-out);
+}
+
+.site-head a:not(.btn):not(.mark):hover {
+  background-size: 100% 2px;
+}
+
+@media (max-width: 860px) {
+  .site-head {
+    gap: 1rem;
+    padding: 1rem 1.375rem;
+  }
+
+  .site-head .far {
+    display: none;
+  }
+}
+
+/* ---- The hero: the plot, the sketch and the model ---- */
+
+.hero {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
+  grid-template-rows: auto 1fr auto;
+  column-gap: 1rem;
+  min-height: min(100vh - 8.6rem, 52rem);
+  padding: 2.25rem 2.75rem 0;
+}
+
+.hero h1 {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  z-index: 3;
+  /* Wider than its column on purpose: the words run out over the bare earth. */
+  width: max-content;
+  max-width: 46vw;
+  font-size: clamp(2.6rem, 5.85vw, 5.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+}
+
+.pitch {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: end;
+  position: relative;
+  z-index: 3;
+  max-width: 27rem;
+  padding-bottom: 4.5rem;
+}
+
+.pitch p {
+  margin-bottom: 1.5rem;
+  font-size: 1.1875rem;
+  line-height: 1.45;
+}
+
+.pitch .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.plot {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  position: relative;
+  z-index: 4;
+  align-self: end;
+  justify-self: center;
+  width: min(100%, 44rem, (100vh - 10.5rem) * 0.9);
+  aspect-ratio: 1075 / 1193;
+  margin-block: -1.5rem 1.3rem;
+  --at: 47%;
+  touch-action: pan-y;
+  cursor: ew-resize;
+  user-select: none;
+}
+
+.plot > .layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.plot .marks {
+  overflow: visible;
+}
+
+.plot .before {
+  clip-path: inset(-10% calc(100% - var(--at)) -10% -10%);
+  filter: drop-shadow(0 14px 16px oklch(0.3 0.01 70 / 0.3));
+}
+
+.plot .after {
+  clip-path: inset(-10% -10% -10% var(--at));
+  -webkit-user-drag: none;
+}
+
+/* The mason's string: drag it across the plot. */
+.string {
+  position: absolute;
+  z-index: 4;
+  top: -1.5rem;
+  bottom: -3.4rem;
+  left: var(--at);
+  width: 3px;
+  margin-left: -1.5px;
+  background: var(--line);
+  box-shadow: 0 0 0 1px oklch(0.45 0.2 2 / 0.25), 5px 6px 6px oklch(0.3 0.01 70 / 0.3);
+  pointer-events: none;
+}
+
+.plot .tag {
+  position: absolute;
+  z-index: 5;
+  top: 0.4rem;
+  pointer-events: none;
+}
+
+.plot .tag-before {
+  right: calc(100% - var(--at) + 0.9rem);
+}
+
+.plot .tag-after {
+  left: calc(var(--at) + 0.9rem);
+}
+
+/* The range input is the real control: it takes the keyboard, and its thumb is the line block on the tape. */
+.plot input[type='range'] {
+  position: absolute;
+  z-index: 6;
+  left: -1.4rem;
+  right: -1.4rem;
+  bottom: -4.5rem;
+  width: calc(100% + 2.8rem);
+  height: 4rem;
+  margin: 0;
+  background: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: ew-resize;
+}
+
+.plot input[type='range']::-webkit-slider-runnable-track {
+  height: 4rem;
+  background: none;
+}
+
+.plot input[type='range']::-moz-range-track {
+  height: 4rem;
+  background: none;
+}
+
+.plot input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 2.8rem;
+  height: 4rem;
+  border: 0;
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, transparent 0 15px, var(--lime) 15px 17px, transparent 17px 21.5px, var(--lime) 21.5px 23.5px, transparent 23.5px 28px, var(--lime) 28px 30px, transparent 30px) center / 100% 1.4rem no-repeat,
+    var(--line);
+  box-shadow: 0 6px 14px oklch(0.25 0.01 70 / 0.45), inset 0 -3px 0 var(--line-deep);
+  transition: transform 0.18s var(--ease-out);
+}
+
+.plot input[type='range']::-moz-range-thumb {
+  width: 2.8rem;
+  height: 4rem;
+  border: 0;
+  border-radius: 4px;
+  background:
+    linear-gradient(90deg, transparent 0 15px, var(--lime) 15px 17px, transparent 17px 21.5px, var(--lime) 21.5px 23.5px, transparent 23.5px 28px, var(--lime) 28px 30px, transparent 30px) center / 100% 1.4rem no-repeat,
+    var(--line);
+  box-shadow: 0 6px 14px oklch(0.25 0.01 70 / 0.45), inset 0 -3px 0 var(--line-deep);
+}
+
+.plot input[type='range']:hover::-webkit-slider-thumb,
+.plot input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.06);
+}
+
+.plot input[type='range']:focus-visible {
+  outline: none;
+}
+
+.plot input[type='range']:focus-visible::-webkit-slider-thumb {
+  outline: 3px solid var(--soot);
+  outline-offset: 3px;
+}
+
+.plot input[type='range']:focus-visible::-moz-range-thumb {
+  outline: 3px solid var(--soot);
+  outline-offset: 3px;
+}
+
+/* The steel tape the hero stands on. */
+.tape {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  position: relative;
+  z-index: 3;
+  height: 2.4rem;
+  margin-inline: -2.75rem;
+  background: var(--tape);
+  box-shadow: 0 5px 12px oklch(0.25 0.01 70 / 0.35), inset 0 1px 0 oklch(0.95 0.12 95), inset 0 -2px 0 var(--tape-shade);
+  overflow: hidden;
+}
+
+.tape svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tape text {
+  font-family: var(--font);
+  font-stretch: 62%;
+  font-weight: 700;
+  font-size: 15px;
+  fill: var(--soot);
+}
+
+.under-tape {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 2.1rem;
+  padding: 0.9rem 2.75rem 0;
+  font-size: 0.875rem;
+  font-weight: 550;
+}
+
+.under-tape b {
+  margin-right: 0.35rem;
+  font-stretch: var(--narrow);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  letter-spacing: 0.04em;
+}
+
+.under-tape .hint {
+  margin-left: auto;
+}
+
+@media (max-width: 860px) {
+  .hero {
+    display: block;
+    min-height: 0;
+    padding: 1.25rem 1.375rem 0;
+  }
+
+  .hero h1 {
+    width: auto;
+    max-width: none;
+    font-size: clamp(2.4rem, 11.2vw, 4rem);
+  }
+
+  .pitch {
+    max-width: none;
+    padding: 1.25rem 0 0;
+  }
+
+  .pitch p {
+    font-size: 1.0625rem;
+  }
+
+  .pitch .btn {
+    flex: 1 1 auto;
+  }
+
+  .plot {
+    width: min(100%, 30rem);
+    margin: 3.25rem auto 4.4rem;
+  }
+
+  .tape {
+    margin-inline: -1.375rem;
+  }
+
+  .under-tape {
+    padding-inline: 1.375rem;
+  }
+
+  .under-tape .hint {
+    margin-left: 0;
+  }
+}
+
+/* ---- Sections ---- */
+
+section {
+  position: relative;
+  z-index: 1;
+}
+
+.band {
+  padding-block: clamp(4.5rem, 9vw, 8rem);
+}
+
+.band h2 {
+  font-size: clamp(2.1rem, 4.6vw, 4rem);
+  line-height: 0.98;
+}
+
+.lead {
+  max-width: 34rem;
+  margin-top: 1.25rem;
+  font-size: 1.1875rem;
+  line-height: 1.45;
+}
+
+/* What you get: the features laid out like the rooms of a plan, in lime on the earth. */
+.rooms-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: end;
+  margin-bottom: 3rem;
+}
+
+.rooms-head .lead {
+  margin: 0;
+  justify-self: end;
+}
+
+.rooms {
+  --wall: 2px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--wall);
+  padding: var(--wall);
+  background: var(--rule);
+}
+
+.room {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 10.5rem;
+  padding: 1.5rem 1.5rem 1.6rem;
+  background: var(--earth);
+}
+
+.room h3 {
+  font-size: 1.375rem;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.room p {
+  max-width: 30rem;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: oklch(0.25 0.01 70);
+}
+
+.room .tag {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+/* A doorway: a gap in the lime line where one room opens to the next. */
+.room.door-right::after,
+.room.door-down::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  background: var(--earth);
+}
+
+.room.door-right::after {
+  right: calc(var(--wall) * -1);
+  top: 2.2rem;
+  width: var(--wall);
+  height: 3.4rem;
+}
+
+.room.door-down::after {
+  bottom: calc(var(--wall) * -1);
+  left: 2.4rem;
+  height: var(--wall);
+  width: 3.8rem;
+}
+
+.room-walk {
+  grid-column: span 7;
+  grid-row: span 2;
+  padding: 0;
+  background: var(--dug);
+  color: var(--lime);
+  overflow: hidden;
+}
+
+.room-walk img {
+  width: 100%;
+  height: 100%;
+  min-height: 24rem;
+  object-fit: cover;
+}
+
+.room-walk .words {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 5rem 1.6rem 1.5rem;
+  background: linear-gradient(to top, oklch(0.2 0.01 70 / 0.92) 30%, oklch(0.2 0.01 70 / 0));
+}
+
+.room-walk h3 {
+  font-size: clamp(1.6rem, 2.6vw, 2.25rem);
+}
+
+.room-walk p {
+  color: oklch(0.93 0.02 85);
+  max-width: 32rem;
+}
+
+.room-pic {
+  grid-column: span 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42%;
+  gap: 1rem;
+  align-items: stretch;
+  padding: 0;
+}
+
+.room-pic .words {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.5rem 0 1.6rem 1.5rem;
+}
+
+.room-pic img {
+  width: 100%;
+  height: 100%;
+  min-height: 12rem;
+  object-fit: cover;
+}
+
+.room-4 {
+  grid-column: span 4;
+}
+
+.room-3 {
+  grid-column: span 3;
+}
+
+@media (max-width: 980px) {
+  .rooms-head {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .rooms-head .lead {
+    justify-self: start;
+  }
+
+  .room-walk,
+  .room-pic {
+    grid-column: span 12;
+  }
+
+  .room-4,
+  .room-3 {
+    grid-column: span 6;
+  }
+
+  .room.door-right::after {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .room-4,
+  .room-3 {
+    grid-column: span 12;
+    min-height: 0;
+  }
+
+  .room-pic {
+    grid-template-columns: 1fr;
+  }
+
+  .room-pic .words {
+    padding: 1.5rem 1.5rem 0;
+  }
+
+  .room-pic img {
+    max-height: 13rem;
+  }
+}
+
+/* How it works: the dug trench. */
+.dug {
+  background: var(--dug);
+  color: var(--lime);
+  scrollbar-color: var(--dug-edge) var(--dug);
+}
+
+.dug .lead,
+.dug p {
+  color: oklch(0.88 0.025 80);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 3.5rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  border-top: 3px solid var(--line);
+}
+
+.steps li {
+  position: relative;
+  counter-increment: step;
+  padding: 2rem 2rem 0 0;
+}
+
+.steps li + li {
+  padding-left: 2rem;
+  border-left: 1px solid var(--dug-edge);
+}
+
+/* A knot where the string is tied off at each step. */
+.steps li::before {
+  content: '';
+  position: absolute;
+  top: -0.55rem;
+  left: 0;
+  width: 0.85rem;
+  height: 0.85rem;
+  background: var(--line);
+  transform: rotate(45deg);
+}
+
+.steps li + li::before {
+  left: 2rem;
+}
+
+.steps .n {
+  display: block;
+  margin-bottom: 1.1rem;
+  font-stretch: 62%;
+  font-weight: 700;
+  font-size: 4.5rem;
+  line-height: 0.8;
+  color: var(--tape);
+}
+
+.steps .n::before {
+  content: counter(step);
+}
+
+.steps h3 {
+  margin-bottom: 0.7rem;
+  font-size: 1.625rem;
+}
+
+.steps p {
+  max-width: 24rem;
+}
+
+.send-list {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
+  gap: 2rem;
+  margin-top: 4.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--dug-edge);
+}
+
+.send-list h3 {
+  font-size: 1.375rem;
+}
+
+.send-list ul {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem 2.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: oklch(0.88 0.025 80);
+}
+
+.send-list li {
+  padding-left: 1.4rem;
+  background: linear-gradient(var(--tape), var(--tape)) 0 0.72em / 0.7rem 2px no-repeat;
+}
+
+.send-list b {
+  color: var(--lime);
+  font-weight: 650;
+}
+
+@media (max-width: 860px) {
+  .steps {
+    grid-template-columns: 1fr;
+    border-top: 0;
+    border-left: 3px solid var(--line);
+    margin-top: 2.5rem;
+  }
+
+  .steps li,
+  .steps li + li {
+    padding: 0 0 2.25rem 1.6rem;
+    border-left: 0;
+  }
+
+  .steps li::before,
+  .steps li + li::before {
+    top: 0.2rem;
+    left: -0.52rem;
+  }
+
+  .steps .n {
+    font-size: 3.4rem;
+  }
+
+  .send-list {
+    grid-template-columns: 1fr;
+    margin-top: 1.5rem;
+  }
+
+  .send-list ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The sample home. */
+.sample {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: center;
+}
+
+.sample .house {
+  position: relative;
+  justify-self: center;
+  width: min(100%, 40rem);
+}
+
+.sample .house img {
+  width: 100%;
+  filter: drop-shadow(0 26px 22px oklch(0.3 0.01 70 / 0.3));
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0;
+  margin: 2rem 0 2.25rem;
+  border-top: 2px solid var(--soot);
+}
+
+.facts dt,
+.facts dd {
+  margin: 0;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid oklch(0.19 0.01 70 / 0.35);
+}
+
+.facts dt {
+  padding-right: 2.5rem;
+  font-weight: 550;
+}
+
+.facts dd {
+  font-stretch: var(--narrow);
+  font-weight: 700;
+  font-size: 1.1875rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .sample {
+    grid-template-columns: 1fr;
+  }
+
+  .sample .house {
+    order: -1;
+    width: min(100%, 26rem);
+  }
+}
+
+/* The close. */
+.close {
+  text-align: left;
+}
+
+.close-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) auto;
+  gap: 2rem;
+  align-items: end;
+  padding-top: 2.5rem;
+  border-top: 2px solid var(--rule);
+}
+
+.close h2 {
+  font-size: clamp(2.4rem, 6.4vw, 5.6rem);
+  line-height: 0.95;
+}
+
+.close .lead {
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 860px) {
+  .close-in {
+    grid-template-columns: 1fr;
+  }
+}
+
+.site-foot {
+  position: relative;
+  z-index: 1;
+  background: var(--dug);
+  color: oklch(0.86 0.025 80);
+  font-size: 0.9375rem;
+}
+
+.site-foot .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  align-items: center;
+  padding-block: 1.75rem;
+}
+
+.site-foot .mark {
+  color: var(--lime);
+  font-size: 1.1rem;
+}
+
+.site-foot a:not(.mark) {
+  text-decoration: none;
+}
+
+.site-foot a:not(.mark):hover {
+  text-decoration: underline;
+}
+
+/* The house comes up out of the sketch once, when the page opens. */
+@media (prefers-reduced-motion: no-preference) {
+  .plot.rising .after {
+    transition: none;
+  }
+}
+
+/* ---- Account pages: sheets of paper pegged to the ground ---- */
+
+.page {
+  position: relative;
+  z-index: 1;
+  width: min(100% - 2.75rem, 68rem);
+  margin: 1.5rem auto 5rem;
+}
+
+.page-narrow {
+  width: min(100% - 2.75rem, 58rem);
+}
+
+.page h1 {
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.page-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  align-items: end;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.page-top p {
+  margin-top: 0.6rem;
+}
+
+.sheet {
+  position: relative;
+  padding: 2rem;
+  background: var(--sheet);
+  border: 1.5px solid var(--rule);
+  scrollbar-color: var(--sheet-edge) var(--sheet);
+}
+
+.sheet h2 {
+  font-size: 1.5rem;
+}
+
+.sheet p.soft,
+.soft {
+  color: var(--soot-soft);
+}
+
+.sheet .soft {
+  color: oklch(0.4 0.01 70);
+}
+
+/* Sign up and log in: the form on a sheet, the plot beside it. */
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 27rem) minmax(0, 1fr);
+  gap: 3.5rem;
+  align-items: center;
+  min-height: calc(100vh - 12rem);
+}
+
+.entry .sheet {
+  padding: 2.5rem;
+}
+
+.entry h1 {
+  font-size: 2.25rem;
+  margin-bottom: 0.6rem;
+}
+
+.entry .aside {
+  position: relative;
+}
+
+.entry .aside img {
+  width: min(100%, 34rem);
+  margin-inline: auto;
+  filter: drop-shadow(0 26px 22px oklch(0.3 0.01 70 / 0.3));
+}
+
+.entry .aside p {
+  max-width: 26rem;
+  margin: 1.5rem auto 0;
+  font-size: 1.125rem;
+  font-weight: 550;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .entry {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .entry .aside {
+    display: none;
+  }
+
+  .entry .sheet,
+  .sheet {
+    padding: 1.5rem;
+  }
+}
+
+/* Forms */
+form {
+  display: grid;
+  gap: 1.15rem;
+  margin-top: 1.5rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.field label,
+.field .label {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.field .help {
+  font-size: 0.875rem;
+  color: oklch(0.4 0.01 70);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 8rem;
+  gap: 1rem;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+textarea {
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.65rem 0.8rem;
+  border: 1.5px solid oklch(0.55 0.01 70);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--soot);
+  font: inherit;
+  font-size: 1rem;
+  caret-color: var(--line-deep);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+textarea {
+  min-height: 7.5rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+::placeholder {
+  color: oklch(0.5 0.01 70);
+  opacity: 1;
+}
+
+input:hover,
+textarea:hover {
+  border-color: var(--soot);
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--soot);
+  box-shadow: 0 0 0 3px var(--line);
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--wrong);
+}
+
+.form-error {
+  padding: 0.7rem 0.9rem;
+  background: oklch(0.5 0.19 28 / 0.1);
+  box-shadow: inset 0 0 0 1.5px var(--wrong);
+  color: oklch(0.38 0.16 28);
+  font-size: 0.9375rem;
+  font-weight: 550;
+}
+
+.form-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+.swap {
+  margin-top: 1.5rem;
+  font-size: 0.9375rem;
+}
+
+/* The honest note: nothing leaves this browser yet. */
+.preview-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  margin-top: 1.5rem;
+  padding: 0.8rem 0.9rem;
+  background: oklch(0.87 0.172 93 / 0.28);
+  box-shadow: inset 0 0 0 1.5px var(--tape-shade);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.preview-note b {
+  font-stretch: var(--narrow);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The picture of the plan. */
+.drop {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 0.35rem;
+  min-height: 13rem;
+  padding: 1.5rem;
+  border: 2px dashed oklch(0.55 0.01 70);
+  border-radius: 3px;
+  background: var(--sheet-shade);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.drop:hover,
+.drop.over {
+  border-color: var(--soot);
+  background: oklch(0.91 0.03 86);
+}
+
+.drop:focus-within {
+  border-color: var(--soot);
+  box-shadow: 0 0 0 3px var(--line);
+}
+
+.drop input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.drop svg {
+  width: 2rem;
+  height: 2rem;
+  margin-inline: auto;
+}
+
+.drop b {
+  font-weight: 650;
+}
+
+.drop .help {
+  font-size: 0.875rem;
+  color: oklch(0.4 0.01 70);
+}
+
+.drop img {
+  max-height: 16rem;
+  margin-inline: auto;
+  box-shadow: var(--shadow-low);
+}
+
+.drop.has-file {
+  border-style: solid;
+}
+
+.request-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2rem 2.5rem;
+  align-items: start;
+}
+
+.request-grid form {
+  margin-top: 0;
+  display: contents;
+}
+
+.request-grid .col {
+  display: grid;
+  gap: 1.15rem;
+}
+
+@media (max-width: 860px) {
+  .request-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The account: one row per plan. */
+.plans {
+  display: grid;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan {
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: start;
+  padding: 1.25rem;
+}
+
+.plan .thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--sheet-shade);
+  box-shadow: inset 0 0 0 1px var(--sheet-edge);
+}
+
+.plan h2 {
+  font-size: 1.375rem;
+  margin-bottom: 0.3rem;
+}
+
+.plan .meta {
+  font-size: 0.9375rem;
+  color: oklch(0.4 0.01 70);
+}
+
+.plan .message {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--sheet-shade);
+  font-size: 0.9375rem;
+}
+
+.plan .acts {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+}
+
+.text-btn {
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: oklch(0.4 0.01 70);
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.text-btn:hover {
+  color: var(--soot);
+}
+
+/* Where a plan stands, read off the tape: the pink block sits at its step. */
+.progress {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 1.1rem;
+  max-width: 30rem;
+}
+
+.progress::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 0.9rem;
+  background:
+    repeating-linear-gradient(90deg, var(--soot) 0 1.5px, transparent 1.5px 12px) 0 0 / 100% 45% no-repeat,
+    var(--tape);
+  box-shadow: inset 0 -2px 0 var(--tape-shade);
+}
+
+.progress span {
+  position: relative;
+  padding-top: 1.35rem;
+  font-size: 0.875rem;
+  font-weight: 550;
+  color: oklch(0.45 0.01 70);
+}
+
+.progress span::before {
+  content: '';
+  position: absolute;
+  top: -0.2rem;
+  left: 0;
+  width: 3px;
+  height: 1.3rem;
+  background: var(--soot);
+}
+
+.progress span.done {
+  color: var(--soot);
+}
+
+.progress span.now {
+  color: var(--soot);
+  font-weight: 700;
+}
+
+.progress span.now::before {
+  top: -0.35rem;
+  left: -0.3rem;
+  width: 0.9rem;
+  height: 1.6rem;
+  border-radius: 2px;
+  background: var(--line);
+  box-shadow: var(--shadow-low), inset 0 -2px 0 var(--line-deep);
+}
+
+.status-ask {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.3rem 0.6rem;
+  background: oklch(0.5 0.19 28 / 0.1);
+  box-shadow: inset 0 0 0 1.5px var(--wrong);
+  color: oklch(0.38 0.16 28);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.empty {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 2.5rem;
+  align-items: center;
+  padding: 2.5rem;
+}
+
+.empty h2 {
+  font-size: 1.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.empty .btn {
+  margin-top: 1.5rem;
+}
+
+.empty .sketch svg {
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 860px) {
+  .plan {
+    grid-template-columns: 6rem minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .plan .acts {
+    grid-column: 1 / -1;
+    justify-items: start;
+    grid-auto-flow: column;
+    justify-content: start;
+    gap: 1.25rem;
+    align-items: center;
+  }
+
+  .empty {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
+}
+
+/* Our side of the desk, for now. */
+.desk {
+  margin-top: 3rem;
+  font-size: 0.9375rem;
+}
+
+.desk summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.desk .sheet {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-low);
+}
+
+.desk table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+}
+
+.desk th,
+.desk td {
+  padding: 0.55rem 0.5rem 0.55rem 0;
+  border-bottom: 1px solid var(--sheet-edge);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.desk th {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: oklch(0.4 0.01 70);
+}
+
+.desk select {
+  min-height: 2.25rem;
+  padding: 0.3rem 0.5rem;
+  border: 1.5px solid oklch(0.55 0.01 70);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--soot);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.toast {
+  position: fixed;
+  z-index: 50;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 2rem);
+  padding: 0.75rem 1.1rem;
+  background: var(--soot);
+  color: var(--lime);
+  font-size: 0.9375rem;
+  font-weight: 550;
+  box-shadow: var(--shadow-high);
+}
+
+@media (max-width: 430px) {
+  .site-head {
+    gap: 0.9rem;
+  }
+
+  .site-head .mark {
+    font-size: 1.1rem;
+    gap: 0.45rem;
+  }
+
+  .site-head .btn {
+    padding-inline: 0.85rem;
+  }
+}

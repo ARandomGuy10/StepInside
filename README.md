@@ -1,7 +1,39 @@
-# Interior Walkthrough
+# Step Inside
 
-Walk through a 3D model of a home in the browser, in first person, and
-redesign the interior. A personal tool: a static site with no backend.
+Send a floor plan, get a 3D model of the home that opens in the browser:
+walk it in first person, see each floor as a plan with sizes, and redesign
+the interior. A static site with no backend yet.
+
+## The website
+
+| Page | What it is |
+| --- | --- |
+| `index.html` | Landing page: sketch-to-model slider, what you get, how it works, the sample home |
+| `signup.html`, `login.html` | Make an account, log in |
+| `request.html` | Send a plan: a picture and notes (needs an account) |
+| `account.html` | Your plans and where each one stands |
+| `studio.html` | The viewer (it used to be `index.html`; old `?home=` and `?compare=` links are sent on to it) |
+
+**Accounts and plan requests are a mock.** They are kept in the visitor's
+browser (`localStorage`) and nothing is sent anywhere; the pages say so. Any
+email and a password of 6 or more characters works. To see a request move,
+open **Preview tools** at the bottom of the account page: it plays our side
+of the desk (set a plan to building, needs info, or ready with a model).
+
+The code is in `src/site/`. `store.ts` holds the three interfaces a real
+backend replaces, and nothing else needs to change:
+
+- `Accounts`: sign up, log in, log out, the current account.
+- `PlanRequests`: submit, list, withdraw, update.
+- `ModelBuilder`: what happens to a plan once it is submitted. Today that is
+  `ManualBuilder`, which only marks it received for a person to build. A
+  generator driven by an API key is another `ModelBuilder` that starts the
+  job and reports `building`, then `ready` with the model's address.
+
+The pictures on the landing page are rendered from Design D by
+`node scripts/site-shots.cjs http://localhost:5173 <folder> fast` (with
+`npm run dev` running), then converted to WebP into `public/site/`. The look
+(colours, type) is in `src/site/tokens.css`, shared with the viewer.
 
 ## Run it
 
@@ -13,7 +45,7 @@ npm run dev      # then open the URL it prints (http://localhost:5173)
 ```
 
 If walking feels sluggish, open the app with `?fast` on the end of the
-address (`http://localhost:5173/?fast`). That turns off the corner
+address (`http://localhost:5173/studio.html?fast`). That turns off the corner
 shading effect, which is the most expensive part of the picture.
 
 Other commands:
@@ -33,8 +65,8 @@ Settings > Pages > Source: **GitHub Actions**. The site is then at
 
 ## Homes
 
-The start screen lists the homes; pick one to walk through it. **Change
-home** at the top of the panel goes back to the list. The address holds
+`studio.html` lists the homes; pick one to walk through it. **All
+homes** at the top of the panel goes back to the list. The address holds
 the choice (`?home=villa`), so a home can be bookmarked.
 
 | Home | Scene files | Notes |
@@ -180,7 +212,7 @@ Styles (the **Style** tab):
 
 Tour, sharing and saved views (the row above the view bar):
 
-- **▶ Tour** walks through every room on its own, through the doorways,
+- **Tour** walks through every room on its own, through the doorways,
   stopping in each to look round, then goes up to the next floor. Click
   the view or press any key to stop and carry on walking from there.
 - **Share** copies a link that opens exactly this view: the whole house

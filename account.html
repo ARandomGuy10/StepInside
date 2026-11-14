@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your account · Step Inside</title>
+    <link rel="stylesheet" href="/src/site/site.css" />
+  </head>
+  <body>
+    <header class="site-head">
+      <a class="mark" href="./">Step Inside</a>
+      <a class="far" href="./#what-you-get">What you get</a>
+      <a class="far" href="studio.html?home=villa-d">Sample home</a>
+      <a data-auth="out" href="login.html">Log in</a>
+      <a data-auth="in" href="account.html" hidden>Your account</a>
+      <a class="btn" href="request.html">Send your plan</a>
+    </header>
+
+    <main class="page" id="account" hidden>
+      <div class="page-top">
+        <div>
+          <h1 id="hello">Your plans</h1>
+          <p id="who"></p>
+        </div>
+        <div class="form-foot">
+          <a class="btn btn-line" href="request.html">Send a plan</a>
+          <button class="btn btn-open" type="button" id="log-out">Log out</button>
+        </div>
+      </div>
+
+      <ul class="plans" id="plans"></ul>
+
+      <div class="sheet empty" id="empty" hidden>
+        <div>
+          <h2>No plans here yet.</h2>
+          <p>Send the first one: a photo or scan of your floor plan and a few notes. It will show up here with its status, and when the model is ready this is where you open it.</p>
+          <a class="btn btn-line btn-big" href="request.html">Send your plan</a>
+        </div>
+        <div class="sketch" id="empty-sketch" aria-hidden="true"></div>
+      </div>
+
+      <details class="desk" id="desk" hidden>
+        <summary>Preview tools: play our side of the desk</summary>
+        <div class="sheet">
+          <p class="soft">There is no backend yet, so nobody receives a request. Until there is, use this to move a plan along the way we will, and see what its owner sees.</p>
+          <table>
+            <thead>
+              <tr><th>Plan</th><th>Status</th><th>Model to attach when ready</th></tr>
+            </thead>
+            <tbody id="desk-rows"></tbody>
+          </table>
+        </div>
+      </details>
+    </main>
+
+    <script type="module" src="/src/site/account.ts"></script>
+  </body>
+</html>

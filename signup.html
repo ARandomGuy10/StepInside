@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign up · Step Inside</title>
+    <link rel="stylesheet" href="/src/site/site.css" />
+  </head>
+  <body>
+    <header class="site-head">
+      <a class="mark" href="./">Step Inside</a>
+      <a class="far" href="./#what-you-get">What you get</a>
+      <a class="far" href="studio.html?home=villa-d">Sample home</a>
+      <a data-auth="out" href="login.html">Log in</a>
+      <a data-auth="in" href="account.html" hidden>Your account</a>
+      <a class="btn" href="request.html">Send your plan</a>
+    </header>
+
+    <main class="page entry">
+      <div class="sheet">
+        <h1>Make your account</h1>
+        <p class="soft">Then send us your plan and follow it here.</p>
+        <form id="entry-form" novalidate>
+          <div class="field">
+            <label for="name">Your name</label>
+            <input type="text" id="name" name="name" autocomplete="name" required />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="new-password" minlength="6" required aria-describedby="password-help" />
+            <span class="help" id="password-help">At least 6 characters.</span>
+          </div>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <div class="form-foot">
+            <button class="btn btn-line btn-big" type="submit">Make my account</button>
+          </div>
+        </form>
+        <p class="swap">Already have one? <a href="login.html" id="swap-link">Log in</a></p>
+        <p class="preview-note"><b>Preview</b><span>Accounts are kept in this browser only for now. Any email works and nothing is sent to us, so do not use a password you use elsewhere.</span></p>
+      </div>
+      <div class="aside" aria-hidden="true">
+        <img src="/site/house.webp" width="1010" height="1016" alt="" />
+        <p>Your own plan, built to its real sizes, ready to walk.</p>
+      </div>
+    </main>
+
+    <script type="module" src="/src/site/entry.ts"></script>
+  </body>
+</html>

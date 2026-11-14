@@ -1,0 +1,48 @@
+/*
+ * The colours and type shared by the website and the 3D viewer.
+ *
+ * The look is an architect's sheet with a builder's tools laid on it: clean
+ * paper, ink rules, a pink mason's string for the one thing to press, and a
+ * yellow steel tape wherever something is measured. Ink (dark) is the second
+ * ground, used for bands and for the viewer's panels. The names "earth" and
+ * "dug" are kept from the first version: read them as "paper" and "ink".
+ */
+:root {
+  /* Grounds */
+  --earth: oklch(0.985 0.004 90);
+  --earth-shade: oklch(0.955 0.006 90);
+  --dug: oklch(0.205 0.008 70);
+  --dug-raised: oklch(0.265 0.009 70);
+  --dug-edge: oklch(0.37 0.01 70);
+  --sheet: oklch(1 0 0);
+  --sheet-shade: oklch(0.96 0.005 90);
+  --sheet-edge: oklch(0.86 0.006 90);
+
+  /* Inks */
+  --rule: oklch(0.19 0.008 70);
+  --soot: oklch(0.19 0.008 70);
+  --soot-soft: oklch(0.4 0.01 70);
+  --lime: oklch(0.985 0.004 90);
+  --lime-soft: oklch(0.8 0.008 80);
+
+  /* The string and the tape */
+  --line: oklch(0.63 0.255 2);
+  --line-deep: oklch(0.52 0.225 2);
+  --line-bright: oklch(0.72 0.21 2);
+  --tape: oklch(0.87 0.172 93);
+  --tape-shade: oklch(0.74 0.16 86);
+
+  /* States */
+  --wrong: oklch(0.5 0.19 28);
+  --wrong-on-dug: oklch(0.74 0.15 30);
+  --right: oklch(0.5 0.12 150);
+
+  --font: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  --hand: 'Kalam', cursive;
+  --wide: 125%;
+  --narrow: 68%;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-low: 0 1px 3px oklch(0.2 0.01 70 / 0.18);
+  --shadow-high: 0 12px 30px oklch(0.2 0.01 70 / 0.16), 0 2px 6px oklch(0.2 0.01 70 / 0.12);
+}
