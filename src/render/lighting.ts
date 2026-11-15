@@ -65,6 +65,8 @@ export function addLighting(
     const side = new THREE.DirectionalLight(0xffffff, strength);
     side.position.set(x, 0.35, z);
     side.userData.strength = strength;
+    // Not a real light source: Realistic mode leaves it out.
+    side.userData.fake = true;
     sides.push(side);
     world.add(side);
   }

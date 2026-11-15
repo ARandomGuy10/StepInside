@@ -25,8 +25,8 @@ import { loadSurfaces } from './render/textures';
 import { OrbitView } from './render/orbitView';
 import { buildStreet } from './render/site';
 import { TopView } from './render/topView';
-import { Realistic } from './render/realistic';
-import { roomFacings, type RoomFacing } from './core/vastu';
+import type { Realistic } from './render/realistic';
+import { FACINGS, facingOf, frontOnPlan, northFor, roomFacings, type RoomFacing } from './core/vastu';
 import type { CatalogueItem } from './core/edits';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
@@ -42,11 +42,14 @@ const PANEL_WIDTH = 288;
 /** True inside one side of the compare page: no panel, the views kept in step. */
 const EMBED = window.parent !== window && new URLSearchParams(window.location.search).has('embed');
 
+/** Where the owner's own choice of north is kept, per home. Declared before the page starts up, which reads it. */
+const NORTH = 'stepinside.north.';
+
 function start(home: HomeEntry, scenes: readonly Scene[]): void {
   document.getElementById('home-name')!.textContent = home.title;
   // The renderer draws the 3D scene into the canvas using WebGL (the GPU).
   /** Set once Realistic mode exists; it is built late, and things above it need to tell it of changes. */
-  let realisticRef: Realistic | undefined;
+  let realisticRef: { invalidate(): void } | undefined;
   /** Runs after the panel is redrawn, for the features added below it. */
   let afterRefresh: () => void = () => {};
   /** The recording of a tour, while one is being made. */
@@ -59,6 +62,15 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  // Shadows only change when the sun or something in the home moves, not when the
+  // viewer does. Redrawing them every frame would draw the whole home twice for nothing,
+  // so they are redrawn for a short while after each change and then left alone.
+  renderer.shadowMap.autoUpdate = false;
+  let shadowsUntil = performance.now() + 10_000;
+  const touchShadows = (): void => { shadowsUntil = performance.now() + 1500; };
+  // A held pointer may be dragging a piece of furniture.
+  window.addEventListener('pointermove', (e) => { if (e.buttons) touchShadows(); }, { passive: true });
+  for (const kind of ['pointerup', 'keyup', 'drop', 'change', 'input', 'click']) window.addEventListener(kind, touchShadows, { passive: true });
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.95;
 
@@ -79,6 +91,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       openCeilings: entry.openCeilings,
     });
     const furniture = new FurnitureView();
+    furniture.onModel = () => { touchShadows(); realisticRef?.invalidate(); };
     const lamps = buildLamps(original);
     for (const object of [shell, furniture.group, lamps]) {
       object.position.y = entry.elevation;
@@ -120,6 +133,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const sunClock = !home.place ? null : setUpSunControls(home.place, {
       setSun: (azimuthDeg, elevationDeg) => {
         daylight.setSun(azimuthDeg, elevationDeg);
+        touchShadows();
         realisticRef?.invalidate();
       },
     });
@@ -159,7 +173,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   // Adding ?fast to the address skips the post-processing below, for
   // slow machines.
-  const fast = new URLSearchParams(window.location.search).has('fast');
+  let fast = new URLSearchParams(window.location.search).has('fast');
 
   // Post-processing: the picture is drawn off screen, then improved in
   // passes before it is shown. The ambient occlusion pass darkens corners
@@ -736,6 +750,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }
 
   function updateHint(): void {
+    touchShadows();
     realisticRef?.invalidate();
     afterRefresh();
     const painting = mode === 'paint';
@@ -1799,7 +1814,34 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       composer.render();
     }
   };
-  const realistic = new Realistic(renderer, world, drawFast);
+  // The tracer is a large piece of code that most visits never use, so it is only
+  // downloaded the first time Realistic light is switched on.
+  const realistic = {
+    on: false,
+    maxPasses: 400,
+    tracer: undefined as Realistic | undefined,
+    wanted: false,
+    get preparing(): boolean { return !this.tracer || this.tracer.preparing; },
+    get passes(): number { return this.tracer?.passes ?? 0; },
+    invalidate(): void { this.tracer?.invalidate(); },
+    render(camera: THREE.Camera, time: number): boolean {
+      if (!this.tracer) return false;
+      this.tracer.on = this.on;
+      return this.tracer.render(camera, time);
+    },
+    fetch(): void {
+      if (this.wanted) return;
+      this.wanted = true;
+      import('./render/realistic').then(
+        (module) => { this.tracer = new module.Realistic(renderer, world, drawFast); },
+        () => {
+          this.wanted = false;
+          setRealistic(false);
+          panel.toast('Realistic light could not be loaded. Check the connection and try again.');
+        },
+      );
+    },
+  };
   realisticRef = realistic;
   const realisticNote = document.createElement('div');
   realisticNote.id = 'realistic-note';
@@ -1809,6 +1851,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let realisticText = '';
   function setRealistic(on: boolean): void {
     realistic.on = on;
+    if (on) realistic.fetch();
     realistic.invalidate();
     realisticButton.classList.toggle('active', on);
     setTool(realisticButton, 'realistic', on ? 'Back to the fast picture' : 'Realistic light (beta)');
@@ -1990,6 +2033,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   document.body.append(compass);
   document.body.classList.toggle('has-sun', !!sunClock);
   const dial = compass.querySelector<SVGGElement>('#compass-dial')!;
+  const ownNorth = ownNorthOf(home.id) !== null;
   const northRad = THREE.MathUtils.degToRad(scenes[0].northDeg);
   let dialAt = '';
   /** Turns the compass so its N points north as the view sees it. */
@@ -2051,7 +2095,37 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         : f.verdict === 'neutral' ? `Fine; Vastu prefers ${f.prefers!.slice(0, 2).join(' or ').toLowerCase()}`
         : '';
     }
-    directionsPanel.replaceChildren(head, note, table);
+    // Which way the home faces: the one thing the owner knows that the drawing may not say.
+    const front = frontOnPlan(scenes[0].start?.position ?? [(plot.minX + plot.maxX) / 2, plot.maxY], plot);
+    const facing = document.createElement('label');
+    facing.className = 'facing';
+    const choose = document.createElement('select');
+    // Or the browser puts the old choice back after the page reopens.
+    choose.autocomplete = 'off';
+    const current = Math.round(facingOf(front, scenes[0].northDeg) / 45) % 8;
+    FACINGS.forEach(([name, bearing], i) => choose.add(new Option(name, String(bearing), i === current, i === current)));
+    choose.addEventListener('change', () => {
+      try {
+        localStorage.setItem(NORTH + home.id, String(northFor(front, Number(choose.value))));
+        sessionStorage.setItem('stepinside.directions', '1');
+      } catch {
+        panel.toast('This browser would not keep the direction.');
+        return;
+      }
+      // North turns the sun, the shadows, the compass and the zones, so the home is opened afresh.
+      window.location.reload();
+    });
+    facing.append('The front of this home faces ', choose);
+    const how = document.createElement('p');
+    how.className = 'how';
+    how.textContent =
+      (ownNorth ? 'You set this. ' : 'This is taken from the drawing; check it. ') +
+      'Not sure? Stand at your gate looking out at the street with the compass on your phone open: the direction it shows is the one to pick. The sun and shadows follow it too.';
+    directionsPanel.replaceChildren(head, facing, how, note, table);
+  }
+  if (sessionStorage.getItem('stepinside.directions')) {
+    sessionStorage.removeItem('stepinside.directions');
+    setTimeout(() => !directions && toggleDirections(), 0);
   }
   function toggleDirections(): void {
     directions = !directions;
@@ -2142,6 +2216,33 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let lastRoom: string | undefined;
   const timer = new THREE.Timer();
   // The render loop: the browser calls this before every screen refresh.
+  // If this device takes too long over each picture, drop the extra shading and the
+  // finer pixels by itself. Nobody should have to know about ?fast to walk smoothly.
+  let frames = 0;
+  let slow = 0;
+  let lastFrame = 0;
+  function watchSpeed(began: number): void {
+    const opening = document.querySelector('#opening');
+    if (opening && frames === 2) {
+      opening.classList.add('gone');
+      setTimeout(() => opening.remove(), 400);
+    }
+    frames++;
+    const now = performance.now();
+    const gap = now - lastFrame;
+    lastFrame = now;
+    // The first pictures include one-off set-up work, and a hidden tab draws nothing.
+    if (fast || realistic.on || frames < 20 || frames > 400 || document.hidden || gap > 1000) return;
+    // Either drawing itself is slow, or the pictures arrive far apart.
+    if (now - began > 40 || gap > 55) slow++;
+    else slow = Math.max(0, slow - 1);
+    if (slow < 12) return;
+    fast = true;
+    renderer.setPixelRatio(1);
+    resize();
+    panel.toast('Switched to lighter drawing to keep this smooth on your device.');
+  }
+
   renderer.setAnimationLoop((time) => {
     timer.update(time);
     if (capturing) return;
@@ -2163,6 +2264,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       refresh();
     }
     turnCompass();
+    if (tour || performance.now() < shadowsUntil) renderer.shadowMap.needsUpdate = true;
+    const began = performance.now();
     if (drawRealistic(time)) {
       // The traced picture is on screen.
     } else if (fast) {
@@ -2173,6 +2276,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       occlusion.enabled = !(inTopView && plan.flat);
       composer.render();
     }
+    watchSpeed(began);
     if (snapNext) {
       // The picture is read in the same breath as it is drawn, before the browser clears it.
       snapNext = false;
@@ -2196,6 +2300,7 @@ if (params.has('compare')) {
   document.getElementById('panel')!.hidden = true;
   document.getElementById('hint')!.hidden = true;
   document.getElementById('view-bar')!.hidden = true;
+  document.querySelector('#opening')?.remove();
   document.getElementById('chooser')!.hidden = false;
   document.getElementById('chooser-list')!.replaceChildren(
     // A home with several designs is listed once; its designs are picked inside.
@@ -2246,6 +2351,9 @@ if (params.has('compare')) {
       window.location.search = next.toString();
     });
     const scenes = chosen.levels.map((l) => parseScene(l.json));
+    // The owner may have said which way the home faces; that outranks the drawing.
+    const north = ownNorthOf(chosen.id);
+    if (north !== null) for (const scene of scenes) scene.northDeg = north;
     // The photographed surfaces load first (a few seconds at most), so the
     // floors and walls appear with them rather than switching over later.
     void loadSurfaces(6000)
@@ -2262,6 +2370,7 @@ if (params.has('compare')) {
  * ?compare=villa-d,villa-e
  */
 function startCompare(params: URLSearchParams): void {
+  document.querySelector('#opening')?.remove();
   for (const id of ['panel', 'hint', 'view-bar', 'chooser']) document.getElementById(id)!.hidden = true;
   canvas.hidden = true;
   document.body.classList.add('compare');
@@ -2351,7 +2460,18 @@ function startCompare(params: URLSearchParams): void {
   });
 }
 
+function ownNorthOf(homeId: string): number | null {
+  try {
+    const kept = localStorage.getItem(NORTH + homeId);
+    const value = kept === null ? NaN : Number(kept);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 function showStartError(error: unknown): void {
+  document.querySelector('#opening')?.remove();
   const panel = document.querySelector<HTMLElement>('#error')!;
   panel.hidden = false;
   panel.textContent =

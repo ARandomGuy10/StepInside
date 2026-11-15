@@ -93,3 +93,30 @@ export function roomFacings(scene: Scene, plot: Plot): RoomFacing[] {
       return { id: room.id, name, zone, verdict, prefers: guide.prefers };
     });
 }
+
+/** The eight directions a home can face, as compass bearings in degrees. */
+export const FACINGS: readonly [name: string, bearing: number][] = [
+  ['North', 0], ['North-east', 45], ['East', 90], ['South-east', 135],
+  ['South', 180], ['South-west', 225], ['West', 270], ['North-west', 315],
+];
+
+/**
+ * Which way the front of the home points on the plan: 0 is up the page, 90 to the
+ * right, and so on. The front is the side of the plot the entrance is nearest to.
+ */
+export function frontOnPlan(entrance: readonly [number, number], plot: Plot): number {
+  const dx = (entrance[0] - (plot.minX + plot.maxX) / 2) / ((plot.maxX - plot.minX) / 2 || 1);
+  const dy = (entrance[1] - (plot.minY + plot.maxY) / 2) / ((plot.maxY - plot.minY) / 2 || 1);
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 90 : 270;
+  return dy > 0 ? 180 : 0;
+}
+
+/** The compass bearing the front faces, given where north is on the plan. */
+export function facingOf(frontPlanDeg: number, northDeg: number): number {
+  return (((frontPlanDeg - northDeg) % 360) + 360) % 360;
+}
+
+/** Where north must be on the plan for the front to face the given compass bearing. */
+export function northFor(frontPlanDeg: number, facingDeg: number): number {
+  return (((frontPlanDeg - facingDeg) % 360) + 360) % 360;
+}

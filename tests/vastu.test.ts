@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import villaGround from '../scenes/villa-d-ground.json';
 import { parseScene } from '../src/core/scene';
-import { roomFacings, zoneAt } from '../src/core/vastu';
+import { facingOf, frontOnPlan, northFor, roomFacings, zoneAt } from '../src/core/vastu';
 
 const plot = { minX: 0, minY: 0, maxX: 9, maxY: 9 };
 
@@ -36,5 +36,25 @@ describe('rooms and Vastu', () => {
     const kitchen = facings.find((f) => f.id === 'kitchen')!;
     expect(kitchen.verdict).toBeDefined();
     expect(kitchen.prefers).toContain('South-east');
+  });
+});
+
+describe('which way the home faces', () => {
+  const plot = { minX: 0, minY: 0, maxX: 10, maxY: 16 };
+  it('takes the side of the plot nearest the entrance as the front', () => {
+    expect(frontOnPlan([5, 15.5], plot)).toBe(180);
+    expect(frontOnPlan([5, 0.5], plot)).toBe(0);
+    expect(frontOnPlan([9.8, 8], plot)).toBe(90);
+    expect(frontOnPlan([0.2, 9], plot)).toBe(270);
+  });
+  it('turns a facing into north on the plan and back', () => {
+    // Front drawn at the bottom of the page, facing east: north is to the right of the page.
+    expect(northFor(180, 90)).toBe(90);
+    expect(facingOf(180, 90)).toBe(90);
+    for (const facing of [0, 45, 135, 270, 315]) expect(facingOf(180, northFor(180, facing))).toBe(facing);
+  });
+  it('puts the room behind an east-facing front in the west', () => {
+    expect(zoneAt(5, 1, plot, northFor(180, 90))).toBe('West');
+    expect(zoneAt(5, 15, plot, northFor(180, 90))).toBe('East');
   });
 });

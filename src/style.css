@@ -324,6 +324,7 @@ body.touring #panel {
 }
 
 #design,
+#directions .facing select,
 #compare select {
   width: 100%;
   min-height: 34px;
@@ -342,6 +343,7 @@ body.touring #panel {
 }
 
 #design:hover,
+#directions .facing select:hover,
 #compare select:hover {
   border-color: oklch(0.52 0.009 70);
 }
@@ -1876,6 +1878,20 @@ body.embed #compass {
   line-height: 1.45;
 }
 
+#directions .facing {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#directions .facing select {
+  width: auto;
+}
+
 #directions table {
   width: 100%;
   border-collapse: collapse;
@@ -2314,3 +2330,29 @@ body.touch:not(.orbit-view):not(.top-view) #walk-pad {
     text-align: right;
   }
 }
+
+/* Shown from the first moment until the home is on screen. */
+#opening {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: var(--earth);
+  color: var(--dug);
+  font: 500 15px/1.4 'Archivo Variable', system-ui, sans-serif;
+  transition: opacity 0.25s ease-out;
+}
+#opening .mark { font-size: 22px; }
+#opening i {
+  width: 132px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--dug) 40%, transparent 0) 0 0 / 250% 100%;
+  animation: opening 1.1s linear infinite;
+}
+#opening.gone { opacity: 0; pointer-events: none; }
+body.embed #opening .mark { display: none; }
+@keyframes opening { from { background-position: 100% 0; } to { background-position: -60% 0; } }
+@media (prefers-reduced-motion: reduce) { #opening i { animation: none; } }

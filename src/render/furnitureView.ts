@@ -39,6 +39,9 @@ export class FurnitureView {
   private readonly models = new Map<string, Promise<THREE.Object3D | null>>();
   private readonly loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
+  /** Called when a downloaded model has taken the place of its stand-in. */
+  onModel: () => void = () => {};
+
   constructor() {
     this.group.name = 'furniture';
   }
@@ -124,6 +127,7 @@ export class FurnitureView {
       }
       root.remove(placeholder);
       root.add(copy);
+      this.onModel();
     });
     return root;
   }

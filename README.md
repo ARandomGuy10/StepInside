@@ -47,7 +47,11 @@ npm run dev      # then open the URL it prints (http://localhost:5173)
 
 If walking feels sluggish, open the app with `?fast` on the end of the
 address (`http://localhost:5173/studio.html?fast`). That turns off the corner
-shading effect, which is the most expensive part of the picture.
+shading effect, which is the most expensive part of the picture. The viewer
+also does this by itself when it sees the pictures arriving slowly, and says
+so. Two other things keep it light: shadows are redrawn only when the sun or
+something in the home changes (not on every frame), and the Realistic light
+code is downloaded only when that mode is first switched on.
 
 Other commands:
 
@@ -156,8 +160,12 @@ light from the sun, the sky and the lamps as it bounces round the rooms,
 using `three-gpu-pathtracer`. It starts when the view has been still for a
 moment and sharpens pass by pass, up to 400; moving goes back to the fast
 picture. It needs a real graphics card. The code is `src/render/realistic.ts`.
-It could not be checked properly in the headless test browser (software
-rendering shows speckle there), so judge it on a real machine.
+Two things in there are easy to break: downloaded models that pack their
+points as whole numbers are handed to the tracer as plain copies (read raw,
+one chair becomes a shape big enough to shade the whole home), and only the
+lamps near the viewer are passed on, which keeps the grain down. The headless
+test browser renders in software, a few passes a minute, so the full 400
+passes have only been seen on a real machine.
 
 ## Night, pictures, directions, your own pieces
 
@@ -170,7 +178,9 @@ rendering shows speckle there), so judge it on a real machine.
 - The **compass** always points north. Click it (B) for the directions card:
   the plot is cut into nine zones, each room is labelled with its zone, and
   the card says what Vastu tradition holds for that kind of room there
-  (`src/core/vastu.ts`). It is a guide, not a rule.
+  (`src/core/vastu.ts`). It is a guide, not a rule. The card asks which way
+  the front of the home faces; the answer is kept per home in this browser
+  and turns north, and with it the sun and shadows, to match.
 - **Keep** on a selected piece saves it, with its size and colour, under
   **My pieces** in this browser, ready to add to any room or home.
 

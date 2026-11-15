@@ -70,9 +70,11 @@ export class Realistic {
         return false;
       }
       this.build(camera);
+      this.pickLamps(camera);
       this.tracedView = view;
     } else if (view !== this.tracedView) {
       this.tracer!.setCamera(camera);
+      this.pickLamps(camera);
       this.tracedView = view;
     }
     const tracer = this.tracer!;
@@ -81,6 +83,32 @@ export class Realistic {
     this.passes = Math.floor(tracer.samples);
     if (this.passes >= tracer.minSamples) this.preparing = false;
     return true;
+  }
+
+  /**
+   * Tells the tracer about the lamps near the viewer only. Each ray tries one light
+   * picked at random, so thirty lamps in far rooms, none of which can reach this
+   * spot, mean most tries are wasted and the picture stays grainy for much longer.
+   */
+  private pickLamps(camera: THREE.Camera): void {
+    const eye = camera.getWorldPosition(new THREE.Vector3());
+    const at = new THREE.Vector3();
+    const far: THREE.Object3D[] = [];
+    this.world.traverseVisible((o) => {
+      const lamp = o as THREE.PointLight;
+      if (o.userData.fake) far.push(o);
+      else if (lamp.isPointLight) {
+        lamp.getWorldPosition(at);
+        // A lamp on another floor, or more than a room or two away, adds next to nothing here.
+        if (Math.abs(at.y - eye.y) > 3 || Math.hypot(at.x - eye.x, at.z - eye.z) > 7) far.push(o);
+      }
+    });
+    for (const o of far) o.visible = false;
+    try {
+      this.tracer!.updateLights();
+    } finally {
+      for (const o of far) o.visible = true;
+    }
   }
 
   private build(camera: THREE.Camera): void {
@@ -104,11 +132,22 @@ export class Realistic {
     // top of the scene, the selection box. Leave them out while the scene is read.
     const hidden: THREE.Object3D[] = [];
     world.traverseVisible((o) => {
+      if (o.userData.fake) hidden.push(o);
       const material = (o as THREE.Mesh).material as THREE.Material | undefined;
       if (!material || Array.isArray(material)) return;
       if ((material as THREE.MeshBasicMaterial).isMeshBasicMaterial || material.blending !== THREE.NormalBlending) hidden.push(o);
     });
     for (const o of hidden) o.visible = false;
+    // Downloaded models often store their points as small whole numbers to save
+    // space, scaled up when drawn. The tracer reads the raw numbers, which turns a
+    // chair into a shape kilometres wide that shades the whole home. Give it plain copies.
+    const packed: [THREE.Mesh, THREE.BufferGeometry][] = [];
+    world.traverseVisible((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh || !isPacked(mesh.geometry)) return;
+      packed.push([mesh, mesh.geometry]);
+      mesh.geometry = (mesh.geometry.userData.plain as THREE.BufferGeometry | undefined) ?? (mesh.geometry.userData.plain = unpacked(mesh.geometry));
+    });
     // The sky lights a path-traced scene by itself, so it needs the real panorama at
     // full strength, not the dimmed, pre-blurred copy the fast picture reflects.
     const environment = world.environment;
@@ -124,7 +163,29 @@ export class Realistic {
       world.environment = environment;
       world.environmentIntensity = intensity;
       for (const o of hidden) o.visible = true;
+      for (const [mesh, geometry] of packed) mesh.geometry = geometry;
     }
     this.stale = false;
   }
+}
+
+/** True if any of the geometry's numbers are stored packed (whole numbers, or woven into one shared list). */
+function isPacked(geometry: THREE.BufferGeometry): boolean {
+  return Object.values(geometry.attributes).some(
+    (a) => (a as THREE.InterleavedBufferAttribute).isInterleavedBufferAttribute || !(a.array instanceof Float32Array),
+  );
+}
+
+/** A copy of the geometry with every number written out in full. */
+function unpacked(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  const plain = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(geometry.attributes)) {
+    const values = new Float32Array(a.count * a.itemSize);
+    // getComponent undoes the packing, which reading the array directly does not.
+    for (let i = 0; i < a.count; i++) for (let c = 0; c < a.itemSize; c++) values[i * a.itemSize + c] = a.getComponent(i, c);
+    plain.setAttribute(name, new THREE.BufferAttribute(values, a.itemSize));
+  }
+  plain.setIndex(geometry.index);
+  for (const g of geometry.groups) plain.addGroup(g.start, g.count, g.materialIndex);
+  return plain;
 }
