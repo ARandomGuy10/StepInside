@@ -1709,12 +1709,12 @@ kbd {
     top: auto;
     right: 64px;
     bottom: 16px;
-    max-height: calc(100vh - 230px);
+    max-height: calc(100vh - 270px);
   }
 }
 
-/* A short window: the two groups of tools stand side by side. */
-@media (min-width: 701px) and (max-height: 780px) {
+/* The two groups of tools stand side by side, so the rail is never taller than the window. */
+@media (min-width: 701px) {
   #view-bar .tool-row,
   body.orbit-view #view-bar .tool-row {
     flex-direction: row;
@@ -1722,7 +1722,8 @@ kbd {
 
   #saved-views,
   #areas,
-  #keys {
+  #keys,
+  #directions {
     right: 106px;
   }
 }
@@ -1757,6 +1758,210 @@ body.embed #realistic-note {
   display: none;
 }
 
+/* ---- The compass, and the card of directions ---- */
+
+#compass {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--panel-shadow);
+  cursor: pointer;
+}
+
+body.has-sun #compass {
+  right: 302px;
+}
+
+body.embed #compass {
+  display: none;
+}
+
+#compass svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#compass .rim {
+  fill: none;
+  stroke: var(--panel-edge);
+  stroke-width: 1.5;
+}
+
+#compass .north {
+  fill: var(--line);
+}
+
+#compass .south {
+  fill: var(--panel-edge);
+}
+
+#compass .n {
+  fill: var(--text);
+  font-stretch: var(--narrow);
+  font-size: 9px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+#compass.active {
+  background: var(--lime);
+  color: var(--soot);
+}
+
+#compass.active .n {
+  fill: var(--soot);
+}
+
+#directions {
+  position: fixed;
+  right: 106px;
+  bottom: 16px;
+  z-index: 6;
+  width: min(460px, calc(100vw - 130px));
+  max-height: calc(100vh - 270px);
+  overflow: auto;
+  padding: 14px 16px 16px;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--panel-shadow);
+  scrollbar-color: var(--panel-edge) transparent;
+  scrollbar-width: thin;
+}
+
+#directions[hidden] {
+  display: none;
+}
+
+#directions header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+#directions header strong {
+  font-stretch: var(--wide);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+#directions header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+
+#directions p {
+  margin: 0 0 10px;
+  color: var(--text-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+#directions table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+#directions td {
+  padding: 5px 10px 5px 0;
+  border-top: 1px solid var(--panel-line);
+  vertical-align: top;
+}
+
+#directions td:nth-child(2) {
+  white-space: nowrap;
+  font-weight: 650;
+}
+
+#directions td:last-child {
+  padding-right: 0;
+  color: var(--text-soft);
+}
+
+#directions td.suits {
+  color: var(--tape);
+  font-weight: 650;
+}
+
+#directions td.avoids {
+  color: var(--wrong-on-dug);
+}
+
+/* ---- Night and lights in the sun panel ---- */
+
+#sun-bar .sun-row {
+  display: flex;
+  gap: 6px;
+}
+
+#sun-bar .sun-row button {
+  flex: 1;
+}
+
+/* ---- My pieces ---- */
+
+#mine {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#mine li {
+  display: flex;
+  gap: 5px;
+}
+
+#panel #mine li button:first-child {
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 6px 9px;
+  text-align: left;
+}
+
+#mine strong {
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+#mine span {
+  color: var(--text-soft);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+#panel #mine li button:last-child {
+  width: 30px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+}
+
 /* ---- The card of keyboard shortcuts ---- */
 
 #keys {
@@ -1765,7 +1970,7 @@ body.embed #realistic-note {
   bottom: 16px;
   z-index: 7;
   width: min(620px, calc(100vw - 96px));
-  max-height: calc(100vh - 230px);
+  max-height: calc(100vh - 270px);
   overflow: auto;
   padding: 14px 16px 16px;
   border-radius: 8px;
@@ -1948,6 +2153,24 @@ body.embed #realistic-note {
   #realistic-note {
     bottom: auto;
     top: 50%;
+  }
+
+  #compass,
+  body.has-sun #compass {
+    top: auto;
+    right: auto;
+    left: 8px;
+    bottom: 312px;
+    width: 44px;
+    height: 44px;
+  }
+
+  #directions {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 60vh;
   }
 
   #sun-bar {

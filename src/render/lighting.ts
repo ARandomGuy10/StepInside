@@ -149,6 +149,7 @@ function buildLamp(light: Light, ceiling: number): THREE.Group {
 
   // A point light shines in all directions and fades with distance.
   const bulb = new THREE.PointLight(light.color, light.intensity, 9, 2);
+  bulb.userData.intensity = light.intensity;
   bulb.position.y = Math.min(light.height, ceiling - 0.15) - (style === 'spot' ? 0 : 0.2);
   if (style === 'cloud') {
     // Only the main living room lamp casts shadows: each shadow-casting
@@ -197,4 +198,17 @@ function buildLamp(light: Light, ceiling: number): THREE.Group {
     group.add(lump);
   }
   return group;
+}
+
+/** Switches the lamps of a storey on or off, one by one: `isOn` is asked for each light's id. */
+export function switchLamps(lamps: THREE.Group, isOn: (id: string) => boolean): void {
+  for (const lamp of lamps.children) {
+    if (!lamp.name.startsWith('light:')) continue;
+    const on = isOn(lamp.name.slice(6));
+    lamp.traverse((o) => {
+      if ((o as THREE.PointLight).isPointLight) (o as THREE.PointLight).intensity = on ? o.userData.intensity : 0;
+      const material = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      if (material?.emissive && o.name === 'lamp') material.emissiveIntensity = on ? 1.1 : 0.02;
+    });
+  }
 }

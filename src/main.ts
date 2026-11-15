@@ -18,7 +18,7 @@ import type { Segment } from './core/collision';
 import { buildWalls } from './core/walls';
 import { FirstPersonControls } from './render/firstPerson';
 import { FurnitureView } from './render/furnitureView';
-import { addLighting, buildLamps, type Daylight } from './render/lighting';
+import { addLighting, buildLamps, switchLamps, type Daylight } from './render/lighting';
 import { clockText, sunPosition, sunTimes, type Place } from './core/sun';
 import { applyShellColors, buildShell } from './render/sceneMesh';
 import { loadSurfaces } from './render/textures';
@@ -26,6 +26,8 @@ import { OrbitView } from './render/orbitView';
 import { buildStreet } from './render/site';
 import { TopView } from './render/topView';
 import { Realistic } from './render/realistic';
+import { roomFacings, type RoomFacing } from './core/vastu';
+import type { CatalogueItem } from './core/edits';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
@@ -45,6 +47,14 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // The renderer draws the 3D scene into the canvas using WebGL (the GPU).
   /** Set once Realistic mode exists; it is built late, and things above it need to tell it of changes. */
   let realisticRef: Realistic | undefined;
+  /** Runs after the panel is redrawn, for the features added below it. */
+  let afterRefresh: () => void = () => {};
+  /** The recording of a tour, while one is being made. */
+  let recorder: MediaRecorder | null = null;
+  /** Rooms are labelled with the part of the plot they lie in, instead of their size. */
+  let directions = false;
+  let facings = new Map<string, RoomFacing>();
+  let snapNext = false;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -107,7 +117,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const mid = bounds.getCenter(new THREE.Vector2());
   const radius = bounds.getSize(new THREE.Vector2()).length() / 2 + 1;
   const daylight = addLighting(renderer, world, scenes[0], new THREE.Vector3(mid.x, 0, mid.y), radius);
-  if (home.place) setUpSunControls(home.place, {
+  const sunClock = !home.place ? null : setUpSunControls(home.place, {
       setSun: (azimuthDeg, elevationDeg) => {
         daylight.setSun(azimuthDeg, elevationDeg);
         realisticRef?.invalidate();
@@ -286,6 +296,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     panel.toast('Layout loaded. Undo brings the previous one back.');
   };
 
+  /** Adds a piece in front of the walker. Set below, where the panel's actions are. */
+  let addItem: (item: CatalogueItem) => void = () => {};
   const panel = new FurniturePanel({
     save,
     load,
@@ -308,28 +320,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     },
     add: (key) => {
       const item = CATALOGUE.find((c) => c.key === key);
-      if (!item) return;
-      // Look for what is straight ahead of the walker: a wall-hung piece
-      // goes on that wall, a floor piece stands a step in front.
-      const pose = controls.pose;
-      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-      const hit = raycaster.intersectObject(lv().shell, true).find((h) => !h.object.name.startsWith('glass:'));
-      let near: [number, number];
-      if (item.mount === 'wall') {
-        const p = hit ? hit.point.clone().addScaledVector(raycaster.ray.direction, -0.05) : null;
-        near = p ? [mm(p.x), mm(p.z)] : [mm(pose.x), mm(pose.y)];
-      } else {
-        const reach = Math.max(0.3, Math.min(1.5, (hit?.distance ?? 9) - 0.6));
-        near = [mm(pose.x - Math.sin(pose.yaw) * reach), mm(pose.y - Math.cos(pose.yaw) * reach)];
-      }
-      // Turn a floor piece to face the walker, to the nearest quarter turn.
-      const facing = (((Math.round((180 - THREE.MathUtils.radToDeg(pose.yaw)) / 90) * 90) % 360) + 360) % 360;
-      const result = addFurniture(now(), item, near, facing);
-      if (apply(result.scene, 'There is no space for it here. Try from a spot with more room.') && result.id) {
-        selectedId = result.id;
-        refresh();
-        panel.toast(item.mount === 'wall' ? `Hung: ${item.name}. Drag it along the wall.` : `Added: ${item.name}. Drag it into place.`);
-      }
+      if (item) addItem(item);
     },
     paint: (color, done) => {
       if (!paintTarget) return;
@@ -394,6 +385,29 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     redo: () => history.redo(),
     toggleTopView: () => setTopView(!inTopView),
   });
+  addItem = (item) => {
+    // Look for what is straight ahead of the walker: a wall-hung piece
+    // goes on that wall, a floor piece stands a step in front.
+    const pose = controls.pose;
+    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const hit = raycaster.intersectObject(lv().shell, true).find((h) => !h.object.name.startsWith('glass:'));
+    let near: [number, number];
+    if (item.mount === 'wall') {
+      const p = hit ? hit.point.clone().addScaledVector(raycaster.ray.direction, -0.05) : null;
+      near = p ? [mm(p.x), mm(p.z)] : [mm(pose.x), mm(pose.y)];
+    } else {
+      const reach = Math.max(0.3, Math.min(1.5, (hit?.distance ?? 9) - 0.6));
+      near = [mm(pose.x - Math.sin(pose.yaw) * reach), mm(pose.y - Math.cos(pose.yaw) * reach)];
+    }
+    // Turn a floor piece to face the walker, to the nearest quarter turn.
+    const facing = (((Math.round((180 - THREE.MathUtils.radToDeg(pose.yaw)) / 90) * 90) % 360) + 360) % 360;
+    const result = addFurniture(now(), item, near, facing);
+    if (apply(result.scene, 'There is no space for it here. Try from a spot with more room.') && result.id) {
+      selectedId = result.id;
+      refresh();
+      panel.toast(item.mount === 'wall' ? `Hung: ${item.name}. Drag it along the wall.` : `Added: ${item.name}. Drag it into place.`);
+    }
+  };
 
   function refresh(): void {
     levels.forEach((l, i) => {
@@ -437,6 +451,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       topView: inTopView,
       storeys: levels.length > 1,
     });
+    afterRefresh();
   }
   history.subscribe(refresh);
 
@@ -518,9 +533,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const keysButton = tool('keys', 'Shortcuts', '?', () => toggleKeys());
   const realisticButton = tool('realistic', 'Realistic light (beta)', 'Y', () => setRealistic(!realistic.on));
   realisticButton.id = 'btn-realistic';
+  const snapButton = tool('camera', 'Save a picture', 'Z', () => {
+    snapNext = true;
+  });
+  const recordButton = tool('video', 'Record the tour', 'Shift G', () => recordTour());
   tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
-  document.getElementById('view-extras')!.replaceChildren(realisticButton, tourButton, savedButton, shareButton, areasButton, pdfButton, keysButton);
+  document.getElementById('view-extras')!.replaceChildren(realisticButton, tourButton, recordButton, snapButton, savedButton, shareButton, areasButton, pdfButton, keysButton);
   const tools = document.getElementById('orbit-tools')!;
   const roofButton = tool('roof', 'Hide roof', 'O', () => {
     roofHidden = !roofHidden;
@@ -580,7 +599,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     for (const room of now().rooms) {
       if (room.kind === 'void') continue;
       const size = roomSize(room);
-      items.push({ text: room.name ?? room.id, sub: formatSize(size.width, size.depth, units), x: size.center[0], y: 0.05, z: size.center[1] });
+      items.push({ text: room.name ?? room.id, sub: directions ? (facings.get(room.id)?.zone ?? '') : formatSize(size.width, size.depth, units), x: size.center[0], y: 0.05, z: size.center[1] });
     }
     const chosen = selectedPiece();
     if (chosen) {
@@ -608,7 +627,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       if (el.firstElementChild!.textContent !== item.text) el.firstElementChild!.textContent = item.text;
       if (el.lastElementChild!.textContent !== item.sub) el.lastElementChild!.textContent = item.sub;
       // With sizes off, rooms show only their names; a selected piece keeps its size.
-      (el.lastElementChild as HTMLElement).hidden = !sizes && !item.piece;
+      (el.lastElementChild as HTMLElement).hidden = !sizes && !directions && !item.piece;
     });
   }
 
@@ -718,6 +737,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   function updateHint(): void {
     realisticRef?.invalidate();
+    afterRefresh();
     const painting = mode === 'paint';
     setTool(tourButton, tour ? 'stop' : 'play', tour ? 'Stop tour' : 'Tour');
     tourButton.classList.toggle('active', !!tour);
@@ -1030,6 +1050,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       ['N  M', 'Room names, sizes'],
       ['W A S D', 'Walk (Shift: faster)'],
       ['Y', 'Realistic light'],
+      ['K  J', 'Night, lights on or off'],
+      ['B', 'Directions and Vastu'],
     ]],
     ['Changing things', [
       ['F  P  L', 'Furniture, Paint, Style'],
@@ -1043,6 +1065,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       ['V', 'Saved views'],
       ['I', 'Areas'],
       ['Shift P', 'Plans as a PDF'],
+      ['Z', 'Save a picture'],
+      ['Shift G', 'Record the tour'],
       ['?', 'This list'],
     ]],
   ];
@@ -1091,7 +1115,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     else if (e.code === 'KeyH') setOrbit();
     else if (/^Digit[1-9]$/.test(e.code) && !e.shiftKey && planButtons[Number(e.code.slice(5)) - 1]) planButtons[Number(e.code.slice(5)) - 1].click();
     else if (e.code === 'Enter' && !onButton) setTopView(false);
+    else if (e.code === 'KeyG' && e.shiftKey) recordTour();
     else if (e.code === 'KeyG') startTour();
+    else if (e.code === 'KeyZ') snapNext = true;
+    else if (e.code === 'KeyB') toggleDirections();
+    else if (e.code === 'KeyK' && sunClock) toggleNight();
+    else if (e.code === 'KeyJ') switchAllLights();
     else if (e.code === 'KeyY') setRealistic(!realistic.on);
     else if (e.code === 'KeyP' && e.shiftKey) void exportPdf();
     else if (e.code === 'KeyC') void shareView();
@@ -1293,6 +1322,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }
 
   function stopTour(): void {
+    finishRecording();
     tour = null;
     controls.enabled = !inTopView && !inOrbit;
     fader.style.opacity = '0';
@@ -1818,6 +1848,297 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     return drew;
   }
 
+
+  // ---- Night and lights ----
+
+  /** Lights switched off, as "storey:light id". Not part of the layout, so not undone or saved. */
+  const lightsOff = new Set<string>();
+  const lightKey = (storey: number, id: string): string => `${storey}:${id}`;
+  const allLights = (): string[] => levels.flatMap((_, i) => (history.current[i].lights ?? []).map((l) => lightKey(i, l.id)));
+  const roomLights = (): string[] => {
+    const room = currentRoom();
+    if (!room) return [];
+    return (now().lights ?? [])
+      .filter((l) => roomAt(now(), { x: l.position[0], y: l.position[1] })?.id === room.id)
+      .map((l) => lightKey(level, l.id));
+  };
+  const roomLightsButton = document.getElementById('btn-room-lights') as HTMLButtonElement;
+  let allLightsButton: HTMLButtonElement | null = null;
+  let nightButton: HTMLButtonElement | null = null;
+  function showLights(): void {
+    levels.forEach((l, i) => switchLamps(l.lamps, (id) => !lightsOff.has(lightKey(i, id))));
+    realistic.invalidate();
+    labelLights();
+  }
+  function labelLights(): void {
+    const inRoom = roomLights();
+    roomLightsButton.disabled = inRoom.length === 0;
+    setLabel(roomLightsButton, 'bulb', inRoom.length === 0 ? 'No lights' : inRoom.some((k) => !lightsOff.has(k)) ? 'Lights off' : 'Lights on');
+    if (allLightsButton) allLightsButton.textContent = allLights().some((k) => !lightsOff.has(k)) ? 'Lights off' : 'Lights on';
+  }
+  /** Switches a set of lights: off if any of them is on, otherwise on. */
+  function flip(keys: string[]): void {
+    const anyOn = keys.some((k) => !lightsOff.has(k));
+    for (const k of keys) {
+      if (anyOn) lightsOff.add(k);
+      else lightsOff.delete(k);
+    }
+    showLights();
+  }
+  const switchAllLights = (): void => flip(allLights());
+  roomLightsButton.addEventListener('click', () => flip(roomLights()));
+
+  // Night: the sun panel's clock jumps to nine in the evening, and back to where it was.
+  let dayHours = 10;
+  const isNight = (): boolean => !!sunClock && (sunClock.hours() < 6 || sunClock.hours() >= 19);
+  function toggleNight(): void {
+    if (!sunClock) return;
+    if (isNight()) {
+      sunClock.setHours(dayHours);
+    } else {
+      dayHours = sunClock.hours();
+      sunClock.setHours(21);
+    }
+    labelNight();
+  }
+  const labelNight = (): void => {
+    if (nightButton) nightButton.textContent = isNight() ? 'Day' : 'Night';
+  };
+  if (sunClock) {
+    nightButton = document.createElement('button');
+    nightButton.type = 'button';
+    nightButton.title = 'See the home after dark, and back (K)';
+    nightButton.addEventListener('click', toggleNight);
+    allLightsButton = document.createElement('button');
+    allLightsButton.type = 'button';
+    allLightsButton.title = 'Switch every light in the home (J)';
+    allLightsButton.addEventListener('click', switchAllLights);
+    const row = document.createElement('div');
+    row.className = 'sun-row';
+    row.append(nightButton, allLightsButton);
+    sunClock.head.parentElement!.append(row);
+    sunClock.head.parentElement!.addEventListener('input', labelNight);
+    sunClock.head.parentElement!.addEventListener('click', labelNight);
+    labelNight();
+  }
+
+  // ---- A picture of the view, and a video of the tour ----
+
+  const stamp = (): string => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  function download(blob: Blob, name: string): void {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+  }
+  function recordTour(): void {
+    if (recorder) {
+      stopTour();
+      return;
+    }
+    // MP4 plays everywhere, WhatsApp included; browsers that cannot make one give WebM.
+    const type =
+      typeof MediaRecorder === 'undefined'
+        ? undefined
+        : ['video/mp4;codecs=avc1.42E01E', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'].find((t) => MediaRecorder.isTypeSupported(t));
+    if (!type) {
+      panel.toast('This browser cannot record a video.');
+      return;
+    }
+    if (tour) stopTour();
+    startTour();
+    if (!tour) return;
+    const stream = canvas.captureStream(30);
+    const chunks: Blob[] = [];
+    const made = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 8_000_000 });
+    made.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+    made.onstop = () => {
+      for (const track of stream.getTracks()) track.stop();
+      const mp4 = type.includes('mp4');
+      download(new Blob(chunks, { type: mp4 ? 'video/mp4' : 'video/webm' }), `${home.id}-tour-${stamp()}.${mp4 ? 'mp4' : 'webm'}`);
+      panel.toast(mp4 ? 'Saved the tour as a video.' : 'Saved the tour as a WebM video. Some phones need it converted to MP4 to play it.');
+    };
+    made.start();
+    recorder = made;
+    recordButton.classList.add('active');
+    setTool(recordButton, 'stop', 'Stop and save the video');
+  }
+  function finishRecording(): void {
+    if (!recorder) return;
+    const made = recorder;
+    recorder = null;
+    made.stop();
+    recordButton.classList.remove('active');
+    setTool(recordButton, 'video', 'Record the tour');
+  }
+
+  // ---- Compass, and where each room lies on the plot ----
+
+  const plot = { minX: bounds.min.x, minY: bounds.min.y, maxX: bounds.max.x, maxY: bounds.max.y };
+  const compass = document.createElement('button');
+  compass.id = 'compass';
+  compass.type = 'button';
+  compass.title = 'Which way the home faces. Click for directions and Vastu (B)';
+  compass.innerHTML =
+    '<svg viewBox="-30 -30 60 60" aria-hidden="true"><g id="compass-dial">' +
+    '<circle r="27" class="rim"/><path d="M0 -21 L5.5 0 L-5.5 0 Z" class="north"/><path d="M0 21 L5.5 0 L-5.5 0 Z" class="south"/>' +
+    '<text y="-22.5" class="n">N</text></g></svg>';
+  compass.addEventListener('click', () => toggleDirections());
+  document.body.append(compass);
+  document.body.classList.toggle('has-sun', !!sunClock);
+  const dial = compass.querySelector<SVGGElement>('#compass-dial')!;
+  const northRad = THREE.MathUtils.degToRad(scenes[0].northDeg);
+  let dialAt = '';
+  /** Turns the compass so its N points north as the view sees it. */
+  function turnCompass(): void {
+    const m = activeCamera().matrixWorld.elements;
+    // "Up the screen" along the ground: the way the camera looks when walking, its top edge when looking down.
+    const ux = m[4] - m[8];
+    const uz = m[6] - m[10];
+    const nx = Math.sin(northRad);
+    const nz = -Math.cos(northRad);
+    const turn = `rotate(${(THREE.MathUtils.radToDeg(Math.atan2(nx * m[0] + nz * m[2], nx * ux + nz * uz))).toFixed(1)})`;
+    if (turn === dialAt) return;
+    dialAt = turn;
+    dial.setAttribute('transform', turn);
+  }
+
+  // The plot cut in nine, drawn over a floor plan.
+  const gridPoints: number[] = [];
+  for (const t of [0, 1 / 3, 2 / 3, 1]) {
+    const x = plot.minX + (plot.maxX - plot.minX) * t;
+    const z = plot.minY + (plot.maxY - plot.minY) * t;
+    gridPoints.push(x, 0, plot.minY, x, 0, plot.maxY, plot.minX, 0, z, plot.maxX, 0, z);
+  }
+  const zoneGrid = new THREE.LineSegments(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(gridPoints, 3)),
+    new THREE.LineBasicMaterial({ color: 0xffd21f, depthTest: false, transparent: true }),
+  );
+  zoneGrid.renderOrder = 5;
+  zoneGrid.visible = false;
+  world.add(zoneGrid);
+
+  const directionsPanel = document.createElement('section');
+  directionsPanel.id = 'directions';
+  directionsPanel.hidden = true;
+  document.body.append(directionsPanel);
+  function drawDirections(): void {
+    zoneGrid.visible = directions && inTopView;
+    zoneGrid.position.y = lv().elevation + 0.08;
+    if (!directions) return;
+    const list = roomFacings(now(), plot);
+    facings = new Map(list.map((f) => [f.id, f]));
+    const head = document.createElement('header');
+    const title = document.createElement('strong');
+    title.textContent = `Directions: ${lv().name}`;
+    head.append(title, viewButton('', 'Close', () => toggleDirections(), 'close'));
+    const note = document.createElement('p');
+    note.textContent =
+      'The part of the plot each room lies in, and what Vastu tradition says of that kind of room there. It is a guide many owners ask for, not a rule of building.';
+    const table = document.createElement('table');
+    for (const f of list) {
+      const row = table.insertRow();
+      row.insertCell().textContent = f.name;
+      row.insertCell().textContent = f.zone;
+      const says = row.insertCell();
+      says.className = f.verdict ?? 'none';
+      says.textContent =
+        f.verdict === 'suits' ? 'Suits Vastu'
+        : f.verdict === 'avoids' ? `Vastu avoids this; prefers ${f.prefers!.slice(0, 2).join(' or ').toLowerCase()}`
+        : f.verdict === 'neutral' ? `Fine; Vastu prefers ${f.prefers!.slice(0, 2).join(' or ').toLowerCase()}`
+        : '';
+    }
+    directionsPanel.replaceChildren(head, note, table);
+  }
+  function toggleDirections(): void {
+    directions = !directions;
+    directionsPanel.hidden = !directions;
+    compass.classList.toggle('active', directions);
+    if (directions && !inTopView && !inOrbit) panel.toast('Open a floor plan to see the plot cut into its nine zones.');
+    drawDirections();
+  }
+
+  // ---- My pieces: furniture kept with its real size, to use again in any room ----
+
+  const MINE = 'stepinside.pieces';
+  let mine: CatalogueItem[] = [];
+  try {
+    const kept = JSON.parse(localStorage.getItem(MINE) ?? '[]');
+    if (Array.isArray(kept)) mine = kept.filter((k) => k && typeof k.model === 'string' && Array.isArray(k.size) && k.size.length === 3);
+  } catch {
+    // Nothing kept, or a browser that does not allow it.
+  }
+  const mineBox = document.getElementById('mine-box')!;
+  const mineList = document.getElementById('mine')!;
+  function drawMine(): void {
+    mineBox.hidden = mine.length === 0;
+    mineList.replaceChildren(
+      ...mine.map((item, i) => {
+        const row = document.createElement('li');
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.title = `Add: ${item.name}`;
+        const name = document.createElement('strong');
+        name.textContent = item.name;
+        const size = document.createElement('span');
+        size.textContent = `${formatSize(item.size[0], item.size[2], units)}, ${formatLength(item.size[1], units)} high`;
+        add.append(name, size);
+        add.addEventListener('click', () => {
+          addItem(item);
+          add.blur();
+        });
+        const drop = document.createElement('button');
+        drop.type = 'button';
+        drop.title = `Forget: ${item.name}`;
+        setLabel(drop, 'close');
+        drop.addEventListener('click', () => {
+          mine.splice(i, 1);
+          keepMine();
+        });
+        row.append(add, drop);
+        return row;
+      }),
+    );
+  }
+  function keepMine(): void {
+    try {
+      localStorage.setItem(MINE, JSON.stringify(mine));
+    } catch {
+      // Kept for this visit only.
+    }
+    drawMine();
+  }
+  document.getElementById('btn-save-piece')!.addEventListener('click', () => {
+    const piece = selectedPiece();
+    if (!piece || piece.fixed) return;
+    const item: CatalogueItem = {
+      key: `my-${piece.model}`,
+      name: labelOf(piece),
+      model: piece.model,
+      size: [...piece.size],
+      color: piece.color ?? '#b8b0a2',
+      ...(piece.mount === 'wall' ? { mount: 'wall' as const, elevation: piece.elevation } : {}),
+    };
+    const same = (a: CatalogueItem): boolean => a.model === item.model && a.color === item.color && a.size.every((n, k) => Math.abs(n - item.size[k]) < 0.005);
+    if (mine.some(same)) {
+      panel.toast('That piece is already in My pieces.');
+      return;
+    }
+    mine.push(item);
+    keepMine();
+    panel.toast(`Kept: ${item.name}. It is under My pieces, ready to add to any room.`);
+  });
+  drawMine();
+
+  afterRefresh = () => {
+    labelLights();
+    drawDirections();
+  };
+  showLights();
+
   let lastRoom: string | undefined;
   const timer = new THREE.Timer();
   // The render loop: the browser calls this before every screen refresh.
@@ -1841,6 +2162,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       lastRoom = roomId;
       refresh();
     }
+    turnCompass();
     if (drawRealistic(time)) {
       // The traced picture is on screen.
     } else if (fast) {
@@ -1850,6 +2172,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       // A flat plan is a drawing: no shading in the corners.
       occlusion.enabled = !(inTopView && plan.flat);
       composer.render();
+    }
+    if (snapNext) {
+      // The picture is read in the same breath as it is drawn, before the browser clears it.
+      snapNext = false;
+      canvas.toBlob((blob) => blob && download(blob, `${home.id}-${stamp()}.png`), 'image/png');
+      panel.toast('Saved a picture of this view.');
     }
   });
 
@@ -2035,7 +2363,15 @@ function showStartError(error: unknown): void {
  * The sun panel: pick a date and drag the time of day, and the sun moves
  * along its real path for the home's town, with sunrise and sunset colours.
  */
-function setUpSunControls(place: Place & { name: string }, daylight: Daylight): void {
+/** The clock of the sun panel, for the Night button and the keys. */
+interface SunClock {
+  hours(): number;
+  setHours(hours: number): void;
+  /** The row of buttons in the panel's head, for more buttons. */
+  head: HTMLElement;
+}
+
+function setUpSunControls(place: Place & { name: string }, daylight: Daylight): SunClock {
   const bar = document.createElement('div');
   bar.id = 'sun-bar';
   bar.innerHTML = `
@@ -2084,4 +2420,12 @@ function setUpSunControls(place: Place & { name: string }, daylight: Daylight): 
   // Keys typed into the panel should not also walk or turn the camera.
   bar.addEventListener('keydown', (e) => e.stopPropagation());
   update();
+  return {
+    hours: () => Number(timeInput.value),
+    setHours: (hours) => {
+      timeInput.value = String(hours);
+      update();
+    },
+    head: bar.querySelector<HTMLElement>('.sun-head')!,
+  };
 }

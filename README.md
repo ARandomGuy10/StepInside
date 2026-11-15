@@ -159,6 +159,21 @@ picture. It needs a real graphics card. The code is `src/render/realistic.ts`.
 It could not be checked properly in the headless test browser (software
 rendering shows speckle there), so judge it on a real machine.
 
+## Night, pictures, directions, your own pieces
+
+- **Night** in the sun panel (K) jumps to nine in the evening and back.
+  **Lights off/on** beside it (J) switches every lamp; the **Lights** button
+  in the Room section switches the room you are in.
+- The camera on the rail (Z) downloads a picture of the view. The video
+  button (Shift+G) plays the tour and downloads it as a video when it ends
+  or is stopped: MP4 where the browser can make one, otherwise WebM.
+- The **compass** always points north. Click it (B) for the directions card:
+  the plot is cut into nine zones, each room is labelled with its zone, and
+  the card says what Vastu tradition holds for that kind of room there
+  (`src/core/vastu.ts`). It is a guide, not a rule.
+- **Keep** on a selected piece saves it, with its size and colour, under
+  **My pieces** in this browser, ready to add to any room or home.
+
 ## Controls
 
 Every feature has a key. Press **?** in the viewer for the list.
@@ -177,6 +192,10 @@ Every feature has a key. Press **?** in the viewer for the list.
 | F, P, L | Furniture, Paint, Style tab |
 | G | Tour |
 | Y | Realistic light (beta) |
+| K, J | Night and back; all lights on or off |
+| B | Directions and Vastu |
+| Z | Save a picture of the view |
+| Shift+G | Record the tour as a video |
 | C | Copy a link to this view |
 | V | Saved views |
 | I | Areas |
