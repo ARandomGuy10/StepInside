@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 import { CATALOGUE } from './core/catalogue';
 import {
-  addFurniture, colorOf, emptyRoom, materialOf, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resizeFurniture,
+  addFurniture, colorOf, emptyRoom, footprint, materialOf, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resizeFurniture,
   resetLayout, resetPaint, roomAt, rotateFurniture, setMaterial, setRoomWallsMaterial, takeOut, type PaintTarget,
 } from './core/edits';
 import { applyStyle, STYLES } from './core/styles';
 import { openSpot, tourRoute } from './core/tour';
 import { viewFromParams, viewToParams, type ViewState } from './core/viewLink';
 import { formatArea, summarizeAreas, type AreaSummary } from './core/areas';
+import { anchorOf, canArrange, layoutsFor, roomOpenings, withRoomFrom, type Layout } from './core/arrange';
+import { costLines, lineCost, quantitiesOf, totalQuantities, type Quantities } from './core/quantities';
 import { TourPlayer } from './render/tourPlayer';
 import { History } from './core/history';
 import { HOMES, type HomeEntry, type StairEntry } from './homes';
@@ -50,6 +52,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // The renderer draws the 3D scene into the canvas using WebGL (the GPU).
   /** Set once Realistic mode exists; it is built late, and things above it need to tell it of changes. */
   let realisticRef: { invalidate(): void } | undefined;
+  /** While measuring or pinning a note, a click on the model goes here instead of selecting or walking. */
+  let clickTaker: ((e: { clientX: number; clientY: number }) => void) | null = null;
+  /** Shows the size of the piece under the mouse; set where the labels are built. */
+  let hoverPiece: (id: string | undefined, e?: { clientX: number; clientY: number }) => void = () => {};
+  /** Work done just before each picture is drawn, such as moving labels with the view. */
+  const everyFrame: (() => void)[] = [];
   /** Runs after the panel is redrawn, for the features added below it. */
   let afterRefresh: () => void = () => {};
   /** The recording of a tour, while one is being made. */
@@ -545,6 +553,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let capturing = false;
   const pdfButton = tool('file', 'PDF', 'Shift P', () => exportPdf());
   const keysButton = tool('keys', 'Shortcuts', '?', () => toggleKeys());
+  const measureButton = tool('measure', 'Measure', 'U', () => setMeasuring(!measuring));
+  const notesButton = tool('note', 'Notes for the architect', 'Shift N', () => toggleNotes());
+  const quantitiesButton = tool('cost', 'Quantities and cost', 'Shift I', () => toggleQuantities());
+  measureButton.id = 'btn-measure';
+  notesButton.id = 'btn-notes';
+  quantitiesButton.id = 'btn-quantities';
   const realisticButton = tool('realistic', 'Realistic light (beta)', 'Y', () => setRealistic(!realistic.on));
   realisticButton.id = 'btn-realistic';
   const snapButton = tool('camera', 'Save a picture', 'Z', () => {
@@ -553,7 +567,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const recordButton = tool('video', 'Record the tour', 'Shift G', () => recordTour());
   tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
-  document.getElementById('view-extras')!.replaceChildren(realisticButton, tourButton, recordButton, snapButton, savedButton, shareButton, areasButton, pdfButton, keysButton);
+  document.getElementById('view-extras')!.replaceChildren(realisticButton, tourButton, recordButton, snapButton, measureButton, notesButton, savedButton, shareButton, areasButton, quantitiesButton, pdfButton, keysButton);
   const tools = document.getElementById('orbit-tools')!;
   const roofButton = tool('roof', 'Hide roof', 'O', () => {
     roofHidden = !roofHidden;
@@ -888,6 +902,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // height of the piece's bottom edge above the point that was grabbed.
   let drag: { id: string; offset: [number, number]; lift?: number } | null = null;
   let press: { x: number; y: number } | null = null;
+  /** Where the left button went down, in any view: a press that does not move is a tap. */
+  let tap: { x: number; y: number } | null = null;
 
   // In the whole-house view a drag turns the home and the wheel zooms. A
   // right-drag, Shift-drag or two fingers slide it across the screen instead.
@@ -909,6 +925,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     // The hint has done its job once the view is touched.
     document.body.classList.add('hint-gone');
+    tap = e.button === 0 ? { x: e.clientX, y: e.clientY } : null;
+    hoverPiece(undefined);
     if ((inOrbit || inTopView) && (e.button === 1 || e.button === 2 || (e.button === 0 && e.shiftKey))) {
       panning = { x: e.clientX, y: e.clientY };
       canvas.setPointerCapture(e.pointerId);
@@ -922,7 +940,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     if (e.button !== 0) return;
     if (controls.locked) {
-      // While looking around, a click in paint mode picks what the dot is on.
+      // While looking around, the dot in the middle of the screen is the pointer.
+      if (clickTaker) {
+        const rect = canvas.getBoundingClientRect();
+        clickTaker({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
+        return;
+      }
       if (mode === 'paint') {
         const rect = canvas.getBoundingClientRect();
         pickForPaint({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 });
@@ -931,12 +954,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     press = { x: e.clientX, y: e.clientY };
     // In a plan, dragging anything but a piece of furniture turns the plan.
-    const id = mode === 'paint' ? undefined : pickFurniture(e);
+    const id = mode === 'paint' || clickTaker ? undefined : pickFurniture(e);
     if (!id && inTopView) {
       turning = { x: e.clientX, y: e.clientY };
       canvas.setPointerCapture(e.pointerId);
     }
-    if (mode === 'paint') return;
+    if (mode === 'paint' || clickTaker) return;
     if (!id) return;
     selectedId = id;
     const piece = selectedPiece();
@@ -968,7 +991,15 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     if (!drag) {
       // Show that a piece can be picked up.
-      if (mode === 'furniture' && !controls.locked && !inOrbit) canvas.style.cursor = pickFurniture(e) ? 'grab' : '';
+      if (clickTaker) {
+        canvas.style.cursor = 'crosshair';
+        return;
+      }
+      if (mode === 'furniture' && !controls.locked && !inOrbit) {
+        const id = pickFurniture(e);
+        canvas.style.cursor = id ? 'grab' : '';
+        hoverPiece(id, e);
+      }
       return;
     }
     if (drag.lift !== undefined) {
@@ -995,6 +1026,13 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (panning) {
       panning = null;
       canvas.style.cursor = '';
+    }
+    const tapped = tap !== null && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 5;
+    tap = null;
+    if (clickTaker && tapped && !controls.locked) {
+      press = null;
+      clickTaker(e);
+      return;
     }
     if (inOrbit || e.button !== 0) return;
     const wasClick = press !== null && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5;
@@ -1067,9 +1105,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       ['Y', 'Realistic light'],
       ['K  J', 'Night, lights on or off'],
       ['B', 'Directions and Vastu'],
+      ['U', 'Measure between two points'],
     ]],
     ['Changing things', [
       ['F  P  L', 'Furniture, Paint, Style'],
+      ['Shift L', 'Other layouts for the room'],
       ['R', 'Turn the selected piece'],
       ['Delete', 'Take the piece out'],
       ['Ctrl/Cmd Z', 'Undo (with Shift: redo)'],
@@ -1079,6 +1119,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       ['C', 'Copy a link to this view'],
       ['V', 'Saved views'],
       ['I', 'Areas'],
+      ['Shift I', 'Quantities and rough cost'],
+      ['Shift N', 'Notes for the architect'],
       ['Shift P', 'Plans as a PDF'],
       ['Z', 'Save a picture'],
       ['Shift G', 'Record the tour'],
@@ -1140,7 +1182,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     else if (e.code === 'KeyP' && e.shiftKey) void exportPdf();
     else if (e.code === 'KeyC') void shareView();
     else if (e.code === 'KeyV') toggleSaved();
+    else if (e.code === 'KeyI' && e.shiftKey) toggleQuantities();
     else if (e.code === 'KeyI') toggleAreas();
+    else if (e.code === 'KeyU') setMeasuring(!measuring);
+    else if (e.code === 'KeyL' && e.shiftKey && !EMBED) toggleLayouts();
+    else if (e.code === 'KeyN' && e.shiftKey) toggleNotes();
     else if (e.code === 'KeyQ' && looking) turnable().turn(-Math.PI / 4);
     else if (e.code === 'KeyE' && looking) turnable().turn(Math.PI / 4);
     else if ((e.key === '+' || e.key === '=') && looking) turnable().zoom(0.8);
@@ -1180,6 +1226,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       goTo(level + (e.code === 'PageUp' ? 1 : -1));
     } else if (e.code === 'Escape') {
       if (!keysPanel.hidden) toggleKeys();
+      if (measuring) setMeasuring(false);
+      if (pinning) setPinning(false);
       selectedId = null;
       setPaintTarget(null);
     } else if (e.altKey) {
@@ -2135,6 +2183,569 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     drawDirections();
   }
 
+  // ---- The size of the piece under the mouse ----
+
+  const hoverLabel = document.createElement('div');
+  hoverLabel.id = 'hover-size';
+  hoverLabel.hidden = true;
+  hoverLabel.append(document.createElement('strong'), document.createElement('span'));
+  document.body.append(hoverLabel);
+  let hoverId: string | undefined;
+  hoverPiece = (id, e) => {
+    // The selected piece already carries its size in a plan.
+    const piece = id && !(inTopView && dimensions && id === selectedId) ? now().furniture.find((f) => f.id === id) : undefined;
+    hoverLabel.hidden = !piece || !e;
+    if (!piece || !e) {
+      hoverId = undefined;
+      return;
+    }
+    if (hoverId !== id) {
+      hoverId = id;
+      const [w, h, d] = piece.size;
+      hoverLabel.firstElementChild!.textContent = labelOf(piece);
+      hoverLabel.lastElementChild!.textContent = `${formatSize(w, d, units)}, ${formatLength(h, units)} high`;
+    }
+    hoverLabel.style.transform = `translate(-50%, -100%) translate(${e.clientX}px, ${e.clientY - 16}px)`;
+  };
+  canvas.addEventListener('pointerleave', () => hoverPiece(undefined));
+  // While looking around, the dot in the middle of the screen does the pointing.
+  let hoverChecked = 0;
+  everyFrame.push(() => {
+    if (!controls.locked) return;
+    const t = performance.now();
+    if (t - hoverChecked < 160) return;
+    hoverChecked = t;
+    const rect = canvas.getBoundingClientRect();
+    const middle = { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 };
+    hoverPiece(clickTaker || tour ? undefined : pickFurniture(middle as MouseEvent), middle);
+  });
+
+  // ---- Tools that take a click on the model: the tape measure, and notes ----
+
+  /** The point of the model under the mouse, on any floor that is on show. */
+  const hitPoint = (e: { clientX: number; clientY: number }): THREE.Vector3 | undefined => {
+    aim(e);
+    const hit = raycaster
+      .intersectObjects(levels.flatMap((l) => [l.shell, l.furniture.group]), true)
+      .find((h) => isShown(h.object) && !h.object.name.startsWith('glass:'));
+    return hit?.point.clone();
+  };
+  /** Where a point of the model falls on screen, or null when it is behind the viewer. */
+  const onScreen = (p: THREE.Vector3): [number, number] | null => {
+    spot.copy(p).project(activeCamera());
+    if (spot.z > 1 || spot.z < -1) return null;
+    const rect = canvas.getBoundingClientRect();
+    return [rect.left + ((spot.x + 1) / 2) * rect.width, rect.top + ((1 - spot.y) / 2) * rect.height];
+  };
+  const toolNote = document.createElement('div');
+  toolNote.id = 'tool-note';
+  toolNote.hidden = true;
+  toolNote.setAttribute('role', 'status');
+  document.body.append(toolNote);
+  const say = (text: string | null): void => {
+    toolNote.hidden = !text;
+    if (text) toolNote.textContent = text;
+  };
+
+  // The tape measure: click two points; the length shows between them.
+  let measuring = false;
+  let tape: THREE.Vector3[] = [];
+  let tapeEnd: THREE.Vector3 | null = null;
+  const tapeLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+    new THREE.LineBasicMaterial({ color: 0xff2e88, depthTest: false }),
+  );
+  tapeLine.renderOrder = 12;
+  tapeLine.frustumCulled = false;
+  tapeLine.visible = false;
+  world.add(tapeLine);
+  const tapeLabel = document.createElement('div');
+  tapeLabel.id = 'tape-label';
+  tapeLabel.hidden = true;
+  tapeLabel.append(document.createElement('strong'), document.createElement('span'));
+  const tapeDots = [document.createElement('i'), document.createElement('i')];
+  for (const dot of tapeDots) {
+    dot.className = 'tape-dot';
+    dot.hidden = true;
+  }
+  document.body.append(tapeLabel, ...tapeDots);
+  function setMeasuring(on: boolean): void {
+    if (on) setPinning(false);
+    measuring = on;
+    tape = [];
+    tapeEnd = null;
+    clickTaker = on ? takeTapePoint : null;
+    measureButton.classList.toggle('active', on);
+    canvas.style.cursor = on ? 'crosshair' : '';
+    say(on ? 'Measure: click where the length starts. Esc to finish.' : null);
+    if (on && !inTopView && !inOrbit && !controls.locked) panel.toast('Click two points. While looking around, the dot in the middle is the pointer.');
+  }
+  function takeTapePoint(e: { clientX: number; clientY: number }): void {
+    const p = hitPoint(e);
+    if (!p) {
+      panel.toast('Click on a floor, a wall or a piece.');
+      return;
+    }
+    // A third click starts a new length.
+    if (tape.length >= 2) tape = [];
+    tape.push(p);
+    tapeEnd = null;
+    say(tape.length === 1 ? 'Measure: now click where it ends.' : 'Measure: click again for another length. Esc to finish.');
+  }
+  canvas.addEventListener('pointermove', (e) => {
+    if (measuring && tape.length === 1 && !controls.locked) tapeEnd = hitPoint(e) ?? tapeEnd;
+  });
+  everyFrame.push(() => {
+    let a = tape[0];
+    let b = tape[1] ?? tapeEnd;
+    if (measuring && tape.length === 1 && controls.locked) {
+      const rect = canvas.getBoundingClientRect();
+      b = hitPoint({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }) ?? b;
+    }
+    const first = a ? onScreen(a) : null;
+    tapeDots[0].hidden = !first;
+    if (first) tapeDots[0].style.transform = `translate(-50%, -50%) translate(${first[0]}px, ${first[1]}px)`;
+    const second = a && b ? onScreen(b) : null;
+    tapeDots[1].hidden = !second;
+    if (second) tapeDots[1].style.transform = `translate(-50%, -50%) translate(${second[0]}px, ${second[1]}px)`;
+    tapeLine.visible = !!(a && b);
+    tapeLabel.hidden = !(first && second);
+    if (!a || !b) return;
+    const points = tapeLine.geometry.attributes.position as THREE.BufferAttribute;
+    points.setXYZ(0, a.x, a.y, a.z);
+    points.setXYZ(1, b.x, b.y, b.z);
+    points.needsUpdate = true;
+    if (!first || !second) return;
+    const flat = Math.hypot(b.x - a.x, b.z - a.z);
+    const up = Math.abs(b.y - a.y);
+    // On a plan a length is read across the floor, even when a click lands on top of a wall.
+    const text = formatLength(inTopView ? flat : a.distanceTo(b), units);
+    // A sloping length is seldom what is wanted: give its two parts as well.
+    const parts = up <= 0.05 || flat <= 0.05 ? ''
+      : inTopView ? `${formatLength(up, units)} difference in height`
+      : `${formatLength(flat, units)} along, ${formatLength(up, units)} up`;
+    if (tapeLabel.firstElementChild!.textContent !== text) tapeLabel.firstElementChild!.textContent = text;
+    if (tapeLabel.lastElementChild!.textContent !== parts) tapeLabel.lastElementChild!.textContent = parts;
+    (tapeLabel.lastElementChild as HTMLElement).hidden = !parts;
+    tapeLabel.style.transform = `translate(-50%, -50%) translate(${(first[0] + second[0]) / 2}px, ${(first[1] + second[1]) / 2 - 16}px)`;
+  });
+
+  // ---- Cards that open beside the rail: one at a time ----
+
+  const cards: { el: HTMLElement; button: HTMLElement; draw: () => void }[] = [];
+  const card = (id: string, button: HTMLElement, draw: () => void): HTMLElement => {
+    const el = document.createElement('section');
+    el.id = id;
+    el.className = 'card';
+    el.hidden = true;
+    document.body.append(el);
+    cards.push({ el, button, draw });
+    return el;
+  };
+  const showCard = (el: HTMLElement, open: boolean): void => {
+    for (const c of cards) {
+      c.el.hidden = c.el !== el || !open;
+      c.button.classList.toggle('active', !c.el.hidden);
+      if (!c.el.hidden) c.draw();
+    }
+  };
+  const cardHead = (text: string, close: () => void): HTMLElement => {
+    const head = document.createElement('header');
+    const title = document.createElement('strong');
+    title.textContent = text;
+    head.append(title, viewButton('', 'Close', close, 'close'));
+    return head;
+  };
+  const textButton = (text: string, run: () => void, iconName?: string): HTMLButtonElement => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    if (iconName) setLabel(b, iconName, text);
+    else b.textContent = text;
+    b.addEventListener('click', run);
+    return b;
+  };
+
+  // ---- Notes for the architect: pinned to a spot, kept in this browser, sent as text ----
+
+  interface Note { id: string; level: number; at: [number, number, number]; room: string; text: string }
+  const NOTES = `stepinside.notes.${home.id}`;
+  let notes: Note[] = [];
+  try {
+    const kept = JSON.parse(localStorage.getItem(NOTES) ?? '[]');
+    if (Array.isArray(kept)) notes = kept.filter((n) => n && typeof n.text === 'string' && Array.isArray(n.at) && n.at.length === 3 && levels[n.level]);
+  } catch {
+    // Nothing kept, or a browser that does not allow it.
+  }
+  const keepNotes = (): void => {
+    try {
+      localStorage.setItem(NOTES, JSON.stringify(notes));
+    } catch {
+      panel.toast('This browser would not keep the note.');
+    }
+  };
+  const notesText = (): string =>
+    [`Notes for the architect: ${designName}`, '', ...notes.map((n, i) => `${i + 1}. ${levels[n.level].name}, ${n.room}: ${n.text}`)].join('\n');
+  let pinning = false;
+  let editing: string | null = null;
+  const pinLayer = document.createElement('div');
+  pinLayer.id = 'pins';
+  document.body.append(pinLayer);
+  const notesPanel = card('notes', notesButton, drawNotes);
+  function setPinning(on: boolean): void {
+    if (on) setMeasuring(false);
+    pinning = on;
+    clickTaker = on ? takePin : measuring ? takeTapePoint : null;
+    canvas.style.cursor = on ? 'crosshair' : '';
+    say(on ? 'Note: click the spot it is about. Esc to cancel.' : null);
+  }
+  function takePin(e: { clientX: number; clientY: number }): void {
+    const p = hitPoint(e);
+    if (!p) {
+      panel.toast('Click on a floor, a wall or a piece.');
+      return;
+    }
+    // The floor the spot is on: the highest one whose floor is at or below it.
+    let on = 0;
+    levels.forEach((l, i) => {
+      if (p.y >= l.elevation - 0.2) on = i;
+    });
+    const room = roomAt(history.current[on], { x: p.x, y: p.z });
+    const note: Note = { id: `n${Date.now().toString(36)}`, level: on, at: [mm(p.x), mm(p.y), mm(p.z)], room: room?.name ?? 'outside', text: '' };
+    notes.push(note);
+    editing = note.id;
+    setPinning(false);
+    if (document.pointerLockElement) document.exitPointerLock();
+    showCard(notesPanel, true);
+  }
+  function drawNotes(): void {
+    // A note left empty was never written.
+    notes = notes.filter((n) => n.text || n.id === editing);
+    let writing: HTMLTextAreaElement | null = null as HTMLTextAreaElement | null;
+    const note = document.createElement('p');
+    note.textContent = notes.length
+      ? 'Kept in this browser only. Copy or download them to send to your architect.'
+      : 'Pin a note to any spot: a window to move, a socket to add, a wall you are unsure of. They are kept in this browser; copy or download them to send to your architect.';
+    const list = document.createElement('ol');
+    notes.forEach((n) => {
+      const row = document.createElement('li');
+      const where = document.createElement('span');
+      where.className = 'where';
+      where.textContent = `${levels[n.level].name}, ${n.room}`;
+      if (n.id === editing) {
+        const box = document.createElement('textarea');
+        box.rows = 3;
+        box.value = n.text;
+        box.placeholder = 'What should change here?';
+        box.setAttribute('aria-label', 'Note');
+        const done = (): void => {
+          n.text = box.value.trim();
+          editing = null;
+          keepNotes();
+          drawNotes();
+        };
+        box.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            done();
+          }
+        });
+        const actions = document.createElement('div');
+        actions.className = 'row';
+        actions.append(textButton('Keep note', done));
+        row.append(where, box, actions);
+        writing = box;
+      } else {
+        const words = document.createElement('p');
+        words.textContent = n.text;
+        const actions = document.createElement('div');
+        actions.className = 'row';
+        actions.append(
+          textButton('Show', () => {
+            if (n.level !== level) goTo(n.level);
+            setTopView(true);
+          }),
+          textButton('Edit', () => {
+            editing = n.id;
+            drawNotes();
+          }),
+          textButton('Delete', () => {
+            notes = notes.filter((other) => other !== n);
+            keepNotes();
+            drawNotes();
+          }),
+        );
+        row.append(where, words, actions);
+      }
+      list.append(row);
+    });
+    const foot = document.createElement('div');
+    foot.className = 'row foot';
+    const add = textButton('Add a note', () => setPinning(true), 'note');
+    add.classList.add('primary');
+    foot.append(add);
+    if (notes.some((n) => n.text)) {
+      foot.append(
+        textButton('Copy all', () => {
+          void navigator.clipboard.writeText(notesText()).then(
+            () => panel.toast('Notes copied. Paste them into a message to your architect.'),
+            () => panel.toast('Could not copy. Use Download instead.'),
+          );
+        }, 'copy'),
+        textButton('Download', () => download(new Blob([notesText()], { type: 'text/plain' }), `${home.id}-notes.txt`), 'save'),
+      );
+    }
+    notesPanel.replaceChildren(cardHead('Notes for the architect', () => toggleNotes()), note, list, foot);
+    // Straight away, so that words typed at once land in the box.
+    writing?.focus();
+    notesButton.classList.toggle('has', notes.length > 0);
+  }
+  function toggleNotes(): void {
+    editing = null;
+    showCard(notesPanel, notesPanel.hidden === true);
+    // With nothing written yet, the next step is to pick a spot.
+    if (!notesPanel.hidden && notes.length === 0) setPinning(true);
+  }
+  notesButton.classList.toggle('has', notes.length > 0);
+  // The pins: a numbered mark at each note's spot, on the floors that are on show.
+  const pinPool: HTMLButtonElement[] = [];
+  const pinAt = new THREE.Vector3();
+  everyFrame.push(() => {
+    const eye = activeCamera().getWorldPosition(spot.clone());
+    let used = 0;
+    notes.forEach((n, i) => {
+      if (!levels[n.level].shell.visible) return;
+      pinAt.set(n.at[0], n.at[1], n.at[2]);
+      // Indoors, only the notes near enough to be about what is in view.
+      if (!inTopView && !inOrbit && (n.level !== level || pinAt.distanceTo(eye) > 9)) return;
+      const at = onScreen(pinAt);
+      if (!at) return;
+      let pin = pinPool[used];
+      if (!pin) {
+        pin = document.createElement('button');
+        pin.type = 'button';
+        pin.className = 'pin';
+        pinLayer.append(pin);
+        pinPool.push(pin);
+      }
+      used++;
+      pin.hidden = false;
+      const label = String(i + 1);
+      if (pin.textContent !== label) pin.textContent = label;
+      if (pin.title !== n.text) pin.title = n.text;
+      pin.onclick = () => {
+        editing = null;
+        showCard(notesPanel, true);
+      };
+      pin.style.transform = `translate(-50%, -100%) translate(${at[0]}px, ${at[1]}px)`;
+    });
+    for (let i = used; i < pinPool.length; i++) pinPool[i].hidden = true;
+  });
+
+  // ---- Quantities, and a rough cost at the owner's own rates ----
+
+  const RATES = 'stepinside.rates';
+  let rates: Record<string, number> = {};
+  try {
+    const kept = JSON.parse(localStorage.getItem(RATES) ?? '{}');
+    if (kept && typeof kept === 'object') rates = kept;
+  } catch {
+    // Nothing kept.
+  }
+  const quantitiesPanel = card('quantities', quantitiesButton, drawQuantities);
+  const FINISH: Record<string, string> = {
+    plain: 'No finish chosen', laminate: 'Wood laminate', 'large-tile': 'Large tiles', tile: 'Tiles', stone: 'Stone',
+    concrete: 'Concrete', decking: 'Decking', lawn: 'Lawn', setts: 'Paving setts',
+  };
+  function drawQuantities(): void {
+    const each = history.current.map(quantitiesOf);
+    const total: Quantities = totalQuantities(each);
+    const a = (v: number): string => formatArea(v, units);
+    const table = document.createElement('table');
+    const row = (label: string, value: string, head = false): void => {
+      const tr = table.insertRow();
+      const first = document.createElement(head ? 'th' : 'td');
+      first.textContent = label;
+      if (head) first.colSpan = 2;
+      tr.append(first);
+      if (!head) tr.insertCell().textContent = value;
+    };
+    row('Floors, by finish', '', true);
+    for (const f of total.floors) row(FINISH[f.finish] ?? f.finish, a(f.area));
+    row('Walls and ceilings, to paint', '', true);
+    row('Inside walls', a(total.wallInside));
+    row('Outside walls', a(total.wallOutside));
+    row('Ceilings', a(total.ceiling));
+    row('Fittings', '', true);
+    row('Skirting', formatLength(total.skirting, units));
+    row('Doors', String(total.doors));
+    row('Windows', `${total.windows}, ${a(total.glazing)} of glass`);
+    row('Loose furniture in place', String(total.pieces));
+
+    const note = document.createElement('p');
+    note.textContent =
+      'Read off this model, doors and windows taken out. Good for checking a quotation or asking for one; a contractor will measure on site and add wastage.';
+
+    const cost = document.createElement('div');
+    cost.className = 'cost';
+    const costHead = document.createElement('h3');
+    costHead.textContent = 'Rough cost, at your rates';
+    const per = units === 'ft' ? 'per sq ft' : 'per m²';
+    const costNote = document.createElement('p');
+    costNote.textContent = `Type the rates you have been quoted, ${per}. Step Inside does not supply prices; they vary too much by city and finish.`;
+    const lines = costLines(areas().builtUp, total);
+    const sum = document.createElement('p');
+    sum.className = 'sum';
+    const money = (v: number): string => Math.round(v).toLocaleString();
+    const showSum = (): void => {
+      const filled = lines.filter((l) => rates[l.id] > 0);
+      sum.textContent = filled.length
+        ? `Total of the rates filled in: ${money(filled.reduce((s, l) => s + lineCost(l, rates[l.id], units), 0))}`
+        : '';
+    };
+    const grid = document.createElement('div');
+    grid.className = 'rates';
+    for (const line of lines) {
+      const label = document.createElement('label');
+      const words = document.createElement('span');
+      words.textContent = `${line.label} (${a(line.quantity)})`;
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.inputMode = 'decimal';
+      input.placeholder = `Rate ${per}`;
+      if (rates[line.id] > 0) input.value = String(rates[line.id]);
+      const out = document.createElement('output');
+      const show = (): void => {
+        out.textContent = rates[line.id] > 0 ? money(lineCost(line, rates[line.id], units)) : '';
+      };
+      input.addEventListener('input', () => {
+        const value = Number(input.value);
+        if (value > 0) rates[line.id] = value;
+        else delete rates[line.id];
+        try {
+          localStorage.setItem(RATES, JSON.stringify(rates));
+        } catch {
+          // The sum still shows; it just will not be there next time.
+        }
+        show();
+        showSum();
+      });
+      show();
+      label.append(words, input, out);
+      grid.append(label);
+    }
+    showSum();
+    cost.append(costHead, costNote, grid, sum);
+    quantitiesPanel.replaceChildren(cardHead('Quantities', () => toggleQuantities()), table, note, cost);
+  }
+  function toggleQuantities(): void {
+    showCard(quantitiesPanel, quantitiesPanel.hidden === true);
+  }
+  // An open card follows edits to the home.
+  history.subscribe(() => {
+    if (!quantitiesPanel.hidden) drawQuantities();
+  });
+
+  // ---- Layouts: other ways to furnish the room, drawn small and side by side ----
+
+  const layoutsButton = document.getElementById('btn-layouts') as HTMLButtonElement;
+  const layoutsPanel = card('layouts', layoutsButton, drawLayouts);
+  /** The room the card is about, the scene it started from, and what was worked out for it. */
+  let arranging: { level: number; room: string; before: Scene; layouts: Layout[]; chosen: number } | null = null;
+  const SVG = 'http://www.w3.org/2000/svg';
+  /** The room seen from above, a few centimetres across: walls, doors, windows and the pieces. */
+  function miniPlan(scene: Scene, roomId: string): SVGSVGElement {
+    const room = scene.rooms.find((r) => r.id === roomId)!;
+    const xs = room.polygon.map((p) => p[0]);
+    const ys = room.polygon.map((p) => p[1]);
+    const pad = 0.25;
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('viewBox', `${Math.min(...xs) - pad} ${Math.min(...ys) - pad} ${Math.max(...xs) - Math.min(...xs) + 2 * pad} ${Math.max(...ys) - Math.min(...ys) + 2 * pad}`);
+    svg.setAttribute('aria-hidden', 'true');
+    const add = (tag: string, cls: string, attrs: Record<string, string>): void => {
+      const el = document.createElementNS(SVG, tag);
+      el.setAttribute('class', cls);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      svg.append(el);
+    };
+    const points = (list: readonly { x: number; y: number }[]): string => list.map((p) => `${p.x.toFixed(3)},${p.y.toFixed(3)}`).join(' ');
+    add('polygon', 'floor', { points: points(room.polygon.map(toVec)) });
+    for (const o of roomOpenings(scene, roomId)) add('line', o.type, { x1: String(o.a[0]), y1: String(o.a[1]), x2: String(o.b[0]), y2: String(o.b[1]) });
+    const anchor = anchorOf(scene, roomId);
+    const pieces = scene.furniture.filter((f) => f.room === roomId && !f.removed && f.mount !== 'wall' && !(f.elevation && f.elevation > 0));
+    // Rugs first, so the pieces standing on them are drawn over them.
+    for (const f of [...pieces].sort((a, b) => a.size[1] - b.size[1])) {
+      const corners = footprint(f);
+      add('polygon', f.size[1] <= 0.1 ? 'rug' : f.id === anchor?.id ? 'piece anchor' : f.fixed ? 'piece fixed' : 'piece', { points: points(corners) });
+      // Pillows on a bed and the back of a sofa, so it reads which way it faces.
+      if (f.id === anchor?.id && !/table/.test(f.model)) {
+        // A point of the piece: `u` across from left to right, `v` from the back to the front, each 0 to 1.
+        const at = (u: number, v: number): { x: number; y: number } => ({
+          x: corners[3].x + (corners[2].x - corners[3].x) * u + (corners[0].x - corners[3].x) * v,
+          y: corners[3].y + (corners[2].y - corners[3].y) * u + (corners[0].y - corners[3].y) * v,
+        });
+        const patch = (u0: number, u1: number, v0: number, v1: number): void =>
+          add('polygon', 'back', { points: points([at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)]) });
+        if (/sofa|couch/.test(f.model)) patch(0, 1, 0, 0.22);
+        else {
+          patch(0.1, 0.45, 0.06, 0.24);
+          patch(0.55, 0.9, 0.06, 0.24);
+        }
+      }
+    }
+    return svg;
+  }
+  function drawLayouts(): void {
+    if (!arranging) return;
+    const { room: roomId, before, layouts } = arranging;
+    const room = before.rooms.find((r) => r.id === roomId)!;
+    const note = document.createElement('p');
+    note.textContent = layouts.length
+      ? 'Worked out by rules from the pieces already in this room: nothing in a doorway, nothing tall across a window. Click one to see it in the model. Undo puts it back.'
+      : 'No other way of standing these pieces fits this room by the rules: nothing in a doorway, nothing tall across a window.';
+    const grid = document.createElement('div');
+    grid.className = 'plans';
+    const option = (index: number, name: string, why: string, scene: Scene): void => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(arranging!.chosen === index));
+      const title = document.createElement('strong');
+      title.textContent = name;
+      const reason = document.createElement('span');
+      reason.textContent = why;
+      b.append(miniPlan(scene, roomId), title, reason);
+      b.addEventListener('click', () => {
+        if (!arranging || arranging.chosen === index) return;
+        arranging.chosen = index;
+        if (arranging.level !== level) goTo(arranging.level);
+        history.set(swap(withRoomFrom(now(), scene, roomId)));
+        drawLayouts();
+      });
+      grid.append(b);
+    };
+    option(-1, 'As it is', 'The room as you had it.', before);
+    layouts.forEach((l, i) => option(i, l.name, l.why, l.scene));
+    layoutsPanel.replaceChildren(cardHead(`Layouts: ${room.name}`, () => toggleLayouts()), note, grid);
+  }
+  function toggleLayouts(): void {
+    if (!layoutsPanel.hidden) {
+      showCard(layoutsPanel, false);
+      arranging = null;
+      return;
+    }
+    const room = currentRoom();
+    if (!room || !canArrange(now(), room.id)) {
+      panel.toast('Layouts work in a room with a bed, a sofa or a dining table. Walk into one, or click a piece in it.');
+      return;
+    }
+    arranging = { level, room: room.id, before: now(), layouts: layoutsFor(now(), room.id), chosen: -1 };
+    showCard(layoutsPanel, true);
+  }
+  layoutsButton.addEventListener('click', () => {
+    layoutsButton.blur();
+    toggleLayouts();
+  });
+
   // ---- My pieces: furniture kept with its real size, to use again in any room ----
 
   const MINE = 'stepinside.pieces';
@@ -2264,6 +2875,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       refresh();
     }
     turnCompass();
+    for (const work of everyFrame) work();
     if (tour || performance.now() < shadowsUntil) renderer.shadowMap.needsUpdate = true;
     const began = performance.now();
     if (drawRealistic(time)) {

@@ -74,7 +74,9 @@ export class FirstPersonControls {
     canvas.addEventListener('pointerup', endTouch);
     canvas.addEventListener('pointercancel', endTouch);
     window.addEventListener('keydown', (e) => {
-      if (!e.metaKey && !e.ctrlKey) this.keys.add(e.code);
+      // Letters typed into a box are words, not steps.
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement;
+      if (!typing && !e.metaKey && !e.ctrlKey) this.keys.add(e.code);
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());

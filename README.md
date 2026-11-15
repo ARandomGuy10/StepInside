@@ -184,6 +184,30 @@ passes have only been seen on a real machine.
 - **Keep** on a selected piece saves it, with its size and colour, under
   **My pieces** in this browser, ready to add to any room or home.
 
+## Measuring, notes, quantities, layouts
+
+- **Sizes on hover.** Point at a piece (or put the dot on it while looking
+  around) and its name and size float over it.
+- **Measure** (U, the pencil-and-ruler on the rail). Click two points on the
+  model; the length shows between them. On a plan it is the length across
+  the floor; in the walk view it is the true length, with its level and
+  upright parts when it slopes.
+- **Notes for the architect** (Shift+N). Pin a note to any spot. Notes are
+  numbered, shown as pins, kept per home in this browser
+  (`stepinside.notes.<home>`), and can be copied or downloaded as text to
+  send on. Nothing is sent anywhere by the app.
+- **Quantities** (Shift+I). Floor by finish, walls and ceilings to paint,
+  skirting, doors, windows, read off the model (`src/core/quantities.ts`).
+  The rough cost multiplies those by rates the owner types in; the app has
+  no prices of its own, on purpose.
+- **Layouts** (Shift+L, or the button in the Room section). Other ways to
+  stand the room's own furniture, worked out by rules, not by AI
+  (`src/core/arrange.ts`): the bed's head on a wall without a door, bedside
+  tables at its sides, the screen straight across from the sofa, nothing in
+  a doorway, nothing tall across a window. Each is drawn as a small plan
+  beside the room as it is; clicking one applies it as a single undo step.
+  It works for rooms with a bed, a sofa or a dining table.
+
 ## Controls
 
 Every feature has a key. Press **?** in the viewer for the list.
@@ -204,6 +228,10 @@ Every feature has a key. Press **?** in the viewer for the list.
 | Y | Realistic light (beta) |
 | K, J | Night and back; all lights on or off |
 | B | Directions and Vastu |
+| U | Measure between two points |
+| Shift+N | Notes for the architect |
+| Shift+I | Quantities and rough cost |
+| Shift+L | Other layouts for the room |
 | Z | Save a picture of the view |
 | Shift+G | Record the tour as a video |
 | C | Copy a link to this view |
