@@ -42,7 +42,8 @@ export function addLighting(
       const old = world.environment;
       world.environment = pmrem.fromEquirectangular(hdr).texture;
       old?.dispose();
-      hdr.dispose();
+      // Realistic mode lights the scene with the panorama itself, so it is kept.
+      world.userData.panorama = hdr;
       pmrem.dispose();
       // The panorama brings its own soft light, so the fake fill steps back.
       envStrength = 0.55;

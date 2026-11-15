@@ -149,6 +149,16 @@ the gate.
 To add a home, put its scene file in `scenes/` and list it in
 `src/homes.ts`.
 
+## Realistic light (beta)
+
+The sparkle button on the rail (or **Y**) path-traces the view: it follows
+light from the sun, the sky and the lamps as it bounces round the rooms,
+using `three-gpu-pathtracer`. It starts when the view has been still for a
+moment and sharpens pass by pass, up to 400; moving goes back to the fast
+picture. It needs a real graphics card. The code is `src/render/realistic.ts`.
+It could not be checked properly in the headless test browser (software
+rendering shows speckle there), so judge it on a real machine.
+
 ## Controls
 
 Every feature has a key. Press **?** in the viewer for the list.
@@ -166,6 +176,7 @@ Every feature has a key. Press **?** in the viewer for the list.
 | N, M | Room names, sizes |
 | F, P, L | Furniture, Paint, Style tab |
 | G | Tour |
+| Y | Realistic light (beta) |
 | C | Copy a link to this view |
 | V | Saved views |
 | I | Areas |
@@ -226,8 +237,8 @@ Materials (also on the **Paint** tab):
 
 Styles (the **Style** tab):
 
-- One click restyles the home: Modern, Scandinavian, Japandi, Industrial,
-  Coastal, Mediterranean or Dark luxe. It sets the walls, ceilings, floors
+- One click restyles the home. There are 31 looks, from Modern, Scandinavian
+  and Japandi to Art deco, Modern Indian and Wabi-sabi (`src/core/styles.ts`). It sets the walls, ceilings, floors
   and their materials (tiles in bathrooms and kitchens), and the colours
   of sofas, beds, wooden furniture, kitchen units and rugs. Nothing moves,
   and balconies, terraces and gardens are left alone.

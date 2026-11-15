@@ -662,10 +662,26 @@ function addBoundaryFittings(mesh: THREE.Mesh, slab: WallSlab, length: number, d
       pillar.castShadow = true;
       mesh.add(pillar);
     }
+    const leafHeight = Math.max(1.4, slab.height);
+    if (door.width > 2.4) {
+      // A wide gate slides: leaves that long would swing into the house. Each leaf is
+      // parked along the inside of the wall beside the gateway, as wide as that side has room for.
+      const roomLeft = door.offset - 0.1;
+      const roomRight = length - door.offset - door.width - 0.1;
+      const left = Math.max(0.3, Math.min(door.width / 2, roomLeft, door.width - Math.min(door.width / 2, roomRight)));
+      const widths = [left, Math.min(door.width - left, Math.max(0.3, roomRight))];
+      for (const [i, side] of [1, -1].entries()) {
+        const leaf = buildGateLeaf(widths[i], leafHeight, side);
+        // side 1 runs towards +x from its hinge, so park it ending at the left post, and the other at the right.
+        leaf.position.set(side === 1 ? door.offset - widths[0] : door.offset + door.width + widths[1], 0.05, 0.07);
+        mesh.add(leaf);
+      }
+      continue;
+    }
     // Two leaves, swung open into the garden so the way in stays clear.
     const leafWidth = door.width / 2 - 0.02;
     for (const side of [1, -1]) {
-      const leaf = buildGateLeaf(leafWidth, Math.max(1.4, slab.height), side);
+      const leaf = buildGateLeaf(leafWidth, leafHeight, side);
       leaf.position.set(side === 1 ? door.offset + 0.01 : door.offset + door.width - 0.01, 0.05, -slab.thickness / 2);
       leaf.rotation.y = -side * 1.25;
       mesh.add(leaf);

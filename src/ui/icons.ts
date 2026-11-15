@@ -1,5 +1,5 @@
 import {
-  ArrowDown, ArrowUp, Bookmark, Box, House, Keyboard, LandPlot, Maximize, Tag, ChevronDown, ChevronUp, Columns2, createElement, Download, FileText, Footprints,
+  ArrowDown, ArrowUp, Bookmark, Box, House, Keyboard, Sparkles, LandPlot, Maximize, Tag, ChevronDown, ChevronUp, Columns2, createElement, Download, FileText, Footprints,
   Link, Minus, PaintRoller, Play, Plus, Redo2, RotateCcw, RotateCw, Ruler, Share2, Sofa, Square, SwatchBook, Trash2,
   Undo2, Upload, X, type IconNode,
 } from 'lucide';
@@ -13,7 +13,7 @@ const ICONS: Record<string, IconNode> = {
   save: Download, load: Upload, plus: Plus, minus: Minus, play: Play, stop: Square, share: Share2, bookmark: Bookmark,
   ruler: Ruler, file: FileText, close: X, 'chevron-down': ChevronDown, 'chevron-up': ChevronUp, compare: Columns2,
   walk: Footprints, link: Link, furniture: Sofa, paint: PaintRoller, style: SwatchBook, box: Box,
-  fit: Maximize, roof: House, labels: Tag, areas: LandPlot, keys: Keyboard,
+  fit: Maximize, roof: House, labels: Tag, areas: LandPlot, keys: Keyboard, realistic: Sparkles,
 };
 
 export type IconName = keyof typeof ICONS;

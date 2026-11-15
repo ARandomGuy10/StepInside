@@ -25,6 +25,7 @@ import { loadSurfaces } from './render/textures';
 import { OrbitView } from './render/orbitView';
 import { buildStreet } from './render/site';
 import { TopView } from './render/topView';
+import { Realistic } from './render/realistic';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
@@ -42,6 +43,8 @@ const EMBED = window.parent !== window && new URLSearchParams(window.location.se
 function start(home: HomeEntry, scenes: readonly Scene[]): void {
   document.getElementById('home-name')!.textContent = home.title;
   // The renderer draws the 3D scene into the canvas using WebGL (the GPU).
+  /** Set once Realistic mode exists; it is built late, and things above it need to tell it of changes. */
+  let realisticRef: Realistic | undefined;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
@@ -104,7 +107,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const mid = bounds.getCenter(new THREE.Vector2());
   const radius = bounds.getSize(new THREE.Vector2()).length() / 2 + 1;
   const daylight = addLighting(renderer, world, scenes[0], new THREE.Vector3(mid.x, 0, mid.y), radius);
-  if (home.place) setUpSunControls(home.place, daylight);
+  if (home.place) setUpSunControls(home.place, {
+      setSun: (azimuthDeg, elevationDeg) => {
+        daylight.setSun(azimuthDeg, elevationDeg);
+        realisticRef?.invalidate();
+      },
+    });
 
   const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 200);
   const spawn = home.start ?? scenes[0].start ?? { position: [mid.x, mid.y] as [number, number], yawDeg: 0 };
@@ -129,7 +137,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const units = home.units ?? 'm';
   let dimensions = true;
   /** Room sizes under the room names; off leaves just the names. */
-  let sizes = true;
+  let sizes = false;
   // A home without an outside to show, such as a flat, opens with its lid off.
   let roofHidden = !scenes[0].site;
   if (scenes[0].site) {
@@ -508,9 +516,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let capturing = false;
   const pdfButton = tool('file', 'PDF', 'Shift P', () => exportPdf());
   const keysButton = tool('keys', 'Shortcuts', '?', () => toggleKeys());
+  const realisticButton = tool('realistic', 'Realistic light (beta)', 'Y', () => setRealistic(!realistic.on));
+  realisticButton.id = 'btn-realistic';
   tourButton.id = 'btn-tour';
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
-  document.getElementById('view-extras')!.replaceChildren(tourButton, savedButton, shareButton, areasButton, pdfButton, keysButton);
+  document.getElementById('view-extras')!.replaceChildren(realisticButton, tourButton, savedButton, shareButton, areasButton, pdfButton, keysButton);
   const tools = document.getElementById('orbit-tools')!;
   const roofButton = tool('roof', 'Hide roof', 'O', () => {
     roofHidden = !roofHidden;
@@ -707,6 +717,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }
 
   function updateHint(): void {
+    realisticRef?.invalidate();
     const painting = mode === 'paint';
     setTool(tourButton, tour ? 'stop' : 'play', tour ? 'Stop tour' : 'Tour');
     tourButton.classList.toggle('active', !!tour);
@@ -1018,6 +1029,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       ['O', 'Roof on or off'],
       ['N  M', 'Room names, sizes'],
       ['W A S D', 'Walk (Shift: faster)'],
+      ['Y', 'Realistic light'],
     ]],
     ['Changing things', [
       ['F  P  L', 'Furniture, Paint, Style'],
@@ -1080,6 +1092,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     else if (/^Digit[1-9]$/.test(e.code) && !e.shiftKey && planButtons[Number(e.code.slice(5)) - 1]) planButtons[Number(e.code.slice(5)) - 1].click();
     else if (e.code === 'Enter' && !onButton) setTopView(false);
     else if (e.code === 'KeyG') startTour();
+    else if (e.code === 'KeyY') setRealistic(!realistic.on);
     else if (e.code === 'KeyP' && e.shiftKey) void exportPdf();
     else if (e.code === 'KeyC') void shareView();
     else if (e.code === 'KeyV') toggleSaved();
@@ -1745,6 +1758,66 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     window.parent.postMessage({ type: 'stepinside-view', state: v, room: room?.name ?? room?.id }, '*');
   }
 
+  // ---- Realistic mode: a path-traced picture whenever the view rests ----
+
+  const drawFast = (): void => {
+    if (fast) {
+      renderer.render(world, activeCamera());
+    } else {
+      renderPass.camera = occlusion.camera = activeCamera();
+      occlusion.enabled = !(inTopView && plan.flat);
+      composer.render();
+    }
+  };
+  const realistic = new Realistic(renderer, world, drawFast);
+  realisticRef = realistic;
+  const realisticNote = document.createElement('div');
+  realisticNote.id = 'realistic-note';
+  realisticNote.hidden = true;
+  realisticNote.setAttribute('role', 'status');
+  document.body.append(realisticNote);
+  let realisticText = '';
+  function setRealistic(on: boolean): void {
+    realistic.on = on;
+    realistic.invalidate();
+    realisticButton.classList.toggle('active', on);
+    setTool(realisticButton, 'realistic', on ? 'Back to the fast picture' : 'Realistic light (beta)');
+    realisticNote.hidden = !on;
+    document.body.classList.toggle('realistic', on);
+  }
+  // Any change to the home, the floor on show or the sun means the light must be traced again.
+  history.subscribe(() => realistic.invalidate());
+  function drawRealistic(time: number): boolean {
+    if (!realistic.on) return false;
+    // A flat drawing has no light to trace, and a tour never rests.
+    const possible = !(inTopView && plan.flat) && !tour;
+    let drew = false;
+    if (possible) {
+      try {
+        drew = realistic.render(activeCamera(), time);
+      } catch (error) {
+        console.error(error);
+        setRealistic(false);
+        panel.toast('Realistic light is not available on this device.');
+        return false;
+      }
+    }
+    const text = !possible
+      ? 'Realistic light is for 3D views'
+      : realistic.preparing
+        ? 'Tracing the light…'
+        : drew
+          ? realistic.passes >= realistic.maxPasses
+            ? 'Realistic light: done'
+            : `Realistic light: pass ${realistic.passes} of ${realistic.maxPasses}`
+          : 'Hold the view still for realistic light';
+    if (text !== realisticText) {
+      realisticText = text;
+      realisticNote.textContent = text;
+    }
+    return drew;
+  }
+
   let lastRoom: string | undefined;
   const timer = new THREE.Timer();
   // The render loop: the browser calls this before every screen refresh.
@@ -1768,7 +1841,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       lastRoom = roomId;
       refresh();
     }
-    if (fast) {
+    if (drawRealistic(time)) {
+      // The traced picture is on screen.
+    } else if (fast) {
       renderer.render(world, activeCamera());
     } else {
       renderPass.camera = occlusion.camera = activeCamera();

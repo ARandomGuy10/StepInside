@@ -1727,6 +1727,36 @@ kbd {
   }
 }
 
+/* ---- Realistic mode: a line saying how far the traced picture has come ---- */
+
+#realistic-note {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  font-stretch: var(--narrow);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--panel-shadow);
+  pointer-events: none;
+}
+
+#realistic-note[hidden] {
+  display: none;
+}
+
+body.embed #realistic-note {
+  display: none;
+}
+
 /* ---- The card of keyboard shortcuts ---- */
 
 #keys {
@@ -1913,6 +1943,11 @@ kbd {
 
   #keys .groups {
     grid-template-columns: 1fr;
+  }
+
+  #realistic-note {
+    bottom: auto;
+    top: 50%;
   }
 
   #sun-bar {
