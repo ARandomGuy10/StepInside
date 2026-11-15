@@ -722,57 +722,6 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   ];
   for (const [button, works] of railModes) button.dataset.modes = works.join(' ');
 
-  /**
-   * A tool written out in the panel: its name, a line on what it is for, and its key.
-   * It presses the same button as the rail, and lights up with it.
-   */
-  const toolLine = (source: HTMLButtonElement, iconName: string, name: string, about: string): HTMLButtonElement => {
-    const line = document.createElement('button');
-    line.type = 'button';
-    const words = document.createElement('span');
-    const title = document.createElement('strong');
-    title.textContent = name;
-    const small = document.createElement('small');
-    small.textContent = about;
-    words.append(title, small);
-    line.append(icon(iconName), words);
-    if (source.dataset.key) {
-      const kbd = document.createElement('kbd');
-      kbd.textContent = source.dataset.key;
-      line.append(kbd);
-    }
-    line.addEventListener('click', () => {
-      source.click();
-      line.blur();
-    });
-    const follow = (): void => {
-      line.classList.toggle('active', source.classList.contains('active'));
-      line.disabled = source.disabled;
-    };
-    new MutationObserver(follow).observe(source, { attributes: true, attributeFilter: ['class', 'disabled'] });
-    follow();
-    return line;
-  };
-  document.getElementById('explore-tools')!.replaceChildren(
-    toolLine(tourButton, 'play', 'Tour', 'A hands-free walk through every room'),
-    toolLine(realisticButton, 'realistic', 'Realistic light', 'True light and shadow, once the view rests'),
-    toolLine(measureButton, 'measure', 'Measure', 'The distance between any two points'),
-    toolLine(snapButton, 'camera', 'Save a picture', 'This view, as an image file'),
-    toolLine(savedButton, 'bookmark', 'Saved views', 'Keep a view to come back to'),
-    toolLine(shareButton, 'share', 'Share a link', 'Opens this exact view for someone else'),
-  );
-  document.getElementById('plan-shows')!.replaceChildren(
-    toolLine(flatButton, 'file', 'Flat 2D drawing', 'Straight down, like the sheet'),
-    toolLine(dimensionsButton, 'labels', 'Room names', 'A label on every room'),
-    toolLine(sizesButton, 'ruler', 'Room sizes', 'Length and width under each name'),
-  );
-  document.getElementById('plan-tools')!.replaceChildren(
-    toolLine(measureButton, 'measure', 'Measure', 'The distance between any two points'),
-    toolLine(notesButton, 'note', 'Notes for the architect', 'Pin a note to a spot, then send the list'),
-    toolLine(areasButton, 'areas', 'Areas', 'Carpet, built-up and open area by floor'),
-    toolLine(quantitiesButton, 'cost', 'Quantities and cost', 'Flooring, paint and walls at your own rates'),
-    toolLine(pdfButton, 'file', 'Plans as a PDF', 'Every floor on a sheet, with the area statement'),
-  );
   for (const { work } of WORKS) {
     const button = document.getElementById(`mode-${work}`)!;
     button.addEventListener('click', () => {

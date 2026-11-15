@@ -8,7 +8,7 @@ export type Work = 'explore' | 'plan' | 'finishes' | 'furnish';
 
 export const WORKS: readonly { work: Work; note: string }[] = [
   { work: 'explore', note: 'Look only. Nothing here changes the home.' },
-  { work: 'plan', note: 'The drawing: sizes, notes and paperwork.' },
+  { work: 'plan', note: 'The drawing. Its tools are in the bar on the right: sizes, measure, notes, areas, cost and PDF.' },
   { work: 'finishes', note: 'Click a surface to change its colour or material.' },
   { work: 'furnish', note: 'Click a piece to move, turn or resize it.' },
 ];
