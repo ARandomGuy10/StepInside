@@ -5,6 +5,10 @@ describe('formatLength', () => {
   it('writes metres with two decimals', () => {
     expect(formatLength(3.456, 'm')).toBe('3.46 m');
   });
+  it('writes centimetres as whole numbers', () => {
+    expect(formatLength(3.456, 'cm')).toBe('346 cm');
+    expect(formatSize(3.456, 2.004, 'cm')).toBe('346 × 200 cm');
+  });
   it('writes feet and inches to the nearest inch', () => {
     expect(formatLength(3.6576, 'ft')).toBe('12′');
     expect(formatLength(3.81, 'ft')).toBe('12′ 6″');

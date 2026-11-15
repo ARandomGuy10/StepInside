@@ -101,9 +101,9 @@ export function costLines(builtUp: number, total: Quantities): CostLine[] {
 }
 
 /** Square metres in one unit of area of the owner's units. */
-export const AREA_UNIT = { m: 1, ft: 0.09290304 } as const;
+export const AREA_UNIT = { cm: 1, m: 1, ft: 0.09290304 } as const;
 
 /** What one line costs at a rate per square metre or per square foot. */
-export function lineCost(line: CostLine, rate: number, units: 'm' | 'ft'): number {
+export function lineCost(line: CostLine, rate: number, units: 'cm' | 'm' | 'ft'): number {
   return (line.quantity / AREA_UNIT[units]) * rate;
 }

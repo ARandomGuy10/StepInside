@@ -132,6 +132,6 @@ export function summarizeAreas(floors: readonly { name: string; scene: Scene }[]
 
 /** An area as text: "1,245 sq ft" or "115.7 m²". */
 export function formatArea(squareMetres: number, units: Units): string {
-  if (units === 'm') return `${squareMetres.toFixed(1)} m²`;
+  if (units !== 'ft') return `${squareMetres.toFixed(1)} m²`;
   return `${Math.round(squareMetres / (0.3048 * 0.3048)).toLocaleString('en-US')} sq ft`;
 }

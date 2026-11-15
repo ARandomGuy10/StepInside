@@ -58,7 +58,7 @@ export interface HomeEntry {
    */
   design?: { group: string; name: string };
   /** How sizes are shown. The scene files are always in metres. */
-  units?: 'm' | 'ft';
+  units?: 'cm' | 'm' | 'ft';
   /**
    * Where the home is, for the sun's path through the day. Homes without
    * one keep the fixed sun in their scene file.

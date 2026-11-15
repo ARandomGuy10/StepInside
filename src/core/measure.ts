@@ -1,9 +1,13 @@
 import type { Room } from './scene';
 
-export type Units = 'm' | 'ft';
+/** How lengths are written: centimetres, metres, or feet and inches. */
+export type Units = 'cm' | 'm' | 'ft';
 
-/** A length in metres as text: "3.45 m", or feet and inches such as 12′ 6″. */
+export const UNITS: readonly Units[] = ['cm', 'm', 'ft'];
+
+/** A length in metres as text: "345 cm", "3.45 m", or feet and inches such as 12′ 6″. */
 export function formatLength(metres: number, units: Units): string {
+  if (units === 'cm') return `${Math.round(metres * 100)} cm`;
   if (units === 'm') return `${metres.toFixed(2)} m`;
   const inches = Math.round(metres / 0.0254);
   const feet = Math.floor(inches / 12);
@@ -22,8 +26,9 @@ export function roomSize(room: Room): { width: number; depth: number; center: [n
   return { width: x1 - x0, depth: y1 - y0, center: [(x0 + x1) / 2, (y0 + y1) / 2] };
 }
 
-/** "12′ × 15′" or "3.66 × 4.57 m". */
+/** "12′ × 15′", "3.66 × 4.57 m" or "366 × 457 cm". */
 export function formatSize(width: number, depth: number, units: Units): string {
+  if (units === 'cm') return `${Math.round(width * 100)} × ${Math.round(depth * 100)} cm`;
   if (units === 'm') return `${width.toFixed(2)} × ${depth.toFixed(2)} m`;
   return `${formatLength(width, units)} × ${formatLength(depth, units)}`;
 }

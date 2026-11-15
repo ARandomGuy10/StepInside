@@ -14,7 +14,7 @@ import { TourPlayer } from './render/tourPlayer';
 import { History } from './core/history';
 import { HOMES, type HomeEntry, type StairEntry } from './homes';
 import { loadLayout, saveLayout } from './core/layout';
-import { formatLength, formatSize, roomSize } from './core/measure';
+import { formatLength, formatSize, roomSize, UNITS, type Units } from './core/measure';
 import { parseScene, SceneError, toVec, type Scene } from './core/scene';
 import type { Segment } from './core/collision';
 import { buildWalls } from './core/walls';
@@ -168,7 +168,15 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // A floor plan is seen at an angle too, from nearly overhead, so the
   // walls and furniture read as 3D. Tilt it all the way up for a flat plan.
   const plan = new OrbitView(bounds, 1, { azimuth: 0.3, polar: 0.5, reach: 1.25 });
-  const units = home.units ?? 'm';
+  // The owner's own choice of units, kept in this browser, outranks the home's.
+  const UNITS_KEY = 'stepinside.units';
+  let units: Units = home.units ?? 'm';
+  try {
+    const kept = localStorage.getItem(UNITS_KEY);
+    if (kept === 'cm' || kept === 'm' || kept === 'ft') units = kept;
+  } catch {
+    // Storage is off: the home's own units.
+  }
   let dimensions = true;
   /** Room sizes under the room names; off leaves just the names. */
   let sizes = false;
@@ -184,6 +192,20 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // Adding ?fast to the address skips the post-processing below, for
   // slow machines.
   let fast = new URLSearchParams(window.location.search).has('fast');
+  /** The owner's own choice of drawing, which stops the automatic switch. */
+  const DRAWING_KEY = 'stepinside.drawing';
+  let drawingChosen = false;
+  try {
+    const kept = localStorage.getItem(DRAWING_KEY);
+    if (kept === 'light' || kept === 'full') {
+      drawingChosen = true;
+      if (!fast) fast = kept === 'light';
+    }
+  } catch {
+    // Storage is off: decide by speed.
+  }
+  /** True when the drawing went lighter by itself because this device was slow. */
+  let autoLight = false;
 
   // Post-processing: the picture is drawn off screen, then improved in
   // passes before it is shown. The ambient occlusion pass darkens corners
@@ -839,6 +861,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         x: chosen.position[0], y: (chosen.elevation ?? 0) + h + 0.25, z: chosen.position[1], piece: true,
       });
     }
+    placeWallSizes(show && sizes && !directions);
     while (labelPool.length < items.length) {
       const el = document.createElement('div');
       el.append(document.createElement('strong'), document.createElement('span'));
@@ -855,9 +878,66 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       el.classList.toggle('piece', !!item.piece);
       if (el.firstElementChild!.textContent !== item.text) el.firstElementChild!.textContent = item.text;
       if (el.lastElementChild!.textContent !== item.sub) el.lastElementChild!.textContent = item.sub;
-      // With sizes off, rooms show only their names; a selected piece keeps its size.
-      (el.lastElementChild as HTMLElement).hidden = !sizes && !directions && !item.piece;
+      // With sizes off, rooms and the selected piece show only their names.
+      (el.lastElementChild as HTMLElement).hidden = !sizes && !directions;
     });
+  }
+
+  // With sizes on, every wall of a room carries its length too, written along the
+  // wall just inside the room, the way a drawing gives its dimensions.
+  const wallLayer = document.createElement('div');
+  wallLayer.id = 'wall-sizes';
+  labelLayer.after(wallLayer);
+  const wallPool: HTMLElement[] = [];
+  const ends = [new THREE.Vector3(), new THREE.Vector3()];
+  function placeWallSizes(show: boolean): void {
+    wallLayer.hidden = !show;
+    if (!show) return;
+    const { innerWidth: w, innerHeight: h } = window;
+    const y = lv().elevation + 0.05;
+    const toScreen = (v: THREE.Vector3): [number, number] => {
+      v.project(plan.camera);
+      return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+    };
+    let n = 0;
+    for (const room of now().rooms) {
+      if (room.kind === 'void') continue;
+      const poly = room.polygon;
+      // Which side is inside: the sign of the room's area says which way it is drawn.
+      let twice = 0;
+      poly.forEach(([x0, z0], i) => {
+        const [x1, z1] = poly[(i + 1) % poly.length];
+        twice += x0 * z1 - x1 * z0;
+      });
+      const inward = twice > 0 ? 1 : -1;
+      poly.forEach(([x0, z0], i) => {
+        const [x1, z1] = poly[(i + 1) % poly.length];
+        const length = Math.hypot(x1 - x0, z1 - z0);
+        // Short pieces, such as the steps of a curve, would only crowd the drawing.
+        if (length < 0.9) return;
+        const nx = (-(z1 - z0) / length) * inward * 0.28;
+        const nz = ((x1 - x0) / length) * inward * 0.28;
+        const a = toScreen(ends[0].set(x0 + nx, y, z0 + nz));
+        const b = toScreen(ends[1].set(x1 + nx, y, z1 + nz));
+        const across = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        // No room on screen for the words: leave this wall out.
+        if (across < 46) return;
+        let angle = THREE.MathUtils.radToDeg(Math.atan2(b[1] - a[1], b[0] - a[0]));
+        if (angle > 90) angle -= 180;
+        else if (angle <= -90) angle += 180;
+        if (wallPool.length <= n) {
+          const el = document.createElement('span');
+          wallLayer.append(el);
+          wallPool.push(el);
+        }
+        const el = wallPool[n++];
+        const text = formatLength(length, units);
+        if (el.textContent !== text) el.textContent = text;
+        el.hidden = false;
+        el.style.transform = `translate(${(a[0] + b[0]) / 2}px, ${(a[1] + b[1]) / 2}px) translate(-50%, -50%) rotate(${angle.toFixed(1)}deg)`;
+      });
+    }
+    for (let i = n; i < wallPool.length; i++) wallPool[i].hidden = true;
   }
 
 
@@ -1428,12 +1508,16 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       goTo(level + (e.code === 'PageUp' ? 1 : -1));
     } else if (e.code === 'Escape') {
       if (!keysPanel.hidden) toggleKeys();
-      if (measuring) setMeasuring(false);
+      if (measuring && !tapeStart) setMeasuring(false);
+      else if (measuring) dropLength();
       if (pinning) setPinning(false);
       selectedId = null;
       setPaintTarget(null);
     } else if (e.altKey) {
       return;
+    } else if (measuring && (e.code === 'Backspace' || e.code === 'Delete')) {
+      e.preventDefault();
+      dropLength();
     } else if (quickKey(e)) {
       e.preventDefault();
     } else if (mode !== 'furniture') {
@@ -2395,7 +2479,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let hoverId: string | undefined;
   hoverPiece = (id, e) => {
     // The selected piece already carries its size in a plan.
-    const piece = id && !(inTopView && dimensions && id === selectedId) ? now().furniture.find((f) => f.id === id) : undefined;
+    const piece = id && !(inTopView && dimensions && sizes && id === selectedId) ? now().furniture.find((f) => f.id === id) : undefined;
     hoverLabel.hidden = !piece || !e;
     if (!piece || !e) {
       hoverId = undefined;
@@ -2449,87 +2533,211 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (text) toolNote.textContent = text;
   };
 
-  // The tape measure: click two points; the length shows between them.
+  // The tape measure: click where a length starts and where it ends. Every length
+  // stays on the model until the tool is put away, so several can be compared.
+  // Near a corner, a wall or the end of another length the point snaps to it, and a
+  // length that runs almost straight along the plan is held straight.
   let measuring = false;
-  let tape: THREE.Vector3[] = [];
+  type Length = { a: THREE.Vector3; b: THREE.Vector3 };
+  let lengths: Length[] = [];
+  let tapeStart: THREE.Vector3 | null = null;
   let tapeEnd: THREE.Vector3 | null = null;
-  const tapeLine = new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+  /** What the pointer is held to right now, for the ring round the dot. */
+  let snapKind: 'corner' | 'wall' | 'straight' | null = null;
+  const MAX_LENGTHS = 40;
+  const tapeLines = new THREE.LineSegments(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array((MAX_LENGTHS + 1) * 6), 3)),
     new THREE.LineBasicMaterial({ color: 0xff2e88, depthTest: false }),
   );
-  tapeLine.renderOrder = 12;
-  tapeLine.frustumCulled = false;
-  tapeLine.visible = false;
-  world.add(tapeLine);
-  const tapeLabel = document.createElement('div');
-  tapeLabel.id = 'tape-label';
-  tapeLabel.hidden = true;
-  tapeLabel.append(document.createElement('strong'), document.createElement('span'));
-  const tapeDots = [document.createElement('i'), document.createElement('i')];
-  for (const dot of tapeDots) {
-    dot.className = 'tape-dot';
-    dot.hidden = true;
-  }
-  document.body.append(tapeLabel, ...tapeDots);
+  tapeLines.renderOrder = 12;
+  tapeLines.frustumCulled = false;
+  tapeLines.visible = false;
+  world.add(tapeLines);
+  const tapeLayer = document.createElement('div');
+  tapeLayer.id = 'tape-layer';
+  document.body.append(tapeLayer);
+  const tapeLabels: HTMLElement[] = [];
+  const tapeDots: HTMLElement[] = [];
+  const pooled = (pool: HTMLElement[], n: number, make: () => HTMLElement): void => {
+    while (pool.length < n) {
+      const el = make();
+      tapeLayer.append(el);
+      pool.push(el);
+    }
+  };
   function setMeasuring(on: boolean): void {
     if (on) setPinning(false);
     measuring = on;
-    tape = [];
-    tapeEnd = null;
+    lengths = [];
+    tapeStart = tapeEnd = null;
+    snapKind = null;
     clickTaker = on ? takeTapePoint : null;
     measureButton.classList.toggle('active', on);
     canvas.style.cursor = on ? 'crosshair' : '';
     say(on ? 'Measure: click where the length starts. Esc to finish.' : null);
     if (on && !inTopView && !inOrbit && !controls.locked) panel.toast('Click two points. While looking around, the dot in the middle is the pointer.');
   }
+  /** Takes back the length being drawn, or the last one finished. True if there was one. */
+  function dropLength(): boolean {
+    if (tapeStart) tapeStart = null;
+    else if (!lengths.pop()) return false;
+    tapeEnd = null;
+    say(lengths.length ? `Measure: ${lengths.length} ${lengths.length === 1 ? 'length' : 'lengths'}. Click to start another.` : 'Measure: click where the length starts. Esc to finish.');
+    return true;
+  }
+
+  /**
+   * The point the tape should use for the pointer at `e`: the model under it, pulled
+   * onto a nearby corner, wall line or length end, then held straight to the start.
+   */
+  function tapePoint(e: { clientX: number; clientY: number }): THREE.Vector3 | undefined {
+    const hit = hitPoint(e);
+    if (!hit) return undefined;
+    const pointer: [number, number] = [e.clientX, e.clientY];
+    const away = (p: THREE.Vector3): number => {
+      const s = onScreen(p);
+      return s ? Math.hypot(s[0] - pointer[0], s[1] - pointer[1]) : Infinity;
+    };
+    // A plan is read on the floor; walking, a corner is snapped at the height clicked.
+    const y = inTopView ? lv().elevation : hit.y;
+    let best: THREE.Vector3 | null = null;
+    let bestAway = 14;
+    snapKind = null;
+    const corners: THREE.Vector3[] = lengths.flatMap((l) => [l.a, l.b]);
+    if (tapeStart) corners.push(tapeStart);
+    for (const room of now().rooms) for (const [x, z] of room.polygon) corners.push(new THREE.Vector3(x, y, z));
+    for (const c of corners) {
+      const d = away(c);
+      if (d < bestAway) {
+        best = c.clone();
+        bestAway = d;
+        snapKind = 'corner';
+      }
+    }
+    if (!best) {
+      // The nearest point on any wall line of this floor, if one is close on screen.
+      let wallAway = 9;
+      for (const room of now().rooms) {
+        const poly = room.polygon;
+        poly.forEach(([x0, z0], i) => {
+          const [x1, z1] = poly[(i + 1) % poly.length];
+          const dx = x1 - x0;
+          const dz = z1 - z0;
+          const len2 = dx * dx + dz * dz;
+          if (len2 < 1e-6) return;
+          const t = Math.max(0, Math.min(1, ((hit.x - x0) * dx + (hit.z - z0) * dz) / len2));
+          const p = new THREE.Vector3(x0 + dx * t, y, z0 + dz * t);
+          const d = away(p);
+          if (d < wallAway) {
+            best = p;
+            wallAway = d;
+            snapKind = 'wall';
+          }
+        });
+      }
+    }
+    const point = best ?? hit;
+    // On a plan every point lies on the floor, so a click on a sofa or a wall top reads the same.
+    if (inTopView) point.y = lv().elevation;
+    // Held straight: within 4° of running along or across the plan, the end lines up with the start.
+    if (tapeStart && snapKind !== 'corner') {
+      const dx = point.x - tapeStart.x;
+      const dz = point.z - tapeStart.z;
+      const angle = Math.abs(Math.atan2(dz, dx)) % (Math.PI / 2);
+      if (Math.hypot(dx, dz) > 0.2 && Math.min(angle, Math.PI / 2 - angle) < THREE.MathUtils.degToRad(4)) {
+        if (Math.abs(dx) > Math.abs(dz)) point.z = tapeStart.z;
+        else point.x = tapeStart.x;
+        snapKind ??= 'straight';
+      }
+    }
+    return point;
+  }
   function takeTapePoint(e: { clientX: number; clientY: number }): void {
-    const p = hitPoint(e);
+    const p = tapePoint(e);
     if (!p) {
       panel.toast('Click on a floor, a wall or a piece.');
       return;
     }
-    // A third click starts a new length.
-    if (tape.length >= 2) tape = [];
-    tape.push(p);
-    tapeEnd = null;
-    say(tape.length === 1 ? 'Measure: now click where it ends.' : 'Measure: click again for another length. Esc to finish.');
+    if (!tapeStart) {
+      tapeStart = p;
+      tapeEnd = null;
+      say('Measure: now click where it ends. Esc lets go of this one.');
+      return;
+    }
+    if (p.distanceTo(tapeStart) < 0.01) return;
+    lengths.push({ a: tapeStart, b: p });
+    if (lengths.length > MAX_LENGTHS) lengths.shift();
+    tapeStart = tapeEnd = null;
+    say(`Measure: ${lengths.length} ${lengths.length === 1 ? 'length' : 'lengths'}. Click to start another · Backspace takes the last one back · Esc to finish.`);
   }
   canvas.addEventListener('pointermove', (e) => {
-    if (measuring && tape.length === 1 && !controls.locked) tapeEnd = hitPoint(e) ?? tapeEnd;
+    if (!measuring || controls.locked) return;
+    tapeEnd = tapePoint(e) ?? tapeEnd;
   });
-  everyFrame.push(() => {
-    let a = tape[0];
-    let b = tape[1] ?? tapeEnd;
-    if (measuring && tape.length === 1 && controls.locked) {
-      const rect = canvas.getBoundingClientRect();
-      b = hitPoint({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }) ?? b;
-    }
-    const first = a ? onScreen(a) : null;
-    tapeDots[0].hidden = !first;
-    if (first) tapeDots[0].style.transform = `translate(-50%, -50%) translate(${first[0]}px, ${first[1]}px)`;
-    const second = a && b ? onScreen(b) : null;
-    tapeDots[1].hidden = !second;
-    if (second) tapeDots[1].style.transform = `translate(-50%, -50%) translate(${second[0]}px, ${second[1]}px)`;
-    tapeLine.visible = !!(a && b);
-    tapeLabel.hidden = !(first && second);
-    if (!a || !b) return;
-    const points = tapeLine.geometry.attributes.position as THREE.BufferAttribute;
-    points.setXYZ(0, a.x, a.y, a.z);
-    points.setXYZ(1, b.x, b.y, b.z);
-    points.needsUpdate = true;
-    if (!first || !second) return;
+  /** A length as words: the length, and its parts when it slopes. */
+  const lengthText = (a: THREE.Vector3, b: THREE.Vector3): [string, string] => {
     const flat = Math.hypot(b.x - a.x, b.z - a.z);
     const up = Math.abs(b.y - a.y);
     // On a plan a length is read across the floor, even when a click lands on top of a wall.
     const text = formatLength(inTopView ? flat : a.distanceTo(b), units);
-    // A sloping length is seldom what is wanted: give its two parts as well.
     const parts = up <= 0.05 || flat <= 0.05 ? ''
       : inTopView ? `${formatLength(up, units)} difference in height`
       : `${formatLength(flat, units)} along, ${formatLength(up, units)} up`;
-    if (tapeLabel.firstElementChild!.textContent !== text) tapeLabel.firstElementChild!.textContent = text;
-    if (tapeLabel.lastElementChild!.textContent !== parts) tapeLabel.lastElementChild!.textContent = parts;
-    (tapeLabel.lastElementChild as HTMLElement).hidden = !parts;
-    tapeLabel.style.transform = `translate(-50%, -50%) translate(${(first[0] + second[0]) / 2}px, ${(first[1] + second[1]) / 2 - 16}px)`;
+    return [text, parts];
+  };
+  everyFrame.push(() => {
+    if (measuring && controls.locked) {
+      const rect = canvas.getBoundingClientRect();
+      tapeEnd = tapePoint({ clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 }) ?? tapeEnd;
+    }
+    const shown: Length[] = [...lengths];
+    if (tapeStart && tapeEnd) shown.push({ a: tapeStart, b: tapeEnd });
+    // The lines: one pair of points per length.
+    const points = tapeLines.geometry.attributes.position as THREE.BufferAttribute;
+    shown.forEach(({ a, b }, i) => {
+      points.setXYZ(i * 2, a.x, a.y, a.z);
+      points.setXYZ(i * 2 + 1, b.x, b.y, b.z);
+    });
+    points.needsUpdate = true;
+    tapeLines.geometry.setDrawRange(0, shown.length * 2);
+    tapeLines.visible = shown.length > 0;
+    // The dots: both ends of every length, the start being drawn, and the pointer.
+    const dots: { p: THREE.Vector3; snap?: boolean }[] = shown.flatMap(({ a, b }) => [{ p: a }, { p: b }]);
+    if (tapeStart && !tapeEnd) dots.push({ p: tapeStart });
+    if (measuring && tapeEnd && snapKind) dots.push({ p: tapeEnd, snap: true });
+    else if (measuring && !tapeStart && tapeEnd) dots.push({ p: tapeEnd, snap: !!snapKind });
+    pooled(tapeDots, dots.length, () => {
+      const dot = document.createElement('i');
+      dot.className = 'tape-dot';
+      return dot;
+    });
+    tapeDots.forEach((dot, i) => {
+      const at = dots[i] ? onScreen(dots[i].p) : null;
+      dot.hidden = !at;
+      if (!at) return;
+      dot.classList.toggle('snap', !!dots[i].snap);
+      dot.style.transform = `translate(-50%, -50%) translate(${at[0]}px, ${at[1]}px)`;
+    });
+    // The labels: one strip of tape half way along each length.
+    pooled(tapeLabels, shown.length, () => {
+      const label = document.createElement('div');
+      label.className = 'tape-label';
+      label.append(document.createElement('strong'), document.createElement('span'));
+      return label;
+    });
+    tapeLabels.forEach((label, i) => {
+      const length = shown[i];
+      const first = length ? onScreen(length.a) : null;
+      const second = length ? onScreen(length.b) : null;
+      label.hidden = !first || !second;
+      if (!length || !first || !second) return;
+      const [text, parts] = lengthText(length.a, length.b);
+      if (label.firstElementChild!.textContent !== text) label.firstElementChild!.textContent = text;
+      if (label.lastElementChild!.textContent !== parts) label.lastElementChild!.textContent = parts;
+      (label.lastElementChild as HTMLElement).hidden = !parts;
+      label.classList.toggle('drawing', i === lengths.length);
+      label.style.transform = `translate(-50%, -50%) translate(${(first[0] + second[0]) / 2}px, ${(first[1] + second[1]) / 2 - 14}px)`;
+    });
   });
 
   // ---- Cards that open beside the rail: one at a time ----
@@ -3045,17 +3253,85 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     const gap = now - lastFrame;
     lastFrame = now;
     // The first pictures include one-off set-up work, and a hidden tab draws nothing.
-    if (fast || realistic.on || frames < 20 || frames > 400 || document.hidden || gap > 1000) return;
+    if (fast || drawingChosen || realistic.on || frames < 20 || frames > 400 || document.hidden || gap > 1000) return;
     // Either drawing itself is slow, or the pictures arrive far apart.
     if (now - began > 40 || gap > 55) slow++;
     else slow = Math.max(0, slow - 1);
     if (slow < 12) return;
-    fast = true;
-    renderer.setPixelRatio(1);
-    resize();
-    panel.toast('Switched to lighter drawing to keep this smooth on your device.');
+    autoLight = true;
+    setDrawing(true, false);
+    panel.toast('Switched to lighter drawing to keep this smooth. The Drawing switch in the panel puts it back.');
   }
 
+  /** Lighter drawing skips the shading pass and draws at one pixel per pixel. */
+  function setDrawing(light: boolean, chosen: boolean): void {
+    fast = light;
+    renderer.setPixelRatio(light ? 1 : Math.min(window.devicePixelRatio, 2));
+    resize();
+    if (chosen) {
+      drawingChosen = true;
+      autoLight = false;
+      try {
+        localStorage.setItem(DRAWING_KEY, light ? 'light' : 'full');
+      } catch {
+        // Not kept: it holds for this visit.
+      }
+    }
+    drawDisplay();
+    realisticRef?.invalidate();
+  }
+
+  /** The units and drawing switches at the foot of the panel. */
+  const unitButtons = UNITS.map((u) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = u;
+    button.title = u === 'cm' ? 'Centimetres' : u === 'm' ? 'Metres' : 'Feet and inches';
+    button.addEventListener('click', () => {
+      setUnits(u);
+      button.blur();
+    });
+    return button;
+  });
+  const unitsLabel = document.createElement('span');
+  unitsLabel.textContent = 'Units';
+  document.getElementById('units')!.replaceChildren(unitsLabel, ...unitButtons);
+  const drawingLabel = document.createElement('span');
+  document.getElementById('drawing')!.prepend(drawingLabel);
+  const fullButton = document.getElementById('draw-full')!;
+  const lightButton = document.getElementById('draw-light')!;
+  fullButton.addEventListener('click', () => setDrawing(false, true));
+  lightButton.addEventListener('click', () => setDrawing(true, true));
+  function drawDisplay(): void {
+    unitButtons.forEach((b, i) => b.classList.toggle('active', UNITS[i] === units));
+    fullButton.classList.toggle('active', !fast);
+    lightButton.classList.toggle('active', fast);
+    drawingLabel.textContent = autoLight ? 'Drawing (set for you)' : 'Drawing';
+  }
+  function setUnits(next: Units): void {
+    if (next === units) return;
+    units = next;
+    try {
+      localStorage.setItem(UNITS_KEY, next);
+    } catch {
+      // Not kept: it holds for this visit.
+    }
+    drawDisplay();
+    drawFacts();
+    hoverPiece(undefined);
+    if (!areasPanel.hidden) {
+      toggleAreas();
+      toggleAreas();
+    }
+    if (!quantitiesPanel.hidden) drawQuantities();
+    drawMine();
+    refresh();
+    panel.toast(`Sizes now in ${next === 'cm' ? 'centimetres' : next === 'm' ? 'metres' : 'feet and inches'}.`);
+  }
+  if (fast) renderer.setPixelRatio(1);
+  drawDisplay();
+
+  let shadowsOff = false;
   renderer.setAnimationLoop((time) => {
     timer.update(time);
     if (capturing) return;
@@ -3078,6 +3354,18 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     turnCompass();
     for (const work of everyFrame) work();
+    // A flat plan is a drawing: no shadows on it, only the lines and colours.
+    const flatNow = inTopView && plan.flat;
+    if (flatNow !== shadowsOff) {
+      shadowsOff = flatNow;
+      world.traverse((o) => {
+        const light = o as THREE.DirectionalLight;
+        if (!light.isLight || !light.shadow) return;
+        light.userData.shadowIntensity ??= light.shadow.intensity;
+        light.shadow.intensity = flatNow ? 0 : light.userData.shadowIntensity;
+      });
+      touchShadows();
+    }
     if (tour || performance.now() < shadowsUntil) renderer.shadowMap.needsUpdate = true;
     const began = performance.now();
     if (drawRealistic(time)) {

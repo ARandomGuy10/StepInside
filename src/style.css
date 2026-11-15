@@ -763,7 +763,7 @@ body.blocked #view {
 }
 
 /* In the whole-house view the editing tools step aside. */
-body.orbit-view #panel > :not(#home-box):not(#views):not(#modes):not(#mode-note):not(#pane-explore):not(#session) {
+body.orbit-view #panel > :not(#home-box):not(#views):not(#modes):not(#mode-note):not(#pane-explore):not(#session):not(#display) {
   display: none;
 }
 
@@ -2360,7 +2360,7 @@ body.embed #opening .mark { display: none; }
 /* ---- The size of the piece under the mouse, and the tape measure ---- */
 
 #hover-size,
-#tape-label {
+.tape-label {
   position: fixed;
   left: 0;
   top: 0;
@@ -2376,8 +2376,8 @@ body.embed #opening .mark { display: none; }
 }
 
 #hover-size[hidden],
-#tape-label[hidden],
-#tape-label span[hidden],
+.tape-label[hidden],
+.tape-label span[hidden],
 .tape-dot[hidden],
 .pin[hidden] {
   display: none;
@@ -2393,8 +2393,8 @@ body.embed #opening .mark { display: none; }
 }
 
 #hover-size span,
-#tape-label strong,
-#tape-label span {
+.tape-label strong,
+.tape-label span {
   padding: 1px 6px 0;
   background: var(--tape);
   box-shadow: 0 1px 3px oklch(0.2 0.009 70 / 0.3);
@@ -2405,7 +2405,7 @@ body.embed #opening .mark { display: none; }
   font-variant-numeric: tabular-nums;
 }
 
-#tape-label strong {
+.tape-label strong {
   font-size: 15px;
   padding: 2px 8px 1px;
 }
@@ -3056,6 +3056,98 @@ body.orbit-view #panel {
   }
 
   body:not(.panel-open) #panel #mode-note {
+    display: none;
+  }
+}
+
+/* ---- Wall lengths on the plan: written along each wall, inside the room ---- */
+
+#wall-sizes {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#wall-sizes[hidden],
+#wall-sizes > [hidden] {
+  display: none;
+}
+
+#wall-sizes > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: oklch(1 0 0 / 0.82);
+  color: var(--soot);
+  font-stretch: var(--narrow);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 var(--tape);
+}
+
+/* ---- The tape measure: every length kept, and a ring where the pointer snaps ---- */
+
+#tape-layer > [hidden] {
+  display: none;
+}
+
+.tape-label.drawing strong {
+  opacity: 0.85;
+}
+
+.tape-dot.snap {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--line);
+  background: oklch(1 0 0 / 0.35);
+}
+
+/* ---- Units and drawing, at the foot of the panel in every mode ---- */
+
+#display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--panel-line);
+}
+
+#display > div {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+#display > div > span {
+  margin-right: 4px;
+  color: var(--text-soft);
+  font-size: 11px;
+}
+
+#panel #display button {
+  min-height: 24px;
+  padding: 2px 7px;
+  border-color: transparent;
+  background: oklch(0.2 0.009 70);
+  color: var(--text-soft);
+  font-size: 11.5px;
+}
+
+#panel #display button.active {
+  background: var(--lime);
+  color: var(--soot);
+}
+
+@media (max-width: 700px) {
+  body:not(.panel-open) #panel #display {
     display: none;
   }
 }
