@@ -34,6 +34,7 @@ The model is made from the visitor's own plan, to its real dimensions, and they 
 - Static site on GitHub Pages: Vite, TypeScript, Three.js. No backend yet.
 - Sign-up, login, the account and plan requests are a client-side mock stored in the visitor's browser. Nothing is sent anywhere. The site must say so wherever a visitor could assume otherwise.
 - Requests are fulfilled by hand for now. The request flow is built behind an interface so an API-key-driven generator can replace the manual step.
+- The viewer has four modes, each with its own tools: Explore (look only; what a share link opens), Plan (the drawing: sizes, measuring, notes for the architect, quantities, the PDF), Finishes (paint, materials, styles) and Furnish (furniture). Changes are counted on a strip until the owner presses Keep, which stores them in that browser, or Discard.
 - Viewer features that exist today: whole-house view, plan per floor (3D and flat 2D) with room names and sizes, first-person walk with stairs between floors, guided tour, sun by date and time for the home's town, furniture move/turn/resize/add/remove, paint and materials, one-click styles, undo/redo, save/load layout, saved views, share link, compare two designs side by side, area statement, PDF of the plans.
 - Undecided: pricing, turnaround time, which plan formats are accepted beyond images.
 

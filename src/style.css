@@ -763,7 +763,7 @@ body.blocked #view {
 }
 
 /* In the whole-house view the editing tools step aside. */
-body.orbit-view #panel > :not(#home-box):not(#views) {
+body.orbit-view #panel > :not(#home-box):not(#views):not(#modes):not(#mode-note):not(#pane-explore):not(#session) {
   display: none;
 }
 
@@ -2115,7 +2115,7 @@ body.embed #compass {
   }
 
   /* Folded: just the home, the design and the floors. */
-  body:not(.panel-open) #panel > :not(#home-box):not(#levels) {
+  body:not(.panel-open) #panel > :not(#home-box):not(#levels):not(#modes) {
     display: none;
   }
 
@@ -2843,5 +2843,219 @@ body.embed #hover-size {
 @media (max-width: 700px) {
   #layouts .plans svg {
     height: 110px;
+  }
+}
+
+/* ---- Modes: four tabs under the home's name, one page of tools each ---- */
+
+#modes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin: 0 12px;
+  padding: 3px;
+  border-radius: 8px;
+  background: oklch(0.2 0.009 70);
+}
+
+#panel #modes button {
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 7px 2px 6px;
+  border-color: transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-soft);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+#panel #modes button .icon {
+  width: 17px;
+  height: 17px;
+}
+
+#panel #modes button:hover:not(.active) {
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+#panel #modes button.active {
+  background: var(--lime);
+  border-color: var(--lime);
+  color: var(--soot);
+  box-shadow: inset 0 -3px 0 var(--line);
+}
+
+/* What the mode in hand does, in a line. */
+#panel #mode-note {
+  margin: 0;
+  padding: 9px 14px 12px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* A tool written out: icon, name, what it is for, and its key. */
+.tool-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -6px;
+}
+
+#panel .tool-lines button {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-color: transparent;
+  background: none;
+  text-align: left;
+  white-space: normal;
+}
+
+#panel .tool-lines button > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+#panel .tool-lines strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+#panel .tool-lines small {
+  color: var(--text-soft);
+  font-size: 11.5px;
+  font-weight: 450;
+  line-height: 1.3;
+}
+
+#panel .tool-lines kbd {
+  flex: none;
+  padding: 1px 5px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 4px;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+#panel .tool-lines button:hover:not(:disabled) {
+  background: var(--panel-raised);
+}
+
+#panel .tool-lines button.active {
+  background: var(--lime);
+  color: var(--soot);
+}
+
+#panel .tool-lines button.active small,
+#panel .tool-lines button.active kbd {
+  color: var(--soot-soft);
+  border-color: var(--soot-soft);
+}
+
+#home-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 14px;
+  margin: 0;
+}
+
+#home-facts dt {
+  color: var(--text-soft);
+}
+
+#home-facts dd {
+  margin: 0;
+  font-weight: 650;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Changes not yet kept, counted on a strip of steel tape. */
+#session {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 8px 14px;
+  background:
+    repeating-linear-gradient(90deg, oklch(0.19 0.008 70 / 0.55) 0 1px, transparent 1px 8px) 0 0 / 100% 5px no-repeat,
+    var(--tape);
+  color: var(--soot);
+}
+
+#session-count {
+  flex: 1;
+  padding-top: 3px;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+#panel #session button {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 12.5px;
+  border-color: var(--soot);
+  background: none;
+  color: var(--soot);
+}
+
+#panel #session button:hover {
+  background: oklch(0.19 0.008 70 / 0.12);
+  border-color: var(--soot);
+}
+
+#panel #session #btn-keep {
+  background: var(--soot);
+  color: var(--lime);
+}
+
+#panel #session #btn-keep:hover {
+  background: oklch(0.3 0.008 70);
+}
+
+/* Undo and the layout file belong to the two modes that change things. */
+body[data-mode='explore'] #panel footer,
+body[data-mode='plan'] #panel footer {
+  display: none;
+}
+
+/* The rail carries only the tools of the mode in hand. */
+body[data-mode='explore'] #view-extras button:not([data-modes~='explore']),
+body[data-mode='plan'] #view-extras button:not([data-modes~='plan']),
+body[data-mode='finishes'] #view-extras button:not([data-modes~='finishes']),
+body[data-mode='furnish'] #view-extras button:not([data-modes~='furnish']) {
+  display: none;
+}
+
+body.orbit-view #panel {
+  max-height: calc(100vh - 24px);
+}
+
+@media (max-width: 700px) {
+  #modes {
+    margin: 0 10px 8px;
+  }
+
+  #panel #modes button {
+    min-height: 44px;
+  }
+
+  body:not(.panel-open) #panel #mode-note {
+    display: none;
   }
 }

@@ -33,16 +33,44 @@
         <select id="design" title="Switch between designs of this home" aria-label="Design" hidden></select>
         <a id="compare-link" href="./" title="Two designs side by side, always at the same view" data-icon="compare" hidden>Compare designs side by side</a>
       </div>
+      <nav id="modes" aria-label="What you are doing">
+        <button id="mode-explore" title="Look around: nothing here changes the home (Shift 1)" data-icon="explore">Explore</button>
+        <button id="mode-plan" title="The drawing: sizes, measuring, notes, quantities and the PDF (Shift 2)" data-icon="plan">Plan</button>
+        <button id="mode-finishes" title="Paint, materials and whole-home styles (Shift 3)" data-icon="paint">Finishes</button>
+        <button id="mode-furnish" title="Move, turn, resize, add and take out furniture (Shift 4)" data-icon="furniture">Furnish</button>
+      </nav>
+      <p id="mode-note"></p>
       <div id="levels" role="group" aria-label="Floor" hidden></div>
-      <header>
-        <div id="tabs" role="group" aria-label="What to change">
-          <button id="tab-furniture" class="active" data-icon="furniture">Furniture</button>
-          <button id="tab-paint" data-icon="paint">Paint</button>
-          <button id="tab-style" data-icon="style">Style</button>
+      <header id="finish-tabs">
+        <div id="tabs" role="group" aria-label="How to change the finishes">
+          <button id="tab-paint" title="One surface or piece at a time (P)" data-icon="paint">One surface</button>
+          <button id="tab-style" title="Every room in one click (L)" data-icon="style">Whole home</button>
         </div>
       </header>
 
-      <div id="pane-furniture" class="pane">
+      <div id="pane-explore" class="pane">
+        <section>
+          <h2>This home</h2>
+          <dl id="home-facts"></dl>
+        </section>
+        <section class="grow">
+          <h2>While you look</h2>
+          <div id="explore-tools" class="tool-lines"></div>
+        </section>
+      </div>
+
+      <div id="pane-plan" class="pane" hidden>
+        <section>
+          <h2>On the drawing</h2>
+          <div id="plan-shows" class="tool-lines"></div>
+        </section>
+        <section class="grow">
+          <h2>Work from it</h2>
+          <div id="plan-tools" class="tool-lines"></div>
+        </section>
+      </div>
+
+      <div id="pane-furniture" class="pane" hidden>
         <section>
           <h2>Selected</h2>
           <p id="selected-name" class="muted">Click a piece to select it, then drag it along the floor.</p>
@@ -136,11 +164,16 @@
         </section>
       </div>
 
+      <div id="session" hidden>
+        <span id="session-count"></span>
+        <button id="btn-discard" title="Put the home back as you last kept it. Undo brings the changes back.">Discard</button>
+        <button id="btn-keep" title="Keep these changes in this browser, so they are here next time">Keep</button>
+      </div>
       <footer class="row">
         <button id="btn-undo" title="Undo (Ctrl/Cmd+Z)" data-icon="undo"></button>
         <button id="btn-redo" title="Redo (Ctrl/Cmd+Shift+Z)" data-icon="redo"></button>
         <span class="spacer"></span>
-        <button id="btn-save" title="Save this layout as a file (Ctrl/Cmd+S)" data-icon="save">Save</button>
+        <button id="btn-save" title="Save this layout as a file (Ctrl/Cmd+S)" data-icon="save">File</button>
         <button id="btn-load" title="Load a saved layout file" data-icon="load">Load</button>
         <input type="file" id="file-load" accept=".json,application/json" hidden />
       </footer>

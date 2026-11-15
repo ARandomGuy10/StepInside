@@ -36,7 +36,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import '@fontsource-variable/archivo/wdth.css';
 import { DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePanel';
-import { hydrateIcons, setLabel, setTool } from './ui/icons';
+import { hydrateIcons, icon, setLabel, setTool } from './ui/icons';
+import { edits, workOf, WORKS, type Work } from './ui/modes';
+import { countChanges } from './core/session';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 hydrateIcons();
@@ -206,11 +208,64 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const swap = (next: Scene): readonly Scene[] => history.current.map((s, i) => (i === level ? next : s));
   const preview = (next: Scene): void => history.preview(swap(next));
   let selectedId: string | null = null;
-  // The panel has two tabs. In paint mode a click picks a surface instead
-  // of a piece of furniture to move.
-  let mode: Mode = 'furniture';
+  // The home opens in Explore, where a click only looks. In Furnish a click
+  // picks a piece to move; in Finishes (paint, style) it picks a surface.
+  let mode: Mode = 'explore';
+  /** The Finishes tab last used, so the mode opens where it was left. */
+  let lastFinish: Mode = 'paint';
   let paintTarget: PaintTarget | null = null;
   let pickingColor = false;
+  const endColorDrag = (): void => {
+    if (!pickingColor) return;
+    history.endGesture();
+    pickingColor = false;
+  };
+  /** Tells the page which mode it is in: the stylesheet shows that mode's tools. */
+  const showMode = (): void => {
+    const work = workOf(mode);
+    document.body.dataset.mode = work;
+    for (const { work: w, note } of WORKS) {
+      const button = document.getElementById(`mode-${w}`)!;
+      button.classList.toggle('active', w === work);
+      button.setAttribute('aria-pressed', String(w === work));
+      if (w === work) document.getElementById('mode-note')!.textContent = note;
+    }
+  };
+  /** A view that cannot hold the current mode puts the panel back in Explore. */
+  const fallToExplore = (): void => {
+    if (mode === 'explore') return;
+    endColorDrag();
+    mode = 'explore';
+    selectedId = null;
+    paintTarget = null;
+    showMode();
+  };
+  /**
+   * Changes mode. Plan lives on the floor plan; Finishes and Furnish need to be
+   * inside the home, so from the whole-house view they open the plan of this floor.
+   */
+  function setMode(next: Mode): void {
+    if (next === mode) return;
+    endColorDrag();
+    const from = mode;
+    mode = next;
+    if (next === 'paint' || next === 'style') lastFinish = next;
+    // Carry a selected piece over, so "select, then switch" works both ways.
+    if (next === 'paint' && selectedId) paintTarget = { kind: 'furniture', id: selectedId };
+    if (next === 'furniture' && from === 'paint' && paintTarget?.kind === 'furniture') selectedId = paintTarget.id;
+    if (next !== 'furniture') selectedId = null;
+    if (next !== 'paint') paintTarget = null;
+    if (next === 'plan') {
+      dimensions = true;
+      sizes = true;
+    }
+    showMode();
+    if ((next === 'plan' && !inTopView) || (edits(next) && inOrbit)) setTopView(true);
+    updateHint();
+    refresh();
+  }
+  const setWork = (work: Work): void =>
+    setMode(work === 'furnish' ? 'furniture' : work === 'finishes' ? lastFinish : work);
   const selection = new THREE.BoxHelper(new THREE.Object3D(), 0xff9f1c);
   selection.visible = false;
   // Draw the outline on top of everything, so a picked floor shows too.
@@ -323,15 +378,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const panel = new FurniturePanel({
     save,
     load,
-    setMode: (next) => {
-      if (next === mode) return;
-      mode = next;
-      // Carry a selected piece over, so "select, then switch tab" works.
-      if (mode === 'paint') paintTarget = selectedId ? { kind: 'furniture', id: selectedId } : paintTarget;
-      else if (paintTarget?.kind === 'furniture') selectedId = paintTarget.id;
-      updateHint();
-      refresh();
-    },
+    setMode,
     resize: (size) => {
       if (!selectedId) return;
       // A blocked resize leaves the scene alone, so put the old numbers back.
@@ -479,6 +526,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   function setTopView(on: boolean): void {
     if (tour) stopTour();
+    // The Plan mode works on the drawing, so leaving the plan leaves the mode.
+    if (!on && mode === 'plan') fallToExplore();
     inTopView = on;
     inOrbit = false;
     if (on) controls.unlock();
@@ -495,6 +544,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   function setOrbit(): void {
     if (tour) stopTour();
     setTopView(false);
+    fallToExplore();
     inOrbit = true;
     controls.unlock();
     controls.enabled = false;
@@ -601,13 +651,164 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   for (const b of [flatButton, turnLeft, turnRight, zoomIn, zoomOut]) b.classList.add('bare');
   tools.replaceChildren(flatButton, turnLeft, turnRight, zoomIn, zoomOut, resetButton, roofButton, dimensionsButton, sizesButton);
 
+  // ---- Modes: each has its own tools on the rail and its own page in the panel ----
+
+  // The rail carries only the tools of the mode in hand. Every key still works in any mode.
+  const railModes: [HTMLButtonElement, Work[]][] = [
+    [realisticButton, ['explore', 'finishes']],
+    [tourButton, ['explore']],
+    [recordButton, ['explore']],
+    [snapButton, ['explore', 'plan', 'finishes', 'furnish']],
+    [measureButton, ['explore', 'plan']],
+    [notesButton, ['plan']],
+    [savedButton, ['explore']],
+    [shareButton, ['explore']],
+    [areasButton, ['plan']],
+    [quantitiesButton, ['plan']],
+    [pdfButton, ['plan']],
+    [keysButton, ['explore', 'plan', 'finishes', 'furnish']],
+  ];
+  for (const [button, works] of railModes) button.dataset.modes = works.join(' ');
+
+  /**
+   * A tool written out in the panel: its name, a line on what it is for, and its key.
+   * It presses the same button as the rail, and lights up with it.
+   */
+  const toolLine = (source: HTMLButtonElement, iconName: string, name: string, about: string): HTMLButtonElement => {
+    const line = document.createElement('button');
+    line.type = 'button';
+    const words = document.createElement('span');
+    const title = document.createElement('strong');
+    title.textContent = name;
+    const small = document.createElement('small');
+    small.textContent = about;
+    words.append(title, small);
+    line.append(icon(iconName), words);
+    if (source.dataset.key) {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = source.dataset.key;
+      line.append(kbd);
+    }
+    line.addEventListener('click', () => {
+      source.click();
+      line.blur();
+    });
+    const follow = (): void => {
+      line.classList.toggle('active', source.classList.contains('active'));
+      line.disabled = source.disabled;
+    };
+    new MutationObserver(follow).observe(source, { attributes: true, attributeFilter: ['class', 'disabled'] });
+    follow();
+    return line;
+  };
+  document.getElementById('explore-tools')!.replaceChildren(
+    toolLine(tourButton, 'play', 'Tour', 'A hands-free walk through every room'),
+    toolLine(realisticButton, 'realistic', 'Realistic light', 'True light and shadow, once the view rests'),
+    toolLine(measureButton, 'measure', 'Measure', 'The distance between any two points'),
+    toolLine(snapButton, 'camera', 'Save a picture', 'This view, as an image file'),
+    toolLine(savedButton, 'bookmark', 'Saved views', 'Keep a view to come back to'),
+    toolLine(shareButton, 'share', 'Share a link', 'Opens this exact view for someone else'),
+  );
+  document.getElementById('plan-shows')!.replaceChildren(
+    toolLine(flatButton, 'file', 'Flat 2D drawing', 'Straight down, like the sheet'),
+    toolLine(dimensionsButton, 'labels', 'Room names', 'A label on every room'),
+    toolLine(sizesButton, 'ruler', 'Room sizes', 'Length and width under each name'),
+  );
+  document.getElementById('plan-tools')!.replaceChildren(
+    toolLine(measureButton, 'measure', 'Measure', 'The distance between any two points'),
+    toolLine(notesButton, 'note', 'Notes for the architect', 'Pin a note to a spot, then send the list'),
+    toolLine(areasButton, 'areas', 'Areas', 'Carpet, built-up and open area by floor'),
+    toolLine(quantitiesButton, 'cost', 'Quantities and cost', 'Flooring, paint and walls at your own rates'),
+    toolLine(pdfButton, 'file', 'Plans as a PDF', 'Every floor on a sheet, with the area statement'),
+  );
+  for (const { work } of WORKS) {
+    const button = document.getElementById(`mode-${work}`)!;
+    button.addEventListener('click', () => {
+      setWork(work);
+      button.blur();
+    });
+  }
+  showMode();
+
+  /** The few facts that say what kind of home this is, at the top of Explore. */
+  const drawFacts = (): void => {
+    const summary = summarizeAreas(levels.map((l, i) => ({ name: l.name, scene: history.current[i] })));
+    const rooms = history.current.reduce((n, scene) => n + scene.rooms.length, 0);
+    const facts: [string, string][] = [
+      [levels.length > 1 ? 'Floors' : 'Floor', levels.length > 1 ? levels.map((l) => l.name).join(', ') : lv().name],
+      ['Rooms and spaces', String(rooms)],
+      ['Built-up area', formatArea(summary.builtUp, units)],
+    ];
+    if (summary.plot > 0) facts.push(['Plot', formatArea(summary.plot, units)]);
+    document.getElementById('home-facts')!.replaceChildren(
+      ...facts.flatMap(([term, value]) => {
+        const dt = document.createElement('dt');
+        dt.textContent = term;
+        const dd = document.createElement('dd');
+        dd.textContent = value;
+        return [dt, dd];
+      }),
+    );
+  };
+  drawFacts();
+
+  // ---- Changes not yet kept: counted on a strip of tape, with Keep and Discard ----
+
+  // "Kept" is the home as it was last stored in this browser. Until Keep is
+  // pressed, changes live only in this tab.
+  const KEPT = `stepinside.kept.${home.id}`;
+  let kept: readonly Scene[] = history.current;
+  const sessionBar = document.getElementById('session')!;
+  const drawSession = (): void => {
+    const n = countChanges(kept, history.current);
+    sessionBar.hidden = n === 0;
+    document.getElementById('session-count')!.textContent = `${n} ${n === 1 ? 'change' : 'changes'} not kept`;
+    document.body.classList.toggle('unkept', n > 0);
+  };
+  history.subscribe(drawSession);
+  document.getElementById('btn-keep')!.addEventListener('click', () => {
+    try {
+      localStorage.setItem(KEPT, JSON.stringify(history.current.map((scene) => saveLayout(scene))));
+      kept = history.current;
+      drawSession();
+      panel.toast('Kept in this browser. It will be here the next time you open this home.');
+    } catch {
+      panel.toast('This browser would not store it. Use File to save it instead.');
+    }
+  });
+  document.getElementById('btn-discard')!.addEventListener('click', () => {
+    selectedId = null;
+    paintTarget = null;
+    history.set(kept);
+    panel.toast('Back to what you last kept. Undo brings the changes back.');
+  });
+  window.addEventListener('beforeunload', (e) => {
+    if (countChanges(kept, history.current) > 0) e.preventDefault();
+  });
+  /** Puts back what was kept on an earlier visit. Called once the home is on screen. */
+  const restoreKept = (): void => {
+    try {
+      const stored: unknown = JSON.parse(localStorage.getItem(KEPT) ?? 'null');
+      if (!Array.isArray(stored) || stored.length !== levels.length) return;
+      const next = history.current.map((scene, i) => {
+        const result = loadLayout(String(stored[i]), scene);
+        return 'error' in result ? scene : result.scene;
+      });
+      history.set(next);
+      kept = history.current;
+      drawSession();
+    } catch {
+      // Nothing kept, or it no longer reads: the home opens as drawn.
+    }
+  };
+
   // On a wide screen the list of views lives in the panel at the side and the tools on a
   // slim rail at the right, so nothing lies over the model. On a phone, and on each side
   // of the compare page (which has no panel), the views stay in a bar at the bottom.
   const wideScreen = window.matchMedia('(min-width: 701px)');
   const placeViews = (): void => {
     const aside = !EMBED && wideScreen.matches;
-    if (aside) document.getElementById('home-box')!.after(viewBar);
+    if (aside) document.getElementById('mode-note')!.after(viewBar);
     else document.getElementById('view-bar')!.append(viewBar);
     document.body.classList.toggle('views-aside', aside);
   };
@@ -705,10 +906,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   /** Makes storey `i` the one that is edited and shown in the top view. */
   function setLevel(i: number): void {
-    if (pickingColor) {
-      history.endGesture();
-      pickingColor = false;
-    }
+    endColorDrag();
     level = i;
     selectedId = null;
     paintTarget = null;
@@ -804,7 +1002,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     document.getElementById('hint-text')!.textContent = inTopView
       ? painting
         ? 'Click a floor, wall or piece, then choose a colour · drag the background to turn the plan · right-drag to move it'
-        : 'Click a piece to select it · drag to move · R to turn · drag the background to turn the plan · right-drag to move it'
+        : mode === 'furniture'
+          ? 'Click a piece to select it · drag to move · R to turn · drag the background to turn the plan · right-drag to move it'
+          : 'Drag to turn the plan · right-drag to move it · scroll to zoom · point at a piece for its size'
       : painting
         ? 'W A S D to walk · right-drag or double-click to look around · while looking, click picks what the dot is on'
         : `W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view${levels.length > 1 ? ' · Page Up / Page Down to change floor' : ''}`;
@@ -954,12 +1154,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
     press = { x: e.clientX, y: e.clientY };
     // In a plan, dragging anything but a piece of furniture turns the plan.
-    const id = mode === 'paint' || clickTaker ? undefined : pickFurniture(e);
+    const id = mode !== 'furniture' || clickTaker ? undefined : pickFurniture(e);
     if (!id && inTopView) {
       turning = { x: e.clientX, y: e.clientY };
       canvas.setPointerCapture(e.pointerId);
     }
-    if (mode === 'paint' || clickTaker) return;
     if (!id) return;
     selectedId = id;
     const piece = selectedPiece();
@@ -995,9 +1194,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         canvas.style.cursor = 'crosshair';
         return;
       }
-      if (mode === 'furniture' && !controls.locked && !inOrbit) {
+      if (!edits(mode) || mode === 'furniture') {
+        if (controls.locked || inOrbit) return;
         const id = pickFurniture(e);
-        canvas.style.cursor = id ? 'grab' : '';
+        canvas.style.cursor = id && mode === 'furniture' ? 'grab' : '';
         hoverPiece(id, e);
       }
       return;
@@ -1108,7 +1308,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       ['U', 'Measure between two points'],
     ]],
     ['Changing things', [
-      ['F  P  L', 'Furniture, Paint, Style'],
+      ['Shift 1 to 4', 'Explore, Plan, Finishes, Furnish'],
+      ['F  P  L', 'Furnish, paint one surface, style the whole home'],
       ['Shift L', 'Other layouts for the room'],
       ['R', 'Turn the selected piece'],
       ['Delete', 'Take the piece out'],
@@ -1196,8 +1397,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     else if (e.code === 'KeyO' && inOrbit) roofButton.click();
     else if (e.code === 'KeyN' && inTopView) dimensionsButton.click();
     else if (e.code === 'KeyM' && inTopView) sizesButton.click();
-    else if (!EMBED && !inOrbit && (e.code === 'KeyF' || e.code === 'KeyP' || e.code === 'KeyL')) {
-      document.getElementById(e.code === 'KeyF' ? 'tab-furniture' : e.code === 'KeyP' ? 'tab-paint' : 'tab-style')!.click();
+    else if (!EMBED && e.shiftKey && /^Digit[1-4]$/.test(e.code)) setWork(WORKS[Number(e.code.slice(5)) - 1].work);
+    else if (!EMBED && (e.code === 'KeyF' || e.code === 'KeyP' || e.code === 'KeyL')) {
+      setMode(e.code === 'KeyF' ? 'furniture' : e.code === 'KeyP' ? 'paint' : 'style');
     } else return false;
     return true;
   }
@@ -2897,8 +3099,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     }
   });
 
+  restoreKept();
+
   // Handy in the browser console, and used by the automated screenshots.
-  Object.assign(window, { walkthrough: { history, camera, controls, world, setTopView, setOrbit, orbit, goTo, planCamera: plan.camera, topCamera: topView.camera, startTour, stopTour, currentView, showView, plan, marker: topView.marker } });
+  Object.assign(window, { walkthrough: { setMode, history, camera, controls, world, setTopView, setOrbit, orbit, goTo, planCamera: plan.camera, topCamera: topView.camera, startTour, stopTour, currentView, showView, plan, marker: topView.marker } });
 }
 
 // The address picks the home: ?home=apartment. Without it, the start

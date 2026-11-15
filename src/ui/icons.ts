@@ -1,7 +1,7 @@
 import {
   ArrowDown, ArrowUp, Bookmark, PencilRuler, MessageSquarePlus, Calculator, LayoutDashboard, Copy, Box, House, Keyboard, Sparkles, Camera, Compass, Lightbulb, Moon, Star, Video, LandPlot, Maximize, Tag, ChevronDown, ChevronUp, Columns2, createElement, Download, FileText, Footprints,
   Link, Minus, PaintRoller, Play, Plus, Redo2, RotateCcw, RotateCw, Ruler, Share2, Sofa, Square, SwatchBook, Trash2,
-  Undo2, Upload, X, type IconNode,
+  Undo2, Upload, X, Eye, DraftingCompass, type IconNode,
 } from 'lucide';
 
 /**
@@ -15,6 +15,7 @@ const ICONS: Record<string, IconNode> = {
   walk: Footprints, link: Link, furniture: Sofa, paint: PaintRoller, style: SwatchBook, box: Box,
   fit: Maximize, roof: House, labels: Tag, areas: LandPlot, keys: Keyboard, realistic: Sparkles,
   measure: PencilRuler, note: MessageSquarePlus, cost: Calculator, layouts: LayoutDashboard, copy: Copy,
+  explore: Eye, plan: DraftingCompass,
   camera: Camera, video: Video, compass: Compass, bulb: Lightbulb, moon: Moon, star: Star,
 };
 

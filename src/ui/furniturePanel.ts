@@ -2,7 +2,11 @@ import { CATALOGUE } from '../core/catalogue';
 import type { Furniture, Room, Scene } from '../core/scene';
 import { STYLES } from '../core/styles';
 
-export type Mode = 'furniture' | 'paint' | 'style';
+/**
+ * What the panel is showing. 'explore' and 'plan' change nothing; 'paint' and
+ * 'style' are the two tabs of Finishes; 'furniture' is Furnish.
+ */
+export type Mode = 'explore' | 'plan' | 'furniture' | 'paint' | 'style';
 
 /** Material choices offered in the paint tab. `undefined` is a plain surface. */
 const FLOOR_CHOICES: readonly [string | undefined, string][] = [
@@ -89,7 +93,6 @@ export class FurniturePanel {
         (e.currentTarget as HTMLElement).blur();
       });
     };
-    on('tab-furniture', () => actions.setMode('furniture'));
     on('tab-paint', () => actions.setMode('paint'));
     on('tab-style', () => actions.setMode('style'));
     on('btn-reset-style', () => actions.resetPaint());
@@ -192,8 +195,10 @@ export class FurniturePanel {
   render(state: PanelState): void {
     const { scene, selected, room } = state;
 
-    byId('tab-furniture').classList.toggle('active', state.mode === 'furniture');
     byId('tab-paint').classList.toggle('active', state.mode === 'paint');
+    byId('pane-explore').hidden = state.mode !== 'explore';
+    byId('pane-plan').hidden = state.mode !== 'plan';
+    byId('finish-tabs').hidden = state.mode !== 'paint' && state.mode !== 'style';
     byId('pane-furniture').hidden = state.mode !== 'furniture';
     byId('pane-paint').hidden = state.mode !== 'paint';
     byId('tab-style').classList.toggle('active', state.mode === 'style');
