@@ -35,10 +35,11 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import '@fontsource-variable/archivo/wdth.css';
-import { DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePanel';
+import { CATALOGUE_DRAG, DRAG_TYPE, FurniturePanel, labelOf, type Mode } from './ui/furniturePanel';
 import { hydrateIcons, icon, setLabel, setTool } from './ui/icons';
 import { edits, workOf, WORKS, type Work } from './ui/modes';
 import { countChanges } from './core/session';
+import { clearInFront } from './core/fit';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 hydrateIcons();
@@ -480,6 +481,21 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     toggleTopView: () => setTopView(!inTopView),
   });
   addItem = (item) => {
+    // On the plan, a new piece goes in the room on its own, or the middle of the view.
+    if (inTopView) {
+      const room = alone ? now().rooms.find((r) => r.id === alone!.room) : undefined;
+      const side = document.getElementById('panel')!.getBoundingClientRect().right;
+      const middle = room ? roomSize(room).center : floorPoint({ clientX: (side + innerWidth) / 2, clientY: innerHeight / 2 });
+      if (!middle) return;
+      const within = room ?? roomAt(now(), { x: middle[0], y: middle[1] });
+      const result = addFurniture(now(), item, [mm(middle[0]), mm(middle[1])], 0, within?.kind === 'void' ? undefined : within?.id);
+      if (apply(result.scene, 'This room has no free floor that size. Take something out, or try a smaller piece.') && result.id) {
+        selectedId = result.id;
+        refresh();
+        panel.toast(`Added: ${item.name}. Drag it into place.`);
+      }
+      return;
+    }
     // Look for what is straight ahead of the walker: a wall-hung piece
     // goes on that wall, a floor piece stands a step in front.
     const pose = controls.pose;
@@ -544,6 +560,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       canRedo: history.canRedo,
       topView: inTopView,
       storeys: levels.length > 1,
+      units,
+      fit: mode === 'furniture' && chosen ? clearInFront(scene, chosen) : null,
     });
     afterRefresh();
   }
@@ -884,6 +902,76 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       // With sizes off, rooms and the selected piece show only their names.
       (el.lastElementChild as HTMLElement).hidden = !sizes && !directions;
     });
+  }
+
+  // In Furnish, the selected piece carries a few buttons just below it on the plan:
+  // turn either way, make a copy, take it out. The panel has the same and more.
+  const pieceTools = document.createElement('div');
+  pieceTools.id = 'piece-tools';
+  pieceTools.hidden = true;
+  const pieceButton = (name: string, title: string, run: () => void): HTMLButtonElement => {
+    const button = document.createElement('button');
+    button.title = title;
+    button.setAttribute('aria-label', title);
+    button.append(icon(name));
+    button.addEventListener('pointerdown', (e) => e.stopPropagation());
+    button.addEventListener('click', (e) => {
+      e.stopPropagation();
+      run();
+      button.blur();
+    });
+    pieceTools.append(button);
+    return button;
+  };
+  const turnButtons = [
+    pieceButton('turn-left', 'Turn 15° anticlockwise', () => panel.actions.turn(-15)),
+    pieceButton('turn-right', 'Turn 15° clockwise', () => panel.actions.turn(15)),
+  ];
+  pieceButton('copy', 'Add another one like it', () => copySelected());
+  pieceButton('remove', 'Take it out', () => panel.actions.takeOut());
+  document.body.append(pieceTools);
+
+  function copySelected(): void {
+    const piece = selectedPiece();
+    if (!piece || piece.fixed) return;
+    const item: CatalogueItem = {
+      key: piece.id.replace(/-\d+$/, ''),
+      name: labelOf(piece),
+      model: piece.model,
+      size: piece.size,
+      color: (piece.color ?? undefined) as string,
+      ...(piece.mount === 'wall' ? { mount: 'wall' as const, elevation: piece.elevation } : {}),
+    };
+    // Try beside it first, along its width, then let the search look nearby.
+    const rad = THREE.MathUtils.degToRad(piece.rotationDeg);
+    const step = piece.size[0] + 0.15;
+    const near: [number, number] = [mm(piece.position[0] + Math.cos(rad) * step), mm(piece.position[1] + Math.sin(rad) * step)];
+    const result = addFurniture(now(), item, near, piece.rotationDeg);
+    if (apply(result.scene, 'There is no space for another one nearby.') && result.id) {
+      selectedId = result.id;
+      refresh();
+      panel.toast(`Added another ${labelOf(piece).toLowerCase()}. Drag it into place.`);
+    }
+  }
+
+  const corner = new THREE.Vector3();
+  function placePieceTools(): void {
+    const piece = mode === 'furniture' && inTopView && !drag && !measuring ? selectedPiece() : undefined;
+    pieceTools.hidden = !piece || !!piece.fixed;
+    if (pieceTools.hidden || !piece) return;
+    const { innerWidth: w, innerHeight: h } = window;
+    let low = -Infinity;
+    let sumX = 0;
+    const corners = footprint(piece);
+    for (const c of corners) {
+      corner.set(c.x, lv().elevation + (piece.elevation ?? 0), c.y).project(plan.camera);
+      const x = ((corner.x + 1) / 2) * w;
+      const y = ((1 - corner.y) / 2) * h;
+      sumX += x;
+      low = Math.max(low, y);
+    }
+    for (const b of turnButtons) b.hidden = piece.mount === 'wall';
+    pieceTools.style.transform = `translate(-50%, 0) translate(${sumX / corners.length}px, ${low + 14}px)`;
   }
 
   // With sizes on, every wall of a room carries its length too, written along the
@@ -1427,7 +1515,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // Dragging a taken-out piece from the panel onto the floor.
   canvas.addEventListener('dragover', (e) => {
     const types = e.dataTransfer?.types ?? [];
-    if (types.includes(DRAG_TYPE) || types.includes('Files')) e.preventDefault();
+    if (types.includes(DRAG_TYPE) || types.includes(CATALOGUE_DRAG) || types.includes('Files')) e.preventDefault();
   });
   canvas.addEventListener('drop', (e) => {
     // A layout file dropped onto the view is loaded.
@@ -1435,6 +1523,22 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (file) {
       e.preventDefault();
       void file.text().then(load);
+      return;
+    }
+    // A catalogue card dropped onto the floor (or a wall) adds that piece there.
+    const key = e.dataTransfer?.getData(CATALOGUE_DRAG);
+    const item = key ? CATALOGUE.find((c) => c.key === key) : undefined;
+    if (item) {
+      e.preventDefault();
+      const p = floorPoint(e);
+      if (!p) return panel.toast('Drop it onto the floor of a room.');
+      const within = roomAt(now(), { x: p[0], y: p[1] });
+      const result = addFurniture(now(), item, [mm(p[0]), mm(p[1])], 0, within?.kind === 'void' ? undefined : within?.id);
+      if (apply(result.scene, 'There is no space for it there. Try a spot with more room.') && result.id) {
+        selectedId = result.id;
+        refresh();
+        panel.toast(`Added: ${item.name}.`);
+      }
       return;
     }
     const id = e.dataTransfer?.getData(DRAG_TYPE);
@@ -2385,7 +2489,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     labelNight();
   }
 
-  // ---- The walk bar: a small map with you on it, where you are, and the way out ----
+  // ---- The walk bar: a small map with you on it, and where you are ----
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const walkBar = document.createElement('div');
@@ -2410,26 +2514,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const where = document.createElement('div');
   where.className = 'where';
   where.append(whereFloor, whereRoom, whereSize);
-  const walkNight = document.createElement('button');
-  walkNight.type = 'button';
-  walkNight.title = 'See it after dark, and back (K)';
-  walkNight.addEventListener('click', () => {
-    toggleNight();
-    walkNight.blur();
-  });
-  walkNight.hidden = !sunClock;
-  const walkLeave = document.createElement('button');
-  walkLeave.type = 'button';
-  walkLeave.title = 'Back to the plan of this floor (T)';
-  setLabel(walkLeave, 'close', 'Leave');
-  walkLeave.addEventListener('click', () => {
-    if (tour) stopTour();
-    setTopView(true);
-  });
-  const walkButtons = document.createElement('div');
-  walkButtons.className = 'buttons';
-  walkButtons.append(walkNight, walkLeave);
-  walkBar.append(map, where, walkButtons);
+  walkBar.append(map, where);
   document.body.append(walkBar);
 
   let mapKey = '';
@@ -2467,6 +2552,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (walkBar.hidden === walking) {
       walkBar.hidden = !walking;
       document.body.classList.toggle('walk-bar-on', walking);
+      // It sits on the right, under the sun card, so the middle of the view stays clear.
+      const sun = document.getElementById('sun-bar');
+      const below = sun && !sun.hidden ? sun.getBoundingClientRect().bottom : 0;
+      walkBar.style.top = `${Math.round(below + 10)}px`;
     }
     if (!walking) return;
     drawMap();
@@ -2483,8 +2572,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     youDot.setAttribute('cx', String(pose.x));
     youDot.setAttribute('cy', String(pose.y));
     const room = roomAt(now(), pose);
-    const night = isNight();
-    const key = `${level}|${room?.id}|${units}|${night}`;
+    const key = `${level}|${room?.id}|${units}`;
     if (key === whereKey) return;
     whereKey = key;
     for (const path of mapRooms.children) path.classList.toggle('here', (path as SVGElement).dataset.room === room?.id);
@@ -2492,7 +2580,6 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     whereFloor.hidden = levels.length < 2;
     whereRoom.textContent = room ? (room.name ?? room.id) : 'Outside';
     whereSize.textContent = room ? formatArea(polygonArea(room.polygon), units) : '';
-    setLabel(walkNight, night ? 'bulb' : 'moon', night ? 'Day' : 'Night');
   });
 
   // ---- A picture of the view, and a video of the tour ----
@@ -3491,18 +3578,29 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
   const unitsLabel = document.createElement('span');
   unitsLabel.textContent = 'Units';
-  document.getElementById('units')!.replaceChildren(unitsLabel, ...unitButtons);
+  const unitSegments = document.createElement('div');
+  unitSegments.className = 'segments';
+  unitSegments.append(...unitButtons);
+  document.getElementById('units')!.replaceChildren(unitsLabel, unitSegments);
   const drawingLabel = document.createElement('span');
-  document.getElementById('drawing')!.prepend(drawingLabel);
+  drawingLabel.textContent = 'Drawing';
   const fullButton = document.getElementById('draw-full')!;
   const lightButton = document.getElementById('draw-light')!;
+  const drawSegments = document.createElement('div');
+  drawSegments.className = 'segments';
+  drawSegments.append(fullButton, lightButton);
+  document.getElementById('drawing')!.replaceChildren(drawingLabel, drawSegments);
   fullButton.addEventListener('click', () => setDrawing(false, true));
   lightButton.addEventListener('click', () => setDrawing(true, true));
   function drawDisplay(): void {
     unitButtons.forEach((b, i) => b.classList.toggle('active', UNITS[i] === units));
     fullButton.classList.toggle('active', !fast);
     lightButton.classList.toggle('active', fast);
-    drawingLabel.textContent = autoLight ? 'Drawing (set for you)' : 'Drawing';
+    // When the view was slow and Lighter was chosen for you, the button says so.
+    lightButton.textContent = autoLight ? 'Lighter · auto' : 'Lighter';
+    lightButton.title = autoLight
+      ? 'Chosen for you because the view was slow on this computer. Pick Full to go back.'
+      : 'Fewer effects and coarser pixels: smoother on a slower computer';
   }
   function setUnits(next: Units): void {
     if (next === units) return;
@@ -3536,6 +3634,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (inOrbit) orbit.update(dt);
     if (inTopView) plan.update(dt);
     placeLabels();
+    placePieceTools();
     syncView(time);
     if (tour) playTour(dt);
     else walkStairs();

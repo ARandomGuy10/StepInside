@@ -74,6 +74,8 @@
         <section>
           <h2>Selected</h2>
           <p id="selected-name" class="muted">Click a piece to select it, then drag it along the floor.</p>
+          <p id="selected-fit" hidden></p>
+          <div id="selected-drawing" hidden></div>
           <div id="selected-size" hidden>
             <label title="Side to side, in centimetres"><span>Wide</span><input type="number" id="size-w" min="1" max="1000" step="1" /></label>
             <label title="Front to back, in centimetres"><span>Deep</span><input type="number" id="size-d" min="1" max="1000" step="1" /></label>
@@ -109,8 +111,10 @@
 
         <section>
           <h2>Add a piece</h2>
+          <input id="catalogue-search" type="search" placeholder="Find a piece: sofa, lamp, bed…" autocomplete="off" />
           <div id="catalogue"></div>
-          <p class="muted">New pieces appear in front of you. Paintings, mirrors and shelves hang on the nearest wall.</p>
+          <p id="catalogue-none" class="muted" hidden>Nothing by that name yet.</p>
+          <p class="muted">Click a card to add it in front of you, or drag it onto the floor. Sizes are the real piece. Paintings, mirrors and shelves hang on the nearest wall.</p>
         </section>
 
         <section class="grow">

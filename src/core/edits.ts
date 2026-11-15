@@ -237,13 +237,18 @@ export function moveFurniture(scene: Scene, id: string, target: Point): Scene {
  * The nearest spot to `near`, within 3 m, where a new floor piece fits
  * clear of the walls and of the other furniture.
  */
-function findSpot(scene: Scene, f: Furniture, near: Point): Furniture | undefined {
-  for (let step = 0; step <= 30; step++) {
-    for (let k = 0; k < (step === 0 ? 1 : 12); k++) {
-      const angle = (k * Math.PI) / 6;
-      const position: Point = [mm(near[0] + Math.cos(angle) * step * 0.1), mm(near[1] + Math.sin(angle) * step * 0.1)];
-      const placed = settle(scene, { ...f, position }, new Set());
-      if (placed) return placed;
+function findSpot(scene: Scene, f: Furniture, near: Point, room?: string): Furniture | undefined {
+  // Kept to one room, the search may go further and try the piece turned a quarter.
+  const reach = room ? 70 : 30;
+  const turns = room ? [f.rotationDeg, (f.rotationDeg + 90) % 360] : [f.rotationDeg];
+  for (let step = 0; step <= reach; step++) {
+    for (const rotationDeg of turns) {
+      for (let k = 0; k < (step === 0 ? 1 : 12); k++) {
+        const angle = (k * Math.PI) / 6;
+        const position: Point = [mm(near[0] + Math.cos(angle) * step * 0.1), mm(near[1] + Math.sin(angle) * step * 0.1)];
+        const placed = settle(scene, { ...f, rotationDeg, position }, new Set());
+        if (placed && (!room || placed.room === room)) return placed;
+      }
     }
   }
   return undefined;
@@ -349,14 +354,17 @@ export interface CatalogueItem {
   color: string;
   mount?: 'wall';
   elevation?: number;
+  /** Which shelf of the catalogue it sits on, such as "Seating". */
+  group?: string;
 }
 
 /**
  * Adds a new piece from the catalogue as close to `near` as it fits.
  * Returns the new scene and the id of the piece, or the same scene if
- * there is no room for it nearby.
+ * there is no room for it nearby. With `room`, it stays in that room,
+ * searching all of it and trying the piece turned a quarter too.
  */
-export function addFurniture(scene: Scene, item: CatalogueItem, near: Point, rotationDeg = 0): { scene: Scene; id?: string } {
+export function addFurniture(scene: Scene, item: CatalogueItem, near: Point, rotationDeg = 0, room?: string): { scene: Scene; id?: string } {
   const taken = new Set([
     ...scene.furniture.map((f) => f.id),
     ...scene.rooms.map((r) => r.id),
@@ -374,7 +382,7 @@ export function addFurniture(scene: Scene, item: CatalogueItem, near: Point, rot
     if (!snap) return { scene };
     piece = { ...base, ...snap, mount: 'wall', elevation: item.elevation ?? 1.2 };
   } else {
-    const spot = findSpot(scene, { ...base, room: '', position: near, rotationDeg }, near);
+    const spot = findSpot(scene, { ...base, room: '', position: near, rotationDeg }, near, room);
     if (!spot) return { scene };
     piece = spot;
   }

@@ -533,32 +533,184 @@ body.touring #panel {
 }
 
 /* Pieces to add: a plain list in two columns, each with a small plus. */
-#catalogue {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px;
+#catalogue-search {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 6px 9px;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  font: inherit;
+}
+
+#catalogue-search:focus {
+  outline: 2px solid var(--line-bright);
+  outline-offset: -1px;
+}
+
+#catalogue .shelf {
   margin-bottom: 10px;
 }
 
-#panel #catalogue button {
-  justify-content: flex-start;
-  gap: 7px;
-  min-width: 0;
-  min-height: 28px;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-weight: 500;
-  text-align: left;
+#catalogue .shelf h3 {
+  margin: 0 0 5px;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-#catalogue button::before {
-  content: '';
-  flex: none;
-  width: 9px;
-  height: 9px;
-  background:
-    linear-gradient(var(--line-bright), var(--line-bright)) center / 100% 1.6px no-repeat,
-    linear-gradient(var(--line-bright), var(--line-bright)) center / 1.6px 100% no-repeat;
+#catalogue .cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+#panel #catalogue .cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 4px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: left;
+  cursor: grab;
+}
+
+#catalogue .cat-card .picture {
+  display: block;
+  aspect-ratio: 1;
+  margin-bottom: 2px;
+  border-radius: 3px;
+  /* Paper under the picture, so the piece reads like a catalogue photo. */
+  background: var(--lime);
+}
+
+#catalogue .cat-card .picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#catalogue .cat-card strong {
+  display: -webkit-box;
+  min-height: 2.4em;
+  overflow: hidden;
+  font-weight: 600;
+  line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+#catalogue .cat-card .size {
+  align-self: flex-start;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--tape);
+  color: var(--soot);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#selected-fit {
+  margin: 4px 0 6px;
+  padding: 4px 8px;
+  border-left: 3px solid var(--tape);
+  background: var(--panel-raised);
+  font-size: 12px;
+}
+
+#selected-fit.tight {
+  border-left-color: var(--line-bright);
+}
+
+#selected-drawing {
+  margin: 0 0 8px;
+  padding: 6px 4px 2px;
+  border-radius: var(--radius);
+  background: var(--lime);
+}
+
+#selected-drawing svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+#selected-drawing .ground {
+  stroke: var(--soot-soft);
+  stroke-width: 1;
+}
+
+#selected-drawing .outline {
+  fill: none;
+  stroke: var(--soot);
+}
+
+#selected-drawing .dim {
+  stroke: var(--tape-shade);
+  stroke-width: 1.2;
+}
+
+#selected-drawing text {
+  fill: var(--soot);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+#selected-drawing text.view {
+  fill: var(--soot-soft);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#piece-tools {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 7px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+}
+
+#piece-tools button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+#piece-tools button:hover {
+  background: var(--panel-hover);
+}
+
+#piece-tools button:last-child:hover {
+  color: var(--line-bright);
+}
+
+#piece-tools .icon {
+  width: 16px;
+  height: 16px;
 }
 
 #removed {
@@ -3113,37 +3265,59 @@ body.orbit-view #panel {
 /* ---- Units and drawing, at the foot of the panel in every mode ---- */
 
 #display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  padding: 8px 14px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 10px 14px;
   border-top: 1px solid var(--panel-line);
 }
 
+/* Each switch is a label and a segmented control on one line. */
 #display > div {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  display: contents;
 }
 
 #display > div > span {
-  margin-right: 4px;
   color: var(--text-soft);
   font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-#panel #display button {
-  min-height: 24px;
-  padding: 2px 7px;
-  border-color: transparent;
+#display .segments {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
   background: oklch(0.2 0.009 70);
-  color: var(--text-soft);
-  font-size: 11.5px;
 }
 
-#panel #display button.active {
+#panel #display .segments button {
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+#panel #display .segments button:hover:not(.active) {
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+#panel #display .segments button.active {
   background: var(--lime);
   color: var(--soot);
+  box-shadow: 0 1px 2px oklch(0.15 0.009 70 / 0.4);
 }
 
 @media (max-width: 700px) {
@@ -3217,18 +3391,18 @@ body.room-alone #hint {
 
 #walk-bar {
   position: fixed;
-  bottom: 12px;
-  left: calc(288px + (100vw - 288px) / 2);
+  top: 12px;
+  right: 12px;
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 8px 8px 8px;
-  border-radius: 10px;
+  gap: 12px;
+  width: 250px;
+  padding: 8px;
+  border-radius: 8px;
   background: var(--panel);
   color: var(--text);
   box-shadow: var(--panel-shadow);
-  transform: translateX(-50%);
 }
 
 #walk-bar[hidden] {
@@ -3308,14 +3482,6 @@ body.room-alone #hint {
   display: none;
 }
 
-#walk-bar .buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-self: stretch;
-  justify-content: center;
-}
-
 /* Looking around with the mouse held: the bar steps back, like the panel. */
 body.walking #walk-bar {
   opacity: 0.7;
@@ -3330,10 +3496,10 @@ body.walking #walk-bar {
   }
 
   #walk-bar {
-    left: auto;
+    top: auto !important;
     right: 8px;
     bottom: 110px;
-    transform: none;
+    width: auto;
     gap: 8px;
   }
 
