@@ -40,6 +40,7 @@ import { hydrateIcons, icon, setLabel, setTool } from './ui/icons';
 import { edits, workOf, WORKS, type Work } from './ui/modes';
 import { countChanges } from './core/session';
 import { clearInFront } from './core/fit';
+import { LayoutEditor } from './ui/layoutEditor';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 hydrateIcons();
@@ -93,21 +94,16 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // its shape, so it is built once and only recoloured when something is
   // painted. Furniture is rebuilt from the scene whenever the scene changes.
   const stairs = home.stairs ?? [];
-  const levels = scenes.map((original, i) => {
+  /** The walls, shell and walk-into lines of storey `i`, built from `scene`. */
+  const buildStorey = (scene: Scene, i: number) => {
     const entry = home.levels[i];
-    const walls = buildWalls(original);
-    const shell = buildShell(original, walls, {
+    const walls = buildWalls(scene);
+    const shell = buildShell(scene, walls, {
       roof: i === scenes.length - 1,
       raised: i > 0,
       openCeilings: entry.openCeilings,
     });
-    const furniture = new FurnitureView();
-    furniture.onModel = () => { touchShadows(); realisticRef?.invalidate(); };
-    const lamps = buildLamps(original);
-    for (const object of [shell, furniture.group, lamps]) {
-      object.position.y = entry.elevation;
-      world.add(object);
-    }
+    shell.position.y = entry.elevation;
     // A flight of stairs is closed off along its open side and under its
     // top end, so the only way onto it from below is the first step.
     const collision: Segment[] = [...walls.collision];
@@ -122,9 +118,28 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       if (s.closedBothSides) collision.push({ a: { x: s.x0, y: s.yTop }, b: { x: s.x0, y: s.yBottom } });
       collision.push({ a: { x: s.x0, y: s.yTop }, b: { x: s.x1, y: s.yTop } });
     }
+    return { walls, shell, collision };
+  };
+  /** The outlines of the rooms as text, to tell a moved wall from a new paint colour. */
+  const roomShapes = (rooms: readonly Room[]): string => rooms.map((r) => `${r.id}:${r.polygon.flat().join(',')}`).join('|');
+  const disposeTree = (object: THREE.Object3D): void => {
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) child.geometry.dispose();
+    });
+  };
+  const levels = scenes.map((original, i) => {
+    const entry = home.levels[i];
+    const { walls, shell, collision } = buildStorey(original, i);
+    const furniture = new FurnitureView();
+    furniture.onModel = () => { touchShadows(); realisticRef?.invalidate(); };
+    const lamps = buildLamps(original);
+    for (const object of [furniture.group, lamps]) object.position.y = entry.elevation;
+    for (const object of [shell, furniture.group, lamps]) world.add(object);
     return {
       name: entry.name, elevation: entry.elevation, original, walls, shell, furniture, lamps, collision,
       painted: original as Pick<Scene, 'rooms' | 'solids'>,
+      /** The rooms and openings the shell was last built from. */
+      built: original as Pick<Scene, 'rooms' | 'openings'>,
     };
   });
   // The storey being walked and edited.
@@ -236,6 +251,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // The home opens in Explore, where a click only looks. In Furnish a click
   // picks a piece to move; in Finishes (paint, style) it picks a surface.
   let mode: Mode = 'explore';
+  /** Change the layout, inside Plan mode. Set up once the plan view exists. */
+  let layout: LayoutEditor | null = null;
   /** The Finishes tab last used, so the mode opens where it was left. */
   let lastFinish: Mode = 'paint';
   let paintTarget: PaintTarget | null = null;
@@ -280,6 +297,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (next === 'furniture' && from === 'paint' && paintTarget?.kind === 'furniture') selectedId = paintTarget.id;
     if (next !== 'furniture') selectedId = null;
     if (next !== 'paint') paintTarget = null;
+    if (next !== 'plan' && layout?.on) layout.setOn(false);
     if (next === 'plan') {
       dimensions = true;
       sizes = true;
@@ -529,14 +547,32 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   };
 
   function refresh(): void {
+    let rebuilt = false;
     levels.forEach((l, i) => {
       const s = history.current[i];
       l.furniture.sync(s.furniture);
+      // A moved wall or a new door changes the building itself: build that storey again.
+      if (s.openings !== l.built.openings || (s.rooms !== l.built.rooms && roomShapes(s.rooms) !== roomShapes(l.built.rooms))) {
+        const next = buildStorey(s, i);
+        world.remove(l.shell);
+        disposeTree(l.shell);
+        world.add(next.shell);
+        Object.assign(l, next, { built: s, painted: { rooms: [], solids: [] } });
+        if (i === level) controls.setWalls(l.collision);
+        rebuilt = true;
+      } else if (s.rooms !== l.built.rooms) {
+        l.built = s;
+      }
       if (s.rooms !== l.painted.rooms || s.solids !== l.painted.solids) {
         applyShellColors(l.shell, s);
         l.painted = s;
       }
     });
+    if (rebuilt) {
+      showLevels();
+      touchShadows();
+      realisticRef?.invalidate();
+    }
     const scene = now();
     if (selectedId && !selectedPiece()) selectedId = null;
     const picked = paintInfo();
@@ -1301,6 +1337,30 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     return p ? [p.x, p.z] : undefined;
   };
 
+  const layoutSpot = new THREE.Vector3();
+  layout = new LayoutEditor(
+    {
+      now,
+      begin: () => history.beginGesture(),
+      preview,
+      commit: () => history.endGesture(),
+      apply,
+      floorPoint,
+      toScreen: (x, y) => {
+        layoutSpot.set(x, lv().elevation + 0.02, y).project(plan.camera);
+        return [((layoutSpot.x + 1) / 2) * innerWidth, ((1 - layoutSpot.y) / 2) * innerHeight];
+      },
+      units: () => units,
+      toast: (message) => panel.toast(message),
+    },
+    document.getElementById('pane-plan')!,
+    () => updateHint(),
+  );
+  layout.renderPane();
+  history.subscribe(() => {
+    if (mode === 'plan') layout?.renderPane();
+  });
+
   // ---- Mouse: select, drag along the floor, or click to walk ----
 
   // `lift` is set while dragging a wall-hung piece along its wall: the
@@ -1653,6 +1713,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     } else if (e.code === 'PageUp' || e.code === 'PageDown') {
       e.preventDefault();
       goTo(level + (e.code === 'PageUp' ? 1 : -1));
+    } else if (e.code === 'Escape' && layout?.escape()) {
+      return;
+    } else if ((e.code === 'Delete' || e.code === 'Backspace') && layout?.deletePicked()) {
+      e.preventDefault();
     } else if (e.code === 'Escape') {
       if (!keysPanel.hidden) toggleKeys();
       if (alone && !measuring && !pinning && !selectedId && !paintTarget) leaveRoom();
@@ -3593,6 +3657,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (inTopView) plan.update(dt);
     placeLabels();
     placePieceTools();
+    layout?.place(inTopView && mode === 'plan');
     syncView(time);
     if (tour) playTour(dt);
     else walkStairs();

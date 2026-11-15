@@ -2,7 +2,7 @@ import type { Scene } from './scene';
 
 /**
  * Counts what differs between the home as it was last kept and as it is now:
- * one for every piece of furniture, room or built-in block that changed,
+ * one for every piece of furniture, room, door, window or built-in block that changed,
  * arrived or left. Scenes are immutable, so an untouched thing is the very
  * same object in both and costs one comparison.
  */
@@ -15,6 +15,7 @@ export function countChanges(kept: readonly Scene[], current: readonly Scene[]):
     n += differing(before.furniture, scene.furniture);
     n += differing(before.rooms, scene.rooms);
     n += differing(before.solids ?? [], scene.solids ?? []);
+    n += differing(before.openings, scene.openings);
   });
   return n;
 }

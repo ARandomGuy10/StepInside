@@ -3502,3 +3502,76 @@ body.walking #walk-bar {
     height: auto;
   }
 }
+
+/* ---- Change the layout: walls and openings as handles over the plan ---- */
+
+#layout-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  overflow: visible;
+}
+
+#layout-layer line {
+  pointer-events: stroke;
+  stroke-linecap: round;
+  cursor: grab;
+}
+
+#layout-layer line.wall {
+  stroke: oklch(0.19 0.008 70 / 0.18);
+  stroke-width: 12;
+}
+
+#layout-layer line.wall:hover {
+  stroke: oklch(0.72 0.21 2 / 0.55);
+}
+
+#layout-layer line.wall.picked {
+  stroke: var(--line);
+}
+
+#layout-layer line.door,
+#layout-layer line.window {
+  stroke-width: 9;
+  cursor: ew-resize;
+}
+
+#layout-layer line.door {
+  stroke: var(--tape-shade);
+}
+
+#layout-layer line.window {
+  stroke: oklch(0.7 0.09 230);
+}
+
+#layout-layer line.door:hover,
+#layout-layer line.window:hover,
+#layout-layer line.door.picked,
+#layout-layer line.window.picked {
+  stroke: var(--tape);
+  stroke-width: 12;
+}
+
+#layout-readout {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--tape);
+  color: var(--soot);
+  font-size: 12px;
+  font-weight: 650;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+#layout-readout.wrong {
+  background: var(--wrong);
+  color: var(--lime);
+}
