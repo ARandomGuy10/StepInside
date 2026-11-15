@@ -3151,3 +3151,198 @@ body.orbit-view #panel {
     display: none;
   }
 }
+
+/* ---- A room on its own: its name and size, and the way back ---- */
+
+#alone-bar {
+  position: fixed;
+  bottom: 14px;
+  left: calc(288px + (100vw - 288px) / 2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--panel-shadow);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+#alone-bar[hidden],
+body.room-alone #hint {
+  display: none;
+}
+
+#alone-bar strong {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+#alone-bar span {
+  padding: 1px 6px 0;
+  background: var(--tape);
+  color: var(--soot);
+  font-stretch: var(--narrow);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+#alone-bar button,
+#walk-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#alone-bar button:hover,
+#walk-bar button:hover {
+  background: var(--panel-hover);
+}
+
+/* ---- The walk bar: a small map of the floor with you on it, and where you are ---- */
+
+#walk-bar {
+  position: fixed;
+  bottom: 12px;
+  left: calc(288px + (100vw - 288px) / 2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 8px 8px 8px;
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--panel-shadow);
+  transform: translateX(-50%);
+}
+
+#walk-bar[hidden] {
+  display: none;
+}
+
+#walk-bar .walk-map {
+  display: block;
+  flex: none;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--earth);
+  overflow: visible;
+}
+
+#walk-bar .walk-map path {
+  fill: oklch(0.93 0.006 90);
+  stroke: var(--soot);
+  stroke-width: 0.12;
+  stroke-linejoin: round;
+}
+
+#walk-bar .walk-map path.outdoor {
+  fill: oklch(0.9 0.04 140);
+}
+
+#walk-bar .walk-map path.here {
+  fill: var(--tape);
+}
+
+#walk-bar .walk-map .cone {
+  fill: oklch(0.63 0.255 2 / 0.35);
+  stroke: none;
+}
+
+#walk-bar .walk-map .dot {
+  fill: var(--line);
+  stroke: #fff;
+  stroke-width: 0.15;
+}
+
+#walk-bar .where {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+
+#walk-bar .where .floor {
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#walk-bar .where strong {
+  font-size: 15px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+#walk-bar .where .size {
+  align-self: flex-start;
+  padding: 1px 6px 0;
+  background: var(--tape);
+  color: var(--soot);
+  font-stretch: var(--narrow);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+#walk-bar .where .size:empty,
+#walk-bar .where [hidden],
+#walk-bar [hidden] {
+  display: none;
+}
+
+#walk-bar .buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-self: stretch;
+  justify-content: center;
+}
+
+/* Looking around with the mouse held: the bar steps back, like the panel. */
+body.walking #walk-bar {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+@media (max-width: 700px) {
+  #alone-bar {
+    left: 50%;
+    top: auto;
+    bottom: 110px;
+  }
+
+  #walk-bar {
+    left: auto;
+    right: 8px;
+    bottom: 110px;
+    transform: none;
+    gap: 8px;
+  }
+
+  #walk-bar .where {
+    min-width: 0;
+  }
+
+  #walk-bar .walk-map {
+    width: 72px;
+    height: auto;
+  }
+}

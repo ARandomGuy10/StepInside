@@ -142,8 +142,17 @@ export class OrbitView {
   }
 
   /** Zooms by a factor: below 1 moves closer. */
+  /**
+   * Glides to look at one spot of the home from close by: the middle of a room,
+   * with `size` metres of it filling the view.
+   */
+  focus(x: number, z: number, size: number): void {
+    this.goalShift.set(x - this.centre.x, z - this.centre.y);
+    this.goal.distance = Math.max(this.home.distance * 0.12, Math.min(this.home.distance, size * 1.7));
+  }
+
   zoom(factor: number): void {
-    this.goal.distance = Math.max(this.home.distance * 0.25, Math.min(this.home.distance * 2, this.goal.distance * factor));
+    this.goal.distance = Math.max(this.home.distance * 0.12, Math.min(this.home.distance * 2, this.goal.distance * factor));
   }
 
   /** Call once per frame with the time since the last frame, in seconds. */

@@ -7,7 +7,7 @@ import {
 import { applyStyle, STYLES } from './core/styles';
 import { openSpot, tourRoute } from './core/tour';
 import { viewFromParams, viewToParams, type ViewState } from './core/viewLink';
-import { formatArea, summarizeAreas, type AreaSummary } from './core/areas';
+import { formatArea, polygonArea, summarizeAreas, type AreaSummary } from './core/areas';
 import { anchorOf, canArrange, layoutsFor, roomOpenings, withRoomFrom, type Layout } from './core/arrange';
 import { costLines, lineCost, quantitiesOf, totalQuantities, type Quantities } from './core/quantities';
 import { TourPlayer } from './render/tourPlayer';
@@ -15,7 +15,7 @@ import { History } from './core/history';
 import { HOMES, type HomeEntry, type StairEntry } from './homes';
 import { loadLayout, saveLayout } from './core/layout';
 import { formatLength, formatSize, roomSize, UNITS, type Units } from './core/measure';
-import { parseScene, SceneError, toVec, type Scene } from './core/scene';
+import { parseScene, SceneError, toVec, type Room, type Scene } from './core/scene';
 import type { Segment } from './core/collision';
 import { buildWalls } from './core/walls';
 import { FirstPersonControls } from './render/firstPerson';
@@ -129,6 +129,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   // The storey being walked and edited.
   let level = 0;
   const lv = () => levels[level];
+  /** The room shown on its own on the plan, with everything else of the home hidden. */
+  let alone: { level: number; room: string } | null = null;
 
   // Size the sun's shadow area to the whole home, balcony included.
   const bounds = new THREE.Box2();
@@ -323,6 +325,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   /** The room the buttons act on: the selected piece's room, else where you stand. */
   const currentRoom = () => {
+    if (alone) return now().rooms.find((r) => r.id === alone!.room);
     const piece = selectedPiece();
     if (piece) return now().rooms.find((r) => r.id === piece.room);
     return roomAt(now(), controls.pose);
@@ -848,7 +851,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (!show) return;
     const items: { text: string; sub: string; x: number; y: number; z: number; piece?: boolean }[] = [];
     for (const room of now().rooms) {
-      if (room.kind === 'void') continue;
+      if (room.kind === 'void' || (alone && room.id !== alone.room)) continue;
       const size = roomSize(room);
       items.push({ text: room.name ?? room.id, sub: directions ? (facings.get(room.id)?.zone ?? '') : formatSize(size.width, size.depth, units), x: size.center[0], y: 0.05, z: size.center[1] });
     }
@@ -901,7 +904,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     };
     let n = 0;
     for (const room of now().rooms) {
-      if (room.kind === 'void') continue;
+      if (room.kind === 'void' || (alone && room.id !== alone.room)) continue;
       const poly = room.polygon;
       // Which side is inside: the sign of the room's area says which way it is drawn.
       let twice = 0;
@@ -947,18 +950,94 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
    * pool shows from upstairs.
    */
   function showLevels(): void {
+    if (alone && (!inTopView || alone.level !== level)) leaveRoom(false);
+    const room = alone ? now().rooms.find((r) => r.id === alone!.room) : undefined;
     levels.forEach((l, i) => {
       // An open roof terrace comes off with the roof in the whole-house view.
       const lifted = inOrbit && roofHidden && i > roofed;
-      const shown = (!inTopView || i <= level) && !lifted;
+      // A room on its own hides the floors under it too.
+      const shown = (!inTopView || i <= level) && !lifted && (!room || i === level);
       l.shell.visible = l.furniture.group.visible = shown;
       // In the whole-house view the roof of the top storey can come off.
       const lid = !(inTopView && i === level) && !(inOrbit && roofHidden && i === roofed);
       l.lamps.visible = shown && lid;
       for (const o of l.shell.children) {
-        if (o.name.startsWith('ceiling:') || o.name === 'roof') o.visible = lid;
+        const base = o.name.startsWith('ceiling:') || o.name === 'roof' ? lid : true;
+        o.visible = base && (!room || i !== level || partOfRoom(o, room));
+      }
+      for (const f of history.current[i].furniture) {
+        const object = l.furniture.objectFor(f.id);
+        if (object) object.visible = !room || i !== level || f.room === room.id;
       }
     });
+  }
+
+  // ---- A room on its own: double-click it on the plan ----
+
+  const centres = new WeakMap<THREE.Object3D, THREE.Vector3>();
+  const box = new THREE.Box3();
+  /** True when a part of the building belongs to `room`: its floor, or a wall, door or window on its edge. */
+  function partOfRoom(o: THREE.Object3D, room: Room): boolean {
+    if (o.name.startsWith('floor:')) return o.name === `floor:${room.id}`;
+    if (o.name.startsWith('ceiling:')) return o.name === `ceiling:${room.id}`;
+    if (['roof', 'ground', 'site', 'slab', 'skin', 'band'].includes(o.name)) return false;
+    let c = centres.get(o);
+    if (!c) {
+      c = box.setFromObject(o).getCenter(new THREE.Vector3());
+      centres.set(o, c);
+    }
+    return insideOrOnEdge(room.polygon, c.x, c.z, 0.35);
+  }
+  /** Whether a point lies in a polygon, or within `margin` metres of its outline. */
+  function insideOrOnEdge(poly: readonly (readonly [number, number])[], x: number, z: number, margin: number): boolean {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, zi] = poly[i];
+      const [xj, zj] = poly[j];
+      if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+      const dx = xj - xi;
+      const dz = zj - zi;
+      const t = Math.max(0, Math.min(1, ((x - xi) * dx + (z - zi) * dz) / (dx * dx + dz * dz || 1)));
+      if (Math.hypot(x - (xi + dx * t), z - (zi + dz * t)) < margin) return true;
+    }
+    return inside;
+  }
+  const aloneBar = document.createElement('div');
+  aloneBar.id = 'alone-bar';
+  aloneBar.hidden = true;
+  const aloneName = document.createElement('strong');
+  const aloneSize = document.createElement('span');
+  const aloneBack = document.createElement('button');
+  aloneBack.type = 'button';
+  aloneBack.textContent = 'Back to the whole floor';
+  aloneBack.title = 'Show the rest of the home again (Esc)';
+  aloneBack.addEventListener('click', () => leaveRoom());
+  aloneBar.append(aloneName, aloneSize, aloneBack);
+  document.body.append(aloneBar);
+  /** Shows one room of this floor on its own, close up. */
+  function openRoom(room: Room): void {
+    alone = { level, room: room.id };
+    selectedId = selectedPiece()?.room === room.id ? selectedId : null;
+    const size = roomSize(room);
+    plan.focus(size.center[0], size.center[1], Math.max(size.width, size.depth));
+    aloneName.textContent = room.name ?? room.id;
+    aloneSize.textContent = `${formatSize(size.width, size.depth, units)} · ${formatArea(polygonArea(room.polygon), units)}`;
+    aloneBar.hidden = false;
+    document.body.classList.add('room-alone');
+    showLevels();
+    updateHint();
+    refresh();
+  }
+  /** Brings back the rest of the home. `reframe` glides back to the whole floor. */
+  function leaveRoom(reframe = true): void {
+    if (!alone) return;
+    alone = null;
+    aloneBar.hidden = true;
+    document.body.classList.remove('room-alone');
+    if (reframe) plan.reset();
+    showLevels();
+    updateHint();
+    refresh();
   }
 
   // ---- Storeys: the floor buttons, and walking the stairs ----
@@ -1084,7 +1163,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         ? 'Click a floor, wall or piece, then choose a colour · drag the background to turn the plan · right-drag to move it'
         : mode === 'furniture'
           ? 'Click a piece to select it · drag to move · R to turn · drag the background to turn the plan · right-drag to move it'
-          : 'Drag to turn the plan · right-drag to move it · scroll to zoom · point at a piece for its size'
+          : 'Double-click a room to see it on its own · drag to turn the plan · right-drag to move it · scroll to zoom'
       : painting
         ? 'W A S D to walk · right-drag or double-click to look around · while looking, click picks what the dot is on'
         : `W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view${levels.length > 1 ? ' · Page Up / Page Down to change floor' : ''}`;
@@ -1335,8 +1414,14 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (!inTopView) controls.lock();
   });
 
-  canvas.addEventListener('dblclick', () => {
+  canvas.addEventListener('dblclick', (e) => {
     if (mode === 'paint' && !inTopView) controls.lock();
+    if (!inTopView || clickTaker || EMBED) return;
+    const p = floorPoint(e);
+    const room = p ? now().rooms.find((r) => r.kind !== 'void' && insideOrOnEdge(r.polygon, p[0], p[1], 0)) : undefined;
+    if (!room) return;
+    if (alone?.room === room.id) leaveRoom();
+    else openRoom(room);
   });
 
   // Dragging a taken-out piece from the panel onto the floor.
@@ -1508,6 +1593,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       goTo(level + (e.code === 'PageUp' ? 1 : -1));
     } else if (e.code === 'Escape') {
       if (!keysPanel.hidden) toggleKeys();
+      if (alone && !measuring && !pinning && !selectedId && !paintTarget) leaveRoom();
       if (measuring && !tapeStart) setMeasuring(false);
       else if (measuring) dropLength();
       if (pinning) setPinning(false);
@@ -2298,6 +2384,116 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     sunClock.head.parentElement!.addEventListener('click', labelNight);
     labelNight();
   }
+
+  // ---- The walk bar: a small map with you on it, where you are, and the way out ----
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const walkBar = document.createElement('div');
+  walkBar.id = 'walk-bar';
+  walkBar.hidden = true;
+  const map = document.createElementNS(SVG_NS, 'svg');
+  map.setAttribute('class', 'walk-map');
+  map.setAttribute('aria-hidden', 'true');
+  const mapRooms = document.createElementNS(SVG_NS, 'g');
+  const you = document.createElementNS(SVG_NS, 'g');
+  const youCone = document.createElementNS(SVG_NS, 'path');
+  youCone.setAttribute('class', 'cone');
+  const youDot = document.createElementNS(SVG_NS, 'circle');
+  youDot.setAttribute('class', 'dot');
+  you.append(youCone, youDot);
+  map.append(mapRooms, you);
+  const whereFloor = document.createElement('span');
+  whereFloor.className = 'floor';
+  const whereRoom = document.createElement('strong');
+  const whereSize = document.createElement('span');
+  whereSize.className = 'size';
+  const where = document.createElement('div');
+  where.className = 'where';
+  where.append(whereFloor, whereRoom, whereSize);
+  const walkNight = document.createElement('button');
+  walkNight.type = 'button';
+  walkNight.title = 'See it after dark, and back (K)';
+  walkNight.addEventListener('click', () => {
+    toggleNight();
+    walkNight.blur();
+  });
+  walkNight.hidden = !sunClock;
+  const walkLeave = document.createElement('button');
+  walkLeave.type = 'button';
+  walkLeave.title = 'Back to the plan of this floor (T)';
+  setLabel(walkLeave, 'close', 'Leave');
+  walkLeave.addEventListener('click', () => {
+    if (tour) stopTour();
+    setTopView(true);
+  });
+  const walkButtons = document.createElement('div');
+  walkButtons.className = 'buttons';
+  walkButtons.append(walkNight, walkLeave);
+  walkBar.append(map, where, walkButtons);
+  document.body.append(walkBar);
+
+  let mapKey = '';
+  let whereKey = '';
+  /** Draws the rooms of this floor into the map, once per floor or change of rooms. */
+  function drawMap(): void {
+    const scene = now();
+    const key = `${level}|${levels.length}`;
+    if (key === mapKey && mapRooms.childElementCount) return;
+    mapKey = key;
+    const xs = scene.rooms.flatMap((r) => r.polygon.map((p) => p[0]));
+    const zs = scene.rooms.flatMap((r) => r.polygon.map((p) => p[1]));
+    const x0 = Math.min(...xs) - 0.5;
+    const z0 = Math.min(...zs) - 0.5;
+    const w = Math.max(...xs) + 0.5 - x0;
+    const h = Math.max(...zs) + 0.5 - z0;
+    map.setAttribute('viewBox', `${x0} ${z0} ${w} ${h}`);
+    // The map keeps the floor's own shape, inside a box at most 112 by 112 pixels.
+    const scale = 112 / Math.max(w, h);
+    map.setAttribute('width', String(Math.round(w * scale)));
+    map.setAttribute('height', String(Math.round(h * scale)));
+    youDot.setAttribute('r', String(0.38 * (Math.max(w, h) / 30)));
+    mapRooms.replaceChildren(
+      ...scene.rooms.filter((r) => r.kind !== 'void').map((r) => {
+        const path = document.createElementNS(SVG_NS, 'path');
+        path.setAttribute('d', `M${r.polygon.map((p) => p.join(' ')).join('L')}Z`);
+        path.dataset.room = r.id;
+        if (r.kind === 'balcony') path.classList.add('outdoor');
+        return path;
+      }),
+    );
+  }
+  everyFrame.push(() => {
+    const walking = !inOrbit && !inTopView && !EMBED;
+    if (walkBar.hidden === walking) {
+      walkBar.hidden = !walking;
+      document.body.classList.toggle('walk-bar-on', walking);
+    }
+    if (!walking) return;
+    drawMap();
+    const pose = controls.pose;
+    const span = Math.max(...map.getAttribute('viewBox')!.split(' ').slice(2).map(Number));
+    const reach = span / 7;
+    // The cone shows which way you face: forward is -sin(yaw), -cos(yaw) on the plan.
+    const fx = -Math.sin(pose.yaw);
+    const fz = -Math.cos(pose.yaw);
+    const spread = 0.55;
+    const l = [fx * Math.cos(spread) - fz * Math.sin(spread), fx * Math.sin(spread) + fz * Math.cos(spread)];
+    const r = [fx * Math.cos(-spread) - fz * Math.sin(-spread), fx * Math.sin(-spread) + fz * Math.cos(-spread)];
+    youCone.setAttribute('d', `M${pose.x} ${pose.y}L${pose.x + l[0] * reach} ${pose.y + l[1] * reach}L${pose.x + r[0] * reach} ${pose.y + r[1] * reach}Z`);
+    youDot.setAttribute('cx', String(pose.x));
+    youDot.setAttribute('cy', String(pose.y));
+    const room = roomAt(now(), pose);
+    const night = isNight();
+    const key = `${level}|${room?.id}|${units}|${night}`;
+    if (key === whereKey) return;
+    whereKey = key;
+    for (const path of mapRooms.children) path.classList.toggle('here', (path as SVGElement).dataset.room === room?.id);
+    whereFloor.textContent = levels.length > 1 ? lv().name : '';
+    whereFloor.hidden = levels.length < 2;
+    whereRoom.textContent = room ? (room.name ?? room.id) : 'Outside';
+    whereSize.textContent = room ? formatArea(polygonArea(room.polygon), units) : '';
+    setLabel(walkNight, night ? 'bulb' : 'moon', night ? 'Day' : 'Night');
+  });
 
   // ---- A picture of the view, and a video of the tour ----
 
