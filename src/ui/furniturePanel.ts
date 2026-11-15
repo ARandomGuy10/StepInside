@@ -4,6 +4,8 @@ import { formatLength, formatSize, type Units } from '../core/measure';
 import type { Furniture, Room, Scene } from '../core/scene';
 import { STYLES } from '../core/styles';
 import { Thumbnails } from './thumbnails';
+import { PAINT_GROUPS, paintName as nameOfPaint } from '../core/paints';
+import { floorSurface, swatchSource, wallSurface } from '../render/textures';
 
 /**
  * What the panel is showing. 'explore' and 'plan' change nothing; 'paint' and
@@ -38,6 +40,8 @@ export interface PanelActions {
   /** Gives the picked floor or wall a material; undefined makes it plain. */
   setMaterial(material: string | undefined): void;
   setRoomWallsMaterial(material: string | undefined): void;
+  /** Gives every indoor floor of this storey the picked floor's material and colour. */
+  setIndoorFloors(): void;
   /** Restyles this floor, or the whole home when `allFloors` is set. */
   applyStyle(key: string, allFloors: boolean): void;
   save(): void;
@@ -70,12 +74,6 @@ export const DRAG_TYPE = 'application/x-furniture-id';
 /** The data type used when dragging a catalogue card onto the canvas. */
 export const CATALOGUE_DRAG = 'application/x-catalogue-key';
 
-/** Ready-made colours for the paint tab: wall paints first, then stronger accents. */
-const PALETTE = [
-  '#ffffff', '#f1ece3', '#e6dccb', '#d8c7a6', '#c9b79c', '#b8946b', '#8c7b6b', '#4a3a30',
-  '#dfe5dc', '#b7c4b1', '#7d8a74', '#40513b', '#dbe4ea', '#9fb4c7', '#4f6d8a', '#22313f',
-  '#f3dcd4', '#e2a89a', '#c8553d', '#8f3f34', '#f2e3b3', '#e3b23c', '#8a8f98', '#22201d',
-];
 
 const byId = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -108,6 +106,7 @@ export class FurniturePanel {
     on('tab-style', () => actions.setMode('style'));
     on('btn-reset-style', () => actions.resetPaint());
     on('btn-material-room', () => actions.setRoomWallsMaterial(this.wallMaterial));
+    on('btn-material-floors', () => actions.setIndoorFloors());
 
     const allFloors = byId<HTMLInputElement>('style-all');
     byId('styles').replaceChildren(
@@ -174,17 +173,28 @@ export class FurniturePanel {
     picker.addEventListener('change', () => actions.paint(picker.value, true));
     on('btn-paint-room', () => actions.paintRoomWalls(picker.value));
 
+    // The ready-made paints, a row of chips per group with the group's name above.
     byId('palette').replaceChildren(
-      ...PALETTE.map((color) => {
-        const button = document.createElement('button');
-        button.style.background = color;
-        button.title = color;
-        button.dataset.color = color;
-        button.addEventListener('click', () => {
-          actions.paint(color, true);
-          button.blur();
-        });
-        return button;
+      ...PAINT_GROUPS.flatMap((group) => {
+        const title = document.createElement('h4');
+        title.textContent = group.name;
+        const row = document.createElement('div');
+        row.className = 'paint-row';
+        row.append(
+          ...group.paints.map((p) => {
+            const button = document.createElement('button');
+            button.style.background = p.hex;
+            button.title = p.name;
+            button.setAttribute('aria-label', p.name);
+            button.dataset.color = p.hex;
+            button.addEventListener('click', () => {
+              actions.paint(p.hex, true);
+              button.blur();
+            });
+            return button;
+          }),
+        );
+        return [title, row];
       }),
     );
 
@@ -427,13 +437,14 @@ export class FurniturePanel {
       const picker = byId<HTMLInputElement>('paint-color');
       // Leave the picker alone while it is the thing being dragged.
       if (document.activeElement !== picker) picker.value = color;
-      byId('paint-hex').textContent = color;
+      const named = nameOfPaint(color);
+      byId('paint-hex').textContent = named ? `${named} · ${color}` : `Your own mix · ${color}`;
       byId('btn-paint-room').hidden = !state.paint.isWall;
-      for (const button of byId('palette').children) {
-        button.classList.toggle('current', (button as HTMLElement).dataset.color === color);
+      for (const button of byId('palette').querySelectorAll<HTMLElement>('button')) {
+        button.classList.toggle('current', button.dataset.color === color);
       }
     }
-    this.renderMaterials(state.paint?.material);
+    this.renderMaterials(state.paint?.material, state.paint?.color);
 
     const removed = scene.furniture.filter((f) => f.removed);
     byId('removed-empty').hidden = removed.length > 0;
@@ -446,25 +457,34 @@ export class FurniturePanel {
     }
   }
 
-  /** The material chips for a picked floor or wall. */
-  private renderMaterials(material: { kind: 'floor' | 'wall'; current: string | undefined } | undefined): void {
+  /** The material swatches for a picked floor or wall, each shown in the surface's colour. */
+  private renderMaterials(material: { kind: 'floor' | 'wall'; current: string | undefined } | undefined, color = '#ffffff'): void {
     byId('material-box').hidden = !material;
     if (!material) return;
     this.wallMaterial = material.kind === 'wall' ? material.current : undefined;
     byId('btn-material-room').hidden = material.kind !== 'wall';
+    byId('btn-material-floors').hidden = material.kind !== 'floor';
     const choices = material.kind === 'floor' ? FLOOR_CHOICES : WALL_CHOICES;
     // A floor of a material not on the list (a lawn) shows it as an extra choice.
     const list = choices.some(([key]) => key === material.current)
       ? choices
       : [...choices, [material.current, material.current ?? 'Plain'] as [string | undefined, string]];
-    const key = `${material.kind}|${list.map(([k]) => k).join(',')}`;
+    const key = `${material.kind}|${list.map(([k]) => k).join(',')}|${color}`;
     if (key !== this.materialKey) {
       this.materialKey = key;
       byId('materials').replaceChildren(
         ...list.map(([value, label]) => {
           const button = document.createElement('button');
-          button.textContent = label;
+          button.className = 'swatch-tile';
           button.dataset.material = value ?? '';
+          button.title = label;
+          const tile = document.createElement('canvas');
+          tile.width = 112;
+          tile.height = 112;
+          drawSwatch(tile, material.kind === 'floor' ? floorSurface(value) : wallSurface(value), color);
+          const name = document.createElement('span');
+          name.textContent = label;
+          button.append(tile, name);
           button.addEventListener('click', () => {
             this.actions.setMaterial(value);
             button.blur();
@@ -511,5 +531,31 @@ export class FurniturePanel {
 
     li.append(swatch, name, button);
     return li;
+  }
+}
+
+/**
+ * A square of a material at roughly its real scale in a 40 cm patch, tinted
+ * the way the 3D view tints it: the pattern's light greys times the colour.
+ */
+function drawSwatch(tile: HTMLCanvasElement, surface: ReturnType<typeof floorSurface>, color: string): void {
+  const ctx = tile.getContext('2d');
+  if (!ctx) return;
+  const size = tile.width;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, size, size);
+  if (!surface) return;
+  const [kind, repeat] = surface;
+  const source = swatchSource(kind);
+  // `repeat` copies of the pattern per metre; the tile shows 0.4 m.
+  const copies = Math.max(0.15, repeat * 0.4);
+  const width = (source as { width: number }).width;
+  const height = (source as { height: number }).height;
+  try {
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(source, 0, 0, width * copies, height * copies, 0, 0, size, size);
+    ctx.globalCompositeOperation = 'source-over';
+  } catch {
+    // An image that is not ready yet: the plain colour stays.
   }
 }

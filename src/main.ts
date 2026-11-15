@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CATALOGUE } from './core/catalogue';
 import {
   addFurniture, colorOf, emptyRoom, footprint, materialOf, moveFurniture, paint, paintRoomWalls, putBack, raiseFurniture, resizeFurniture,
-  resetLayout, resetPaint, roomAt, rotateFurniture, setMaterial, setRoomWallsMaterial, takeOut, type PaintTarget,
+  resetLayout, resetPaint, roomAt, rotateFurniture, setIndoorFloors, setMaterial, setRoomWallsMaterial, takeOut, type PaintTarget,
 } from './core/edits';
 import { applyStyle, STYLES } from './core/styles';
 import { openSpot, tourRoute } from './core/tour';
@@ -451,6 +451,15 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       if (paintTarget?.kind === 'wall') {
         apply(setRoomWallsMaterial(now(), paintTarget.room, material), 'Those walls already have this material.');
       }
+    },
+    setIndoorFloors: () => {
+      if (paintTarget?.kind !== 'floor') return;
+      const target = paintTarget;
+      const scene = now();
+      const room = scene.rooms.find((r) => r.id === target.room);
+      const color = colorOf(scene, target);
+      if (!room || !color) return;
+      apply(setIndoorFloors(scene, room.floor?.material, color), 'Every room already has this floor.');
     },
     applyStyle: (key, allFloors) => {
       const style = STYLES.find((s) => s.key === key);

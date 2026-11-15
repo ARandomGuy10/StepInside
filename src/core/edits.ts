@@ -530,3 +530,18 @@ export function setRoomWallsMaterial(scene: Scene, roomId: string, material: str
   if (!room) return scene;
   return room.polygon.reduce((s, _, edge) => setMaterial(s, { kind: 'wall', room: roomId, edge }, material), scene);
 }
+
+/**
+ * Gives every indoor floor of the storey the same material and colour:
+ * rooms only, so balconies, terraces and holes in the floor keep their own.
+ */
+export function setIndoorFloors(scene: Scene, material: string | undefined, color: string): Scene {
+  let changed = false;
+  const rooms = scene.rooms.map((room) => {
+    if (room.kind === 'balcony' || room.kind === 'void') return room;
+    if (room.floor?.material === material && room.floor?.color === color) return room;
+    changed = true;
+    return { ...room, floor: { color, ...(material ? { material } : {}) } };
+  });
+  return changed ? { ...scene, rooms } : scene;
+}

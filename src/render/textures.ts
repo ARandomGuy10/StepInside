@@ -510,3 +510,11 @@ export function artTexture(style: number, aspect: number): THREE.Texture {
     return texture;
   });
 }
+
+/**
+ * The picture behind a pattern, for a swatch in the panel: the photograph
+ * when it has loaded, otherwise the drawn version.
+ */
+export function swatchSource(kind: Pattern): CanvasImageSource {
+  return photos.get(`${kind}-color`) ?? (pattern(kind).image as CanvasImageSource);
+}
