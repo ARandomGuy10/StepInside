@@ -38,6 +38,7 @@ export class LayoutEditor {
   on = false;
   private readonly layer = document.createElementNS(SVG, 'svg');
   private picked: Picked = null;
+  private withFurniture = false;
   private drawnFrom: Scene | null = null;
   private drawnFor = '';
   private drag: { base: Scene; start: Vec2; apply: (p: Vec2) => Scene } | null = null;
@@ -57,9 +58,18 @@ export class LayoutEditor {
   setOn(on: boolean): void {
     this.on = on;
     if (!on) this.picked = null;
+    // Walls and doors are easier to judge in empty rooms, so the furniture
+    // steps aside each time; the pane can bring it back.
+    if (on) this.withFurniture = false;
     this.layer.style.display = on ? '' : 'none';
     this.drawnFrom = null;
     this.renderPane();
+    this.onChange();
+  }
+
+  /** Whether the furniture is on show: always, except while changing the layout with the rooms emptied. */
+  get furnitureShown(): boolean {
+    return !this.on || this.withFurniture;
   }
 
   /** Esc: drop the pick first, then leave. Returns true when it used the key. */
@@ -228,6 +238,22 @@ export class LayoutEditor {
     this.readout.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 14}px)`;
   }
 
+  /** Shows or hides the furniture while the layout changes. Only the view: nothing is taken out. */
+  private furnitureButton(): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'quiet';
+    b.textContent = this.withFurniture ? 'Hide furniture' : 'Show furniture';
+    b.title = 'The rooms are shown empty while you change the layout; the furniture is still there.';
+    b.addEventListener('click', () => {
+      this.withFurniture = !this.withFurniture;
+      b.blur();
+      this.renderPane();
+      this.onChange();
+    });
+    return b;
+  }
+
   /** The panel's part: what is picked, and what can be done with it. */
   renderPane(): void {
     const scene = this.host.now();
@@ -266,7 +292,7 @@ export class LayoutEditor {
       row(button('Change the layout', () => this.setOn(true)));
     } else if (!this.picked) {
       text('Drag a wall to move it. Click a wall to add a door or window to it. Drag a door or window along its wall.', true);
-      row(button('Done', () => this.setOn(false)));
+      row(button('Done', () => this.setOn(false)), this.furnitureButton());
     } else if (this.picked.kind === 'wall') {
       const { room: roomId, edge } = this.picked;
       const room = scene.rooms.find((r) => r.id === roomId);

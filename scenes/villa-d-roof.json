@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "Curved-roof house D, roof",
   "units": "m",
-  "northDeg": 0,
+  "northDeg": 90,
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
   "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#7f7b75", "exteriorMaterial": "render", "trimColor": "#96928b", "stoneColor": "#bcae96", "woodColor": "#a3836a", "boundaryMaterial": "render", "frameColor": "#3a332d", "doorColor": "#5a3a24", "railColor": "#7a5236"},
   "start": {"position": [1.524, 9.754], "yawDeg": 0},

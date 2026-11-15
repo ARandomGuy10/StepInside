@@ -1108,7 +1108,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       const lifted = inOrbit && roofHidden && i > roofed;
       // A room on its own hides the floors under it too.
       const shown = (!inTopView || i <= level) && !lifted && (!room || i === level);
-      l.shell.visible = l.furniture.group.visible = shown;
+      l.shell.visible = shown;
+      l.furniture.group.visible = shown && (!inTopView || i !== level || (layout?.furnitureShown ?? true));
       // In the whole-house view the roof of the top storey can come off.
       const lid = !(inTopView && i === level) && !(inOrbit && roofHidden && i === roofed);
       // From above the fittings would block the view, but the light they give stays on.
@@ -1203,7 +1204,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     alone = { level, room: room.id };
     selectedId = selectedPiece()?.room === room.id ? selectedId : null;
     const size = roomSize(room);
-    plan.focus(size.center[0], size.center[1], Math.max(size.width, size.depth));
+    plan.focus(size.center[0], size.center[1], Math.max(size.width, size.depth), 0.3);
     aloneName.textContent = room.name ?? room.id;
     aloneSize.textContent = `${formatSize(size.width, size.depth, units)} · ${formatArea(polygonArea(room.polygon), units)}`;
     aloneBar.hidden = false;
@@ -1458,7 +1459,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       onlyRoom: () => alone?.room,
     },
     document.getElementById('pane-plan')!,
-    () => updateHint(),
+    () => {
+      updateHint();
+      showLevels();
+    },
   );
   layout.renderPane();
   history.subscribe(() => {

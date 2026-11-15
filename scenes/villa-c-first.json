@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "Curved-roof house, first floor",
   "units": "m",
-  "northDeg": 0,
+  "northDeg": 90,
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
   "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#8f8c86", "exteriorMaterial": "render", "trimColor": "#a9a6a0", "stoneColor": "#c2b49c", "woodColor": "#7a4f31", "boundaryMaterial": "render"},
   "start": {"position": [3.048, 6.401], "yawDeg": 180},

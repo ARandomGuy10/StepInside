@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "New house, ground floor",
   "units": "m",
-  "northDeg": 0,
+  "northDeg": 90,
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
   "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#e6dcc8", "exteriorMaterial": "stone"},
   "start": {"position": [4.724, 11.887], "yawDeg": 0},

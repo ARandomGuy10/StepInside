@@ -106,7 +106,7 @@ class Home:
     def write(self, path):
         for r in self.rooms: r.pop("_ft")
         scene = {
-            "schemaVersion": 1, "name": self.name, "units": "m", "northDeg": 0,
+            "schemaVersion": 1, "name": self.name, "units": "m", "northDeg": 90,  # the front (gate side, bottom of the plan) faces east
             "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
             "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": m(EXT), "railingHeight": 1.1,
                          "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee",

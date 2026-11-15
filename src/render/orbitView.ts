@@ -146,9 +146,11 @@ export class OrbitView {
    * Glides to look at one spot of the home from close by: the middle of a room,
    * with `size` metres of it filling the view.
    */
-  focus(x: number, z: number, size: number): void {
+  focus(x: number, z: number, size: number, steepest?: number): void {
     this.goalShift.set(x - this.centre.x, z - this.centre.y);
-    this.goal.distance = Math.max(this.home.distance * 0.2, Math.min(this.home.distance * 0.7, size * 2.6));
+    this.goal.distance = Math.max(this.home.distance * 0.2, Math.min(this.home.distance * 0.7, size * 3));
+    // Looking down more steeply lets the eye over the near walls and into the room.
+    if (steepest !== undefined && !this.flatOn) this.goal.polar = Math.min(this.goal.polar, steepest);
   }
 
   /** How far out the view is heading, as a share of the whole-home distance: 1 is the usual framing. */

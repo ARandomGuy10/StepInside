@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "Courtyard house, ground floor",
   "units": "m",
-  "northDeg": 0,
+  "northDeg": 90,
   "sun": {"azimuthDeg": 220, "elevationDeg": 40, "intensity": 3.2, "color": "#fff1dc"},
   "defaults": {"ceilingHeight": 3.0, "exteriorWallThickness": 0.229, "railingHeight": 1.1, "wallColor": "#f1ece3", "floorColor": "#d9cdb8", "ceilingColor": "#f7f4ee", "exteriorColor": "#8d8f91", "exteriorMaterial": "render", "trimColor": "#c4c6c8", "stoneColor": "#a3a09a"},
   "start": {"position": [5.41, 12.04], "yawDeg": 0},
