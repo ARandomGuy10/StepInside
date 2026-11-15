@@ -420,9 +420,11 @@ export class FurniturePanel {
     for (const id of ['btn-turn-left', 'btn-turn-right', 'btn-turn-90']) byId(id).hidden = onWall;
     for (const id of ['btn-raise', 'btn-lower']) byId(id).hidden = !onWall;
 
-    byId('room-name').textContent = room?.name ?? 'none';
-    byId<HTMLButtonElement>('btn-empty').disabled =
-      !room || !scene.furniture.some((f) => f.room === room.id && !f.removed);
+    // With no room picked, the room's own buttons step aside instead of sitting greyed out.
+    byId('room-name').textContent = room?.name ?? '';
+    byId('room-pick').hidden = !!room;
+    byId('btn-empty').hidden = !room || !scene.furniture.some((f) => f.room === room.id && !f.removed && !f.fixed);
+    byId('btn-layouts').hidden = !room;
     byId<HTMLButtonElement>('btn-undo').disabled = !state.canUndo;
     byId<HTMLButtonElement>('btn-redo').disabled = !state.canRedo;
     byId('btn-top').classList.toggle('active', state.topView);

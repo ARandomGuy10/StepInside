@@ -19,6 +19,8 @@ export interface LayoutHost {
   toScreen(x: number, y: number): [number, number];
   units(): Units;
   toast(message: string): void;
+  /** The room shown on its own, if any: only its walls get handles. */
+  onlyRoom(): string | undefined;
 }
 
 type Picked = { kind: 'wall'; room: string; edge: number } | { kind: 'opening'; id: string } | null;
@@ -37,6 +39,7 @@ export class LayoutEditor {
   private readonly layer = document.createElementNS(SVG, 'svg');
   private picked: Picked = null;
   private drawnFrom: Scene | null = null;
+  private drawnFor = '';
   private drag: { base: Scene; start: Vec2; apply: (p: Vec2) => Scene } | null = null;
   private readonly readout = document.createElement('div');
 
@@ -85,7 +88,8 @@ export class LayoutEditor {
     this.layer.style.display = this.on && visible ? '' : 'none';
     if (!this.on || !visible) return;
     const scene = this.host.now();
-    if (scene !== this.drawnFrom) this.rebuild(scene);
+    const only = this.host.onlyRoom() ?? '';
+    if (scene !== this.drawnFrom || only !== this.drawnFor) this.rebuild(scene);
     for (const el of this.layer.children) {
       const line = el as SVGLineElement;
       const [x1, y1, x2, y2] = (line.dataset.plan ?? '').split(',').map(Number);
@@ -101,10 +105,12 @@ export class LayoutEditor {
   /** One line per wall (a shared wall only once) and one per door or window. */
   private rebuild(scene: Scene): void {
     this.drawnFrom = scene;
+    const only = this.host.onlyRoom();
+    this.drawnFor = only ?? '';
     const lines: SVGLineElement[] = [];
     const seen = new Set<string>();
     for (const room of scene.rooms) {
-      if (room.kind === 'void') continue;
+      if (room.kind === 'void' || (only && room.id !== only)) continue;
       room.polygon.forEach((_, edge) => {
         if (seen.has(`${room.id}/${edge}`) || edgeLength(room, edge) < 0.3) return;
         const behind = facingEdges(scene, room.id, edge);
@@ -123,6 +129,8 @@ export class LayoutEditor {
     for (const o of scene.openings) {
       const room = scene.rooms.find((r) => r.id === o.room);
       if (!room) continue;
+      // A door declared on the next room still shows when it is in this room's wall.
+      if (only && room.id !== only && !facingEdges(scene, room.id, o.edge).some((f) => f.room === only)) continue;
       const [a, b] = ends(room, o.edge);
       const u = unit(sub(b, a));
       const n = outwardNormal(room, o.edge);

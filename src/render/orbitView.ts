@@ -148,7 +148,12 @@ export class OrbitView {
    */
   focus(x: number, z: number, size: number): void {
     this.goalShift.set(x - this.centre.x, z - this.centre.y);
-    this.goal.distance = Math.max(this.home.distance * 0.12, Math.min(this.home.distance, size * 1.7));
+    this.goal.distance = Math.max(this.home.distance * 0.2, Math.min(this.home.distance * 0.7, size * 2.6));
+  }
+
+  /** How far out the view is heading, as a share of the whole-home distance: 1 is the usual framing. */
+  get zoomShare(): number {
+    return this.goal.distance / this.home.distance;
   }
 
   zoom(factor: number): void {

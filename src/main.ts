@@ -41,6 +41,7 @@ import { edits, workOf, WORKS, type Work } from './ui/modes';
 import { countChanges } from './core/session';
 import { clearInFront } from './core/fit';
 import { LayoutEditor } from './ui/layoutEditor';
+import { facingEdges, outwardNormal } from './core/layoutEdits';
 import { KitchenPanel } from './ui/kitchenPanel';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
@@ -186,7 +187,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let inOrbit = false;
   // A floor plan is seen at an angle too, from nearly overhead, so the
   // walls and furniture read as 3D. Tilt it all the way up for a flat plan.
-  const plan = new OrbitView(bounds, 1, { azimuth: 0.3, polar: 0.5, reach: 1.25 });
+  const plan = new OrbitView(bounds, 1, { azimuth: 0.3, polar: 0.5, reach: 1.5 });
   // The owner's own choice of units, kept in this browser, outranks the home's.
   const UNITS_KEY = 'stepinside.units';
   let units: Units = home.units ?? 'm';
@@ -201,9 +202,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   let sizes = false;
   // A home without an outside to show, such as a flat, opens with its lid off.
   let roofHidden = !scenes[0].site;
-  if (scenes[0].site) {
-    world.add(buildStreet(bounds, scenes[0].defaults.exteriorWallThickness, scenes[0].site.margin, spawn.position[0]));
-  }
+  const street = scenes[0].site ? buildStreet(bounds, scenes[0].defaults.exteriorWallThickness, scenes[0].site.margin, spawn.position[0]) : null;
+  if (street) world.add(street);
   world.add(topView.marker);
   let inTopView = false;
   const activeCamera = (): THREE.Camera => (inOrbit ? orbit.camera : inTopView ? plan.camera : camera);
@@ -299,10 +299,6 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (next !== 'furniture') selectedId = null;
     if (next !== 'paint') paintTarget = null;
     if (next !== 'plan' && layout?.on) layout.setOn(false);
-    if (next === 'plan') {
-      dimensions = true;
-      sizes = true;
-    }
     showMode();
     if ((next === 'plan' && !inTopView) || (edits(next) && inOrbit)) setTopView(true);
     updateHint();
@@ -618,8 +614,61 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }
   history.subscribe(refresh);
 
+  /**
+   * Where to stand to walk into a room: a step inside its door, facing in.
+   * A room with no door starts at its most open spot.
+   */
+  function entranceOf(room: Room): { x: number; y: number; yawDeg: number } {
+    const scene = now();
+    const doors: { edge: number; middle: number }[] = [];
+    for (const o of scene.openings) {
+      if (o.type !== 'door') continue;
+      if (o.room === room.id) doors.push({ edge: o.edge, middle: o.offset + o.width / 2 });
+    }
+    // Doors declared on the room next door, in the wall the two share.
+    room.polygon.forEach((_, edge) => {
+      for (const f of facingEdges(scene, room.id, edge)) {
+        const other = scene.rooms.find((r) => r.id === f.room)!;
+        for (const o of scene.openings) {
+          if (o.type !== 'door' || o.room !== other.id || o.edge !== f.edge) continue;
+          // Measure the door's middle along this room's edge instead.
+          const [c, d] = [toVec(other.polygon[f.edge]), toVec(other.polygon[(f.edge + 1) % other.polygon.length])];
+          const len = Math.hypot(d.x - c.x, d.y - c.y);
+          const t = (o.offset + o.width / 2) / len;
+          const point = { x: c.x + (d.x - c.x) * t, y: c.y + (d.y - c.y) * t };
+          const a = toVec(room.polygon[edge]);
+          const b = toVec(room.polygon[(edge + 1) % room.polygon.length]);
+          const along = ((point.x - a.x) * (b.x - a.x) + (point.y - a.y) * (b.y - a.y)) / Math.hypot(b.x - a.x, b.y - a.y);
+          doors.push({ edge, middle: along });
+        }
+      }
+    });
+    const door = doors[0];
+    if (!door) {
+      const spot = openSpot(room, scene.furniture);
+      return { x: spot.x, y: spot.y, yawDeg: controls.pose.yaw * (180 / Math.PI) };
+    }
+    const a = toVec(room.polygon[door.edge]);
+    const b = toVec(room.polygon[(door.edge + 1) % room.polygon.length]);
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const out = outwardNormal(room, door.edge);
+    const x = a.x + ((b.x - a.x) / len) * door.middle - out.x * 0.6;
+    const y = a.y + ((b.y - a.y) / len) * door.middle - out.y * 0.6;
+    // Facing in: forward on the plan is (-sin yaw, -cos yaw).
+    return { x, y, yawDeg: THREE.MathUtils.radToDeg(Math.atan2(out.x, out.y)) };
+  }
+
   function setTopView(on: boolean): void {
     if (tour) stopTour();
+    // Walking from a room on its own starts at that room's door.
+    if (!on && inTopView && alone) {
+      const room = now().rooms.find((r) => r.id === alone!.room);
+      leaveRoom(false);
+      if (room) {
+        const start = entranceOf(room);
+        controls.teleport(start.x, start.y, start.yawDeg);
+      }
+    }
     // The Plan mode works on the drawing, so leaving the plan leaves the mode.
     if (!on && mode === 'plan') fallToExplore();
     inTopView = on;
@@ -710,6 +759,16 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   });
   const recordButton = tool('video', 'Record the tour', 'Shift G', () => recordTour());
   tourButton.id = 'btn-tour';
+  // Short names for the chip row that Finishes and Furnish show instead of the full list.
+  const shortName = (button: HTMLButtonElement, text: string): void => {
+    const span = document.createElement('span');
+    span.className = 'short';
+    span.textContent = text;
+    button.append(span);
+  };
+  shortName(wholeButton, 'House');
+  planButtons.forEach((b, i) => shortName(b, levels.length > 1 ? levels[i].name.replace(/ floor$/i, '') : 'Plan'));
+  shortName(walkButton, 'Walk');
   viewBar.replaceChildren(wholeButton, ...planButtons, walkButton);
   document.getElementById('view-extras')!.replaceChildren(realisticButton, tourButton, recordButton, snapButton, measureButton, notesButton, savedButton, shareButton, areasButton, quantitiesButton, pdfButton, keysButton);
   const tools = document.getElementById('orbit-tools')!;
@@ -718,12 +777,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     showLevels();
     updateHint();
   });
-  const dimensionsButton = tool('labels', 'Hide labels', 'N', () => {
+  const dimensionsButton = tool('labels', 'Hide room names', 'N', () => {
     dimensions = !dimensions;
     updateHint();
   });
   const sizesButton = tool('ruler', 'Hide sizes', 'M', () => {
-    if (!dimensions) return;
     sizes = !sizes;
     updateHint();
   });
@@ -864,8 +922,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   const labelPool: HTMLElement[] = [];
   const spot = new THREE.Vector3();
   function placeLabels(): void {
-    const show = inTopView && dimensions;
+    // Names and sizes are separate switches; the label shows whichever are on.
+    const show = inTopView && (dimensions || sizes || directions);
     labelLayer.hidden = !show;
+    placeWallSizes(inTopView && sizes && !directions);
     if (!show) return;
     const items: { text: string; sub: string; x: number; y: number; z: number; piece?: boolean }[] = [];
     for (const room of now().rooms) {
@@ -882,7 +942,6 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         x: chosen.position[0], y: (chosen.elevation ?? 0) + h + 0.25, z: chosen.position[1], piece: true,
       });
     }
-    placeWallSizes(show && sizes && !directions);
     while (labelPool.length < items.length) {
       const el = document.createElement('div');
       el.append(document.createElement('strong'), document.createElement('span'));
@@ -899,8 +958,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       el.classList.toggle('piece', !!item.piece);
       if (el.firstElementChild!.textContent !== item.text) el.firstElementChild!.textContent = item.text;
       if (el.lastElementChild!.textContent !== item.sub) el.lastElementChild!.textContent = item.sub;
-      // With sizes off, rooms and the selected piece show only their names.
+      // Each part of a label follows its own switch. The selected piece always shows its name.
+      (el.firstElementChild as HTMLElement).hidden = !dimensions && !item.piece;
       (el.lastElementChild as HTMLElement).hidden = !sizes && !directions;
+      el.classList.toggle('bare', !dimensions && !item.piece);
     });
   }
 
@@ -1034,12 +1095,14 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
 
   /**
    * The top view shows one storey: everything above it is hidden, and so
-   * are its own ceilings, roof and lamps. The storeys below stay, so the
+   * are its own ceilings, roof and lamp fittings (their light stays). The storeys below stay, so the
    * pool shows from upstairs.
    */
   function showLevels(): void {
     if (alone && (!inTopView || alone.level !== level)) leaveRoom(false);
     const room = alone ? now().rooms.find((r) => r.id === alone!.room) : undefined;
+    // A room on its own stands alone: no street or plot round it either.
+    if (street) street.visible = !room;
     levels.forEach((l, i) => {
       // An open roof terrace comes off with the roof in the whole-house view.
       const lifted = inOrbit && roofHidden && i > roofed;
@@ -1048,7 +1111,11 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       l.shell.visible = l.furniture.group.visible = shown;
       // In the whole-house view the roof of the top storey can come off.
       const lid = !(inTopView && i === level) && !(inOrbit && roofHidden && i === roofed);
-      l.lamps.visible = shown && lid;
+      // From above the fittings would block the view, but the light they give stays on.
+      l.lamps.visible = shown;
+      l.lamps.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.visible = lid;
+      });
       for (const o of l.shell.children) {
         const base = o.name.startsWith('ceiling:') || o.name === 'roof' ? lid : true;
         o.visible = base && (!room || i !== level || partOfRoom(o, room));
@@ -1059,6 +1126,35 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       }
     });
   }
+
+  // Resting the mouse on a room of the plan offers to open it, so the
+  // double-click is found without reading the hint.
+  const roomTip = document.createElement('div');
+  roomTip.id = 'room-tip';
+  roomTip.hidden = true;
+  document.body.append(roomTip);
+  let tipTimer = 0;
+  canvas.addEventListener('pointermove', (e) => {
+    roomTip.hidden = true;
+    window.clearTimeout(tipTimer);
+    if (!inTopView || alone || e.buttons || measuring || layout?.on || EMBED) return;
+    tipTimer = window.setTimeout(() => {
+      const p = floorPoint(e);
+      const room = p ? now().rooms.find((r) => r.kind !== 'void' && insideOrOnEdge(r.polygon, p[0], p[1], 0)) : undefined;
+      if (!room) return;
+      roomTip.textContent = `Double-click to open ${room.name ?? 'this room'}`;
+      roomTip.style.transform = `translate(${e.clientX + 14}px, ${e.clientY + 16}px)`;
+      roomTip.hidden = false;
+    }, 700);
+  });
+  canvas.addEventListener('pointerleave', () => {
+    window.clearTimeout(tipTimer);
+    roomTip.hidden = true;
+  });
+  canvas.addEventListener('pointerdown', () => {
+    window.clearTimeout(tipTimer);
+    roomTip.hidden = true;
+  });
 
   // ---- A room on its own: double-click it on the plan ----
 
@@ -1228,13 +1324,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     walkButton.classList.toggle('active', !inOrbit && !inTopView);
     setTool(roofButton, 'roof', roofHidden ? 'Show roof' : 'Hide roof');
     roofButton.classList.toggle('active', !roofHidden);
-    setTool(dimensionsButton, 'labels', dimensions ? 'Hide labels' : 'Show labels');
+    setTool(dimensionsButton, 'labels', dimensions ? 'Hide room names' : 'Show room names');
     dimensionsButton.classList.toggle('active', dimensions);
     setTool(sizesButton, 'ruler', sizes ? 'Hide sizes' : 'Show sizes');
     setTool(flatButton, '', plan.flat ? 'Back to the 3D plan' : 'Flat 2D drawing', plan.flat ? '3D' : '2D');
     flatButton.classList.toggle('active', plan.flat);
-    sizesButton.classList.toggle('active', sizes && dimensions);
-    sizesButton.disabled = !dimensions;
+    sizesButton.classList.toggle('active', sizes);
     if (inOrbit) {
       document.getElementById('hint-title')!.textContent = home.title;
       document.getElementById('hint-text')!.textContent =
@@ -1251,7 +1346,9 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
         ? 'Click a floor, wall or piece, then choose a colour · drag the background to turn the plan · right-drag to move it'
         : mode === 'furniture'
           ? 'Click a piece to select it · drag to move · R to turn · drag the background to turn the plan · right-drag to move it'
-          : 'Double-click a room to see it on its own · drag to turn the plan · right-drag to move it · scroll to zoom'
+          : alone
+            ? 'Double-click outside the room, zoom out, or press Esc to see the whole floor again'
+            : 'Double-click a room to see it on its own · drag to turn the plan · right-drag to move it · scroll to zoom'
       : painting
         ? 'W A S D to walk · right-drag or double-click to look around · while looking, click picks what the dot is on'
         : `W A S D to walk · Shift to walk faster · Esc to release the mouse · T for the top view${levels.length > 1 ? ' · Page Up / Page Down to change floor' : ''}`;
@@ -1358,6 +1455,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       },
       units: () => units,
       toast: (message) => panel.toast(message),
+      onlyRoom: () => alone?.room,
     },
     document.getElementById('pane-plan')!,
     () => updateHint(),
@@ -1531,9 +1629,12 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     if (!inTopView || clickTaker || EMBED) return;
     const p = floorPoint(e);
     const room = p ? now().rooms.find((r) => r.kind !== 'void' && insideOrOnEdge(r.polygon, p[0], p[1], 0)) : undefined;
-    if (!room) return;
-    if (alone?.room === room.id) leaveRoom();
-    else openRoom(room);
+    // With a room on its own, a double-click anywhere outside it goes back to the whole floor.
+    if (alone) {
+      if (room?.id !== alone.room) leaveRoom();
+      return;
+    }
+    if (room) openRoom(room);
   });
 
   // Dragging a taken-out piece from the panel onto the floor.
@@ -2467,7 +2568,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
   }
   function labelLights(): void {
     const inRoom = roomLights();
-    roomLightsButton.disabled = inRoom.length === 0;
+    roomLightsButton.hidden = inRoom.length === 0;
     setLabel(roomLightsButton, 'bulb', inRoom.length === 0 ? 'No lights' : inRoom.some((k) => !lightsOff.has(k)) ? 'Lights off' : 'Lights on');
     if (allLightsButton) allLightsButton.textContent = allLights().some((k) => !lightsOff.has(k)) ? 'Lights off' : 'Lights on';
   }
@@ -3661,6 +3762,8 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     controls.update(dt);
     if (inOrbit) orbit.update(dt);
     if (inTopView) plan.update(dt);
+    // Zooming well out of a room on its own brings the rest of the floor back.
+    if (inTopView && alone && plan.zoomShare > 0.85) leaveRoom();
     placeLabels();
     placePieceTools();
     layout?.place(inTopView && mode === 'plan');

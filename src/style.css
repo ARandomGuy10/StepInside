@@ -1076,7 +1076,6 @@ body.orbit-view #view-bar .tool-row {
 #view-bar #views button.primary:not(.active) {
   background: var(--line);
   color: var(--soot);
-  box-shadow: inset 0 -2px 0 var(--line-deep);
 }
 
 #view-bar #views button.primary:not(.active):hover {
@@ -1802,7 +1801,6 @@ kbd {
   margin-top: 6px;
   background: var(--line);
   color: var(--soot);
-  box-shadow: inset 0 -2px 0 var(--line-deep);
 }
 
 #panel #views button.primary:not(.active):hover {
@@ -3095,7 +3093,6 @@ body.embed #hover-size {
   background: var(--lime);
   border-color: var(--lime);
   color: var(--soot);
-  box-shadow: inset 0 -3px 0 var(--line);
 }
 
 /* What the mode in hand does, in a line. */
@@ -3685,4 +3682,65 @@ body.walking #walk-bar {
 #panel #kitchen-box .segments button.active {
   background: var(--lime);
   color: var(--soot);
+}
+
+#room-tip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  padding: 4px 9px;
+  border-radius: 5px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--panel-shadow);
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Finishes and Furnish: the views shrink to one row of chips, to switch floors quickly. */
+#views .short {
+  display: none;
+}
+
+body[data-mode='finishes'] #panel #views,
+body[data-mode='furnish'] #panel #views {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px 10px;
+}
+
+body[data-mode='finishes'] #panel #views button,
+body[data-mode='furnish'] #panel #views button {
+  flex: 1 1 auto;
+  justify-content: center;
+  gap: 5px;
+  min-height: 28px;
+  margin-top: 0;
+  padding: 3px 9px;
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  /* The long name is plain text; size 0 hides it and leaves the short one. */
+  font-size: 0;
+}
+
+body[data-mode='finishes'] #panel #views button .short,
+body[data-mode='furnish'] #panel #views button .short {
+  display: inline;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+body[data-mode='finishes'] #panel #views kbd,
+body[data-mode='furnish'] #panel #views kbd {
+  display: none;
+}
+
+body[data-mode='finishes'] #panel #views .icon,
+body[data-mode='furnish'] #panel #views .icon {
+  width: 14px;
+  height: 14px;
 }
