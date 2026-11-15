@@ -41,6 +41,7 @@ import { edits, workOf, WORKS, type Work } from './ui/modes';
 import { countChanges } from './core/session';
 import { clearInFront } from './core/fit';
 import { LayoutEditor } from './ui/layoutEditor';
+import { KitchenPanel } from './ui/kitchenPanel';
 
 const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
 hydrateIcons();
@@ -507,6 +508,10 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
     redo: () => history.redo(),
     toggleTopView: () => setTopView(!inTopView),
   });
+  const kitchen = new KitchenPanel(
+    { now, apply, units: () => units, toast: (message) => panel.toast(message) },
+    document.getElementById('kitchen-box')!,
+  );
   addItem = (item) => {
     // On the plan, a new piece goes in the room on its own, or the middle of the view.
     if (inTopView) {
@@ -608,6 +613,7 @@ function start(home: HomeEntry, scenes: readonly Scene[]): void {
       units,
       fit: mode === 'furniture' && chosen ? clearInFront(scene, chosen) : null,
     });
+    kitchen.render(mode === 'furniture', currentRoom());
     afterRefresh();
   }
   history.subscribe(refresh);

@@ -15,7 +15,8 @@ import { applySurface, artTexture, type Pattern } from './textures';
  */
 
 type Size = readonly [number, number, number];
-type Builder = (kit: Kit, size: Size, color: THREE.Color) => void;
+/** `variant` is the part of a model name after a colon, such as the worktop in "kitchen-base:stone". */
+type Builder = (kit: Kit, size: Size, color: THREE.Color, variant?: string) => void;
 
 interface MatOptions {
   roughness?: number;
@@ -1224,6 +1225,66 @@ const stairsDown: Builder = (k, [w, h, d], color) => {
   k.box(0.04, 0.04, d, w / 2 - 0.006, h, 0, STEEL());
 };
 
+// ---- Fitted kitchen units, one per piece, so a run can be any length ----
+
+/** The worktops a fitted unit can have. */
+const WORKTOPS: Record<string, () => THREE.MeshStandardMaterial> = {
+  wood: () => mat('#5d412e', { roughness: 0.4, map: 'wood', repeat: 2 }),
+  stone: () => mat('#dcd8d0', { roughness: 0.3 }),
+  dark: () => mat('#2a2a2c', { roughness: 0.25 }),
+};
+
+/** Plinth, carcass and worktop of a floor unit 90 cm high. Returns the front face's z. */
+function fittedBody(k: Kit, w: number, d: number, color: THREE.Color, worktop = 'stone'): number {
+  k.box(w, 0.1, d - 0.08, 0, 0.05, 0.04, mat('#3b3b3b'));
+  k.box(w, 0.76, d - 0.02, 0, 0.48, 0.01, mat(color, { roughness: 0.45 }));
+  k.box(w, 0.04, d + 0.01, 0, 0.88, -0.005, (WORKTOPS[worktop] ?? WORKTOPS.stone)(), 0.004);
+  return -d / 2 + 0.009;
+}
+
+const kitchenBaseUnit: Builder = (k, [w, , d], color, worktop) => {
+  const front = fittedBody(k, w, d, color, worktop);
+  // Narrow units get one door; wider ones a drawer over two doors.
+  const face = mat(color, { roughness: 0.4 });
+  k.box(w - 0.008, 0.17, 0.018, 0, 0.785, front, face, 0.003);
+  k.box(w * 0.5, 0.012, 0.02, 0, 0.82, front - 0.022, STEEL());
+  const doors = w > 0.5 ? 2 : 1;
+  for (let i = 0; i < doors; i++) {
+    const dw = w / doors;
+    const x = -w / 2 + dw * (i + 0.5);
+    k.box(dw - 0.008, 0.58, 0.018, x, 0.4, front, face, 0.003);
+    const side = doors === 1 ? 1 : i === 0 ? 1 : -1;
+    k.box(0.012, 0.18, 0.02, x + side * (dw / 2 - 0.05), 0.58, front - 0.022, STEEL());
+  }
+};
+
+const kitchenSinkUnit: Builder = (k, [w, , d], color, worktop) => {
+  kitchenBaseUnit(k, [w, 0.9, d], color, worktop);
+  k.box(Math.min(0.5, w - 0.12), 0.014, 0.4, 0, 0.905, 0.02, mat('#2a2c2e', { roughness: 0.3, metalness: 0.7 }));
+  k.cyl(0.014, 0.014, 0.3, 0, 1.05, 0.24, STEEL(), 10);
+  k.box(0.02, 0.02, 0.18, 0, 1.2, 0.15, STEEL(), 0.008);
+};
+
+const kitchenHobUnit: Builder = (k, [w, , d], color, worktop) => {
+  const front = fittedBody(k, w, d, color, worktop);
+  const face = mat(color, { roughness: 0.4 });
+  for (let r = 0; r < 3; r++) {
+    const y = 0.1 + (0.76 / 3) * (r + 0.5);
+    k.box(w - 0.008, 0.76 / 3 - 0.008, 0.018, 0, y, front, face, 0.003);
+    k.box(w * 0.55, 0.012, 0.02, 0, y + 0.07, front - 0.022, STEEL());
+  }
+  k.box(Math.min(0.58, w - 0.04), 0.012, 0.5, 0, 0.906, 0, BLACK());
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    k.cyl(0.05, 0.05, 0.02, sx * Math.min(0.15, w / 4), 0.92, sz * 0.12, mat('#2c2c2e', { roughness: 0.4, metalness: 0.6 }), 16);
+  }
+};
+
+const kitchenWallUnit: Builder = (k, [w, h, d], color) => {
+  k.box(w, h, d - 0.02, 0, h / 2, 0.01, mat(color, { roughness: 0.45 }));
+  k.box(w - 0.008, h - 0.008, 0.018, 0, h / 2, -d / 2 + 0.009, mat(color, { roughness: 0.4 }), 0.003);
+  k.box(w * 0.5, 0.012, 0.02, 0, 0.04, -d / 2 - 0.013, STEEL());
+};
+
 const builders: Record<string, Builder> = {
   'dining-table': diningTable,
   'kitchen-island': kitchenIsland,
@@ -1288,6 +1349,10 @@ const builders: Record<string, Builder> = {
   'kitchen-counter-sink': kitchenSink,
   'kitchen-tall': kitchenTall,
   'kitchen-oven-tall': kitchenOven,
+  'kitchen-base': kitchenBaseUnit,
+  'kitchen-sink-unit': kitchenSinkUnit,
+  'kitchen-hob-unit': kitchenHobUnit,
+  'kitchen-wall-unit': kitchenWallUnit,
   curtain,
   'sheer-curtain': sheerCurtain,
   radiator,
@@ -1295,9 +1360,10 @@ const builders: Record<string, Builder> = {
 
 /** Builds the model for `name`, or returns null if there is no builder for it. */
 export function buildModel(name: string, size: Size, color: string): THREE.Group | null {
-  const builder = builders[name];
+  const [base, variant] = name.split(':');
+  const builder = builders[base];
   if (!builder) return null;
   const kit = new Kit();
-  builder(kit, size, new THREE.Color(color));
+  builder(kit, size, new THREE.Color(color), variant);
   return kit.group;
 }

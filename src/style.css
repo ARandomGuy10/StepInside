@@ -3575,3 +3575,114 @@ body.walking #walk-bar {
   background: var(--wrong);
   color: var(--lime);
 }
+
+/* ---- Fitted kitchen: a small plan to pick a wall, and the choices ---- */
+
+#kitchen-box .kitchen-plan {
+  display: block;
+  width: 100%;
+  max-height: 200px;
+  margin: 4px 0 10px;
+  padding: 6px;
+  border-radius: var(--radius);
+  background: var(--lime);
+}
+
+#kitchen-box .kitchen-plan .floor {
+  fill: oklch(0.93 0.006 90);
+}
+
+#kitchen-box .kitchen-plan .piece {
+  fill: oklch(0.8 0.01 80);
+}
+
+#kitchen-box .kitchen-plan .unit {
+  fill: var(--tape);
+  stroke: var(--soot);
+  stroke-width: 0.02;
+}
+
+#kitchen-box .kitchen-plan line.wall {
+  stroke: var(--soot);
+  stroke-linecap: round;
+  cursor: pointer;
+}
+
+#kitchen-box .kitchen-plan line.wall:hover,
+#kitchen-box .kitchen-plan line.wall.fitted {
+  stroke: var(--line);
+}
+
+#kitchen-box .kitchen-plan line.door {
+  stroke: var(--tape-shade);
+  pointer-events: none;
+}
+
+#kitchen-box .kitchen-plan line.window {
+  stroke: oklch(0.7 0.09 230);
+  pointer-events: none;
+}
+
+#kitchen-box .kitchen-choices {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 4px;
+}
+
+#kitchen-box .kitchen-choices > span {
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+#kitchen-box .fronts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+#panel #kitchen-box .fronts button {
+  width: 21px;
+  height: 21px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.25);
+}
+
+#panel #kitchen-box .fronts button.current {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+#kitchen-box .segments {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  background: oklch(0.2 0.009 70);
+}
+
+#panel #kitchen-box .segments button {
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#panel #kitchen-box .segments button.active {
+  background: var(--lime);
+  color: var(--soot);
+}
